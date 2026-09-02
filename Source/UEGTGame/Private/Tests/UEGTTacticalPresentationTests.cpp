@@ -70,6 +70,23 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	MarkerUnit.bIncapacitated = true;
 	TestEqual(TEXT("Incapacitated marker silhouette retains the low profile"),
 		AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MarkerUnit), 0.18f);
+	FTacticalHudObjectiveView MarkerObjective;
+	MarkerObjective.RequiredInteractions = 4;
+	TestTrue(TEXT("Objective marker starts at its bounded base height"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(MarkerObjective),
+			0.45f));
+	MarkerObjective.PlayerInteractions = 2;
+	MarkerObjective.AdversaryInteractions = 1;
+	TestTrue(TEXT("Objective marker height reflects combined interaction progress"),
+		AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(MarkerObjective) > 0.45f
+		&& AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(MarkerObjective) < 1.0f);
+	MarkerObjective.PlayerInteractions = MAX_int32;
+	MarkerObjective.AdversaryInteractions = MAX_int32;
+	TestTrue(TEXT("Objective marker progress clamps at full height without overflow"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(MarkerObjective),
+			1.0f));
 	Board->ApplyAccessibilityPalette(EUEGTColorVisionMode::Tritanopia, false);
 	TestEqual(TEXT("Tactical board accepts the selected color-vision palette"),
 		Board->GetColorVisionMode(), EUEGTColorVisionMode::Tritanopia);
@@ -143,6 +160,9 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	Objective.ObjectiveId = TEXT("objective.runtime-test");
 	Objective.X = 3;
 	Objective.Y = 1;
+	Objective.PlayerInteractions = 1;
+	Objective.AdversaryInteractions = 1;
+	Objective.RequiredInteractions = 3;
 	Objective.Status = ETacticalObjectiveStatus::Active;
 	Snapshot.Hover.bHasCell = true;
 	Snapshot.Hover.bCellVisible = true;

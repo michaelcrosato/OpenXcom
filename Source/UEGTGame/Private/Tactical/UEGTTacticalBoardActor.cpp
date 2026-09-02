@@ -412,6 +412,21 @@ float AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(const FTacticalHud
 	return StanceScale * (0.62f + HealthRatio * 0.38f);
 }
 
+float AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(
+	const FTacticalHudObjectiveView& Objective)
+{
+	const int64 RequiredInteractions = FMath::Max<int64>(1, Objective.RequiredInteractions);
+	const int64 ClaimedInteractions = FMath::Max<int64>(
+		0,
+		static_cast<int64>(Objective.PlayerInteractions)
+			+ static_cast<int64>(Objective.AdversaryInteractions));
+	const float ProgressRatio = FMath::Clamp(
+		static_cast<float>(ClaimedInteractions) / static_cast<float>(RequiredInteractions),
+		0.0f,
+		1.0f);
+	return 0.45f + ProgressRatio * 0.55f;
+}
+
 void AUEGTTacticalBoardActor::AddUnitMarker(
 	UInstancedStaticMeshComponent* Component,
 	const FTacticalHudUnitView& Unit)
@@ -513,7 +528,12 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 		const FIntVector Cell(Objective.X, Objective.Y, Objective.Z);
 		ObjectiveIds.Add(Objective.ObjectiveId);
 		ObjectiveCells.Add(Cell);
-		AddCellMarker(ObjectiveInstances, Cell, 30.0f, 0.34f, 0.55f);
+		AddCellMarker(
+			ObjectiveInstances,
+			Cell,
+			30.0f,
+			0.34f,
+			CalculateObjectiveMarkerHeightScale(Objective));
 	}
 
 	for (const FTacticalHudUnitView& Unit : Snapshot.Units)

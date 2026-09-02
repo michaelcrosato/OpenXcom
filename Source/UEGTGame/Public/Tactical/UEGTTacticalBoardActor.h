@@ -84,6 +84,8 @@ public:
 	bool UsesSemanticMarkerGeometry() const;
 	/** Deterministic height encoding for a currently visible unit's stance and health. */
 	static float CalculateUnitMarkerHeightScale(const FTacticalHudUnitView& Unit);
+	/** Deterministic height encoding for active objective interaction progress. */
+	static float CalculateObjectiveMarkerHeightScale(const FTacticalHudObjectiveView& Objective);
 	EUEGTColorVisionMode GetColorVisionMode() const { return ColorVisionMode; }
 	bool IsHighContrastPaletteEnabled() const { return bUseHighContrast; }
 	bool IsReducedMotionEnabled() const { return bReduceMotion; }
