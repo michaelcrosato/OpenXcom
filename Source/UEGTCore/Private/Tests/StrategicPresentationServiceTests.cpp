@@ -1353,6 +1353,18 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 			{
 				return Name.Contains(TEXT("Flight Deck")) && Name.Contains(TEXT("REPAIR 90 h"));
 			}));
+	FCampaignState ExtremeRepairCampaign = RepairingCampaign;
+	ExtremeRepairCampaign.Bases[0].Facilities[1].RemainingRepairSeconds = MAX_int64;
+	const FStrategicDashboardSnapshot ExtremeRepairSnapshot =
+		FStrategicPresentationService::BuildDashboard(ExtremeRepairCampaign, Rules, Config);
+	const int64 ExtremeRepairHours = MAX_int64 / 3600 + (MAX_int64 % 3600 == 0 ? 0 : 1);
+	TestTrue(TEXT("Facility repair presentation ceilings extreme timers without signed wraparound"),
+		ExtremeRepairSnapshot.Bases.Num() == 1
+		&& ExtremeRepairSnapshot.Bases[0].Facilities.ContainsByPredicate(
+			[ExtremeRepairHours](const FString& Name)
+			{
+				return Name.Contains(FString::Printf(TEXT("Flight Deck [REPAIR %lld h"), ExtremeRepairHours));
+			}));
 	TestTrue(TEXT("Facility layout publishes exact dismantling guards for command presentation"),
 		!Snapshot.Bases[0].FacilityLayout[0].bCanDismantle
 		&& !Snapshot.Bases[0].FacilityLayout[0].DismantleUnavailableReasonCode.IsNone()

@@ -121,7 +121,7 @@ namespace StrategicPresentationPrivate
 		{
 			return TEXT("Ready");
 		}
-		const int64 Hours = (Seconds + 3599) / 3600;
+		const int64 Hours = Seconds / 3600 + (Seconds % 3600 == 0 ? 0 : 1);
 		if (Hours < 48)
 		{
 			return FString::Printf(TEXT("%lld h remaining"), Hours);
@@ -1318,7 +1318,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 					if (Installed.RemainingRepairSeconds > 0)
 					{
 						FacilityName += FString::Printf(TEXT(" [REPAIR %lld h • %d/%d]"),
-							(Installed.RemainingRepairSeconds + 3599) / 3600,
+							Installed.RemainingRepairSeconds / 3600
+								+ (Installed.RemainingRepairSeconds % 3600 == 0 ? 0 : 1),
 							CurrentIntegrity, MaxIntegrity);
 					}
 					else if (Facility->MaxIntegrity > 0 && Installed.Damage >= Facility->MaxIntegrity)

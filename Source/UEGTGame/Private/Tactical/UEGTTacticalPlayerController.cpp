@@ -48,6 +48,11 @@ namespace UEGTTacticalControllerPrivate
 			ClampedSeconds % 60);
 	}
 
+	int64 CeilHours(const int64 Seconds)
+	{
+		return Seconds <= 0 ? 0 : Seconds / 3600 + (Seconds % 3600 == 0 ? 0 : 1);
+	}
+
 	FString LocalizedDiagnostic(const FName Code, const FString& EnglishFallback)
 	{
 		return FUEGTLocalizationService::DiagnosticText(Code, EnglishFallback);
@@ -5669,7 +5674,8 @@ void AUEGTTacticalPlayerController::RepairStrategicFacility(
 	const FString FacilityName = FUEGTLocalizationService::ContentName(
 		Facility->FacilityId, Facility->DisplayName);
 	const int64 Cost = Facility->RepairCost;
-	const int64 DurationHours = (Facility->RepairDurationSeconds + 3599) / 3600;
+	const int64 DurationHours = UEGTTacticalControllerPrivate::CeilHours(
+		Facility->RepairDurationSeconds);
 	FStartFacilityRepairCommand Command;
 	Command.ExpectedSequence = CurrentStrategicSnapshot.ExpectedCommandSequence;
 	Command.BaseId = BaseId;
@@ -6260,7 +6266,7 @@ void AUEGTTacticalPlayerController::DispatchStrategicMutualAidConvoy(
 	const FString SourceName = Source->Name;
 	const FString DestinationName = Destination->Name;
 	const FString ItemName = FUEGTLocalizationService::ContentName(Item->ItemId, Item->DisplayName);
-	const int64 TransitHours = (Route->TransitSeconds + 3599) / 3600;
+	const int64 TransitHours = UEGTTacticalControllerPrivate::CeilHours(Route->TransitSeconds);
 	const FString RouteName =
 		UEGTTacticalControllerPrivate::LocalizedMutualAidRoute(RoutePolicy);
 	const FString EscortState = bSignalEscort

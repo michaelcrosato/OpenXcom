@@ -192,6 +192,30 @@ namespace UEGTStrategicHudPrivate
 			ClampedSeconds % 60);
 	}
 
+	int64 CeilHours(const int64 Seconds)
+	{
+		return Seconds <= 0 ? 0 : Seconds / 3600 + (Seconds % 3600 == 0 ? 0 : 1);
+	}
+
+	int64 CeilDays(const int64 Seconds)
+	{
+		return Seconds <= 0 ? 0 : Seconds / 86400 + (Seconds % 86400 == 0 ? 0 : 1);
+	}
+
+	FString SignedCeilHours(const int64 Seconds)
+	{
+		if (Seconds > 0)
+		{
+			return FString::Printf(TEXT("+%lld"), CeilHours(Seconds));
+		}
+		if (Seconds == 0)
+		{
+			return TEXT("0");
+		}
+		const int64 MagnitudeMinusOne = -(Seconds + 1);
+		return FString::Printf(TEXT("-%lld"), MagnitudeMinusOne / 3600 + 1);
+	}
+
 	FString LocalizedDiagnostic(const FName Code, const FString& EnglishFallback)
 	{
 		return FUEGTLocalizationService::DiagnosticText(Code, EnglishFallback);
@@ -211,7 +235,7 @@ namespace UEGTStrategicHudPrivate
 		{
 			return Localized(TEXT("strategic.duration-ready"), TEXT("Ready"));
 		}
-		const int64 Hours = (Seconds + 3599) / 3600;
+		const int64 Hours = CeilHours(Seconds);
 		if (Hours < 48)
 		{
 			return LocalizedFormat(
@@ -2113,7 +2137,7 @@ void UUEGTStrategicHudWidget::BuildBasePlacement()
 				FString::Printf(TEXT("%lld"), CurrentSnapshot.CampaignScore),
 				FString::Printf(TEXT("%+lld"), CurrentSnapshot.MonthlyFunding),
 				FString::Printf(TEXT("%lld"),
-					(CurrentSnapshot.NextAdversaryMissionSeconds + 3599) / 3600)
+					CeilHours(CurrentSnapshot.NextAdversaryMissionSeconds))
 			}), 14, SecondaryText)
 	];
 
@@ -2315,7 +2339,7 @@ void UUEGTStrategicHudWidget::BuildPersonnelRecoveryPlanPanel(
 				: Option.Plan == EPersonnelRecoveryPlan::SurgeCare
 					? Localized(TEXT("strategic.recovery-plan-surge"), TEXT("SURGE CARE"))
 					: Localized(TEXT("strategic.recovery-plan-reflection"), TEXT("REFLECTION CYCLE"));
-			const FString Hours = LexToString((Option.DurationSeconds + 3599) / 3600);
+			const FString Hours = LexToString(CeilHours(Option.DurationSeconds));
 			const FString OptionLabel = Option.Plan == EPersonnelRecoveryPlan::MeasuredReturn
 				? LocalizedFormat(
 					TEXT("strategic.recovery-plan-measured-format"),
@@ -2368,7 +2392,7 @@ void UUEGTStrategicHudWidget::BuildPersonnelRecoveryPlanPanel(
 	const FString SelectedLabel = LocalizedFormat(
 		TEXT("strategic.recovery-plan-active-format"),
 		TEXT("{0} • {1} H REMAINING"),
-		{ PlanName, LexToString((Person.RemainingRecoverySeconds + 3599) / 3600) });
+		{ PlanName, LexToString(CeilHours(Person.RemainingRecoverySeconds)) });
 	RenderedDynamicLabels.Add(SelectedLabel);
 	LeftBox->AddSlot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 3.0f)
 	[
@@ -2397,7 +2421,7 @@ void UUEGTStrategicHudWidget::BuildPersonnelStewardshipPanel(
 			TEXT("{0} • {1} D REMAINING • {2}% BENEFIT"),
 			{
 				StewardshipFocusLabel(Stewardship.ActiveFocus),
-				LexToString((Stewardship.RemainingSeconds + 86399) / 86400),
+				LexToString(CeilDays(Stewardship.RemainingSeconds)),
 				FString::FromInt(Stewardship.ReductionPercent)
 			});
 		const FString EffectLabel = Stewardship.ActiveFocus == EPersonnelStewardshipFocus::RecoveryAdvocacy
@@ -2452,7 +2476,7 @@ void UUEGTStrategicHudWidget::BuildPersonnelStewardshipPanel(
 	const FString Guidance = LocalizedFormat(
 		TEXT("strategic.stewardship-guidance-format"),
 		TEXT("Commit this veteran for {0} days. They cannot deploy, defend, train, or transfer during the rotation."),
-		{ LexToString((Stewardship.DurationSeconds + 86399) / 86400) });
+		{ LexToString(CeilDays(Stewardship.DurationSeconds)) });
 	const FString TourLabel = LocalizedFormat(
 		TEXT("strategic.stewardship-ready-format"),
 		TEXT("MISSIONS {0}/{1} • COMPLETED TOURS {2} • NEXT COMPLETION RESOLVE +{3}"),
@@ -2878,22 +2902,18 @@ void UUEGTStrategicHudWidget::AppendMutualAidDispatchControls(
 					TEXT("{0}  •  {1} h  •  EXPOSURE {2}/100  •  DELAY +{3} h WITHOUT ESCORT"),
 					{
 						SelectedRouteName,
-						LexToString((SelectedRoute->TransitSeconds + 3599) / 3600),
+						LexToString(CeilHours(SelectedRoute->TransitSeconds)),
 						FString::FromInt(SelectedRoute->RoutePressure),
-						LexToString((SelectedRoute->InterdictionDelaySeconds + 3599) / 3600)
+						LexToString(CeilHours(SelectedRoute->InterdictionDelaySeconds))
 					})
 				: LocalizedFormat(
 					TEXT("strategic.mutual-aid-route-clear-format"),
 					TEXT("{0}  •  {1} h  •  EXPOSURE {2}/100  •  ROUTE CLEAR"),
 					{
 						SelectedRouteName,
-						LexToString((SelectedRoute->TransitSeconds + 3599) / 3600),
+						LexToString(CeilHours(SelectedRoute->TransitSeconds)),
 						FString::FromInt(SelectedRoute->RoutePressure)
 					});
-		const auto CeilHours = [](const int64 Seconds)
-		{
-			return Seconds <= 0 ? int64(0) : 1 + (Seconds - 1) / 3600;
-		};
 		const FMutualAidRelayQueueView* Relay = SelectedRoute != nullptr
 			? &SelectedRoute->RelayQueue
 			: nullptr;
@@ -2945,7 +2965,7 @@ void UUEGTStrategicHudWidget::AppendMutualAidDispatchControls(
 				TEXT("strategic.mutual-aid-tooltip-format"),
 				TEXT("Reserve destination storage; {0} h route at exposure {1}/100. Cargo remains lossless and no random draw is used."),
 				{
-					LexToString((SelectedRoute->TransitSeconds + 3599) / 3600),
+					LexToString(CeilHours(SelectedRoute->TransitSeconds)),
 					FString::FromInt(SelectedRoute->RoutePressure)
 				})
 			: bSelectedMutualAidSignalEscort && !bEscortAffordable
@@ -3103,7 +3123,7 @@ void UUEGTStrategicHudWidget::AppendMutualAidConvoySummary()
 				? LocalizedFormat(
 					TEXT("strategic.mutual-aid-status-delayed-format"),
 					TEXT("INTERDICTED  +{0} h"),
-					{ LexToString((Convoy.InterdictionDelaySeconds + 3599) / 3600) })
+					{ LexToString(CeilHours(Convoy.InterdictionDelaySeconds)) })
 				: !Convoy.bInterdictionResolved
 					? Localized(
 						TEXT("strategic.mutual-aid-status-forecast"),
@@ -3118,25 +3138,9 @@ void UUEGTStrategicHudWidget::AppendMutualAidConvoySummary()
 				LocalizedContentName(Convoy.ItemId, Convoy.ItemDisplayName),
 				FString::FromInt(Convoy.Quantity), Convoy.SourceBaseName,
 				Convoy.DestinationBaseName, LexToString(Convoy.TotalStorage),
-				LexToString((Convoy.RemainingTransitSeconds + 3599) / 3600),
+				LexToString(CeilHours(Convoy.RemainingTransitSeconds)),
 				RouteLabel, FString::FromInt(Convoy.RoutePressure), RouteStatus
 			});
-		const auto CeilHours = [](const int64 Seconds)
-		{
-			return Seconds <= 0 ? int64(0) : 1 + (Seconds - 1) / 3600;
-		};
-		const auto SignedCeilHours = [](const int64 Seconds)
-		{
-			const int64 Magnitude = Seconds < 0 ? -Seconds : Seconds;
-			const int64 Hours = Magnitude == 0
-				? 0
-				: 1 + (Magnitude - 1) / 3600;
-			return Seconds < 0
-				? FString::Printf(TEXT("-%lld"), Hours)
-				: Seconds > 0
-					? FString::Printf(TEXT("+%lld"), Hours)
-					: FString(TEXT("0"));
-		};
 		const FString RelayStatus = !Convoy.RelayQueue.bValid
 			|| !Convoy.RelayQueue.bRelayAvailable
 			? Localized(
@@ -3779,7 +3783,7 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 						TEXT("{0} • constructing • {1} h remaining • grid {2},{3} • {4}×{5}{6}"),
 						{
 							FacilityDisplayName,
-							LexToString((Facility->RemainingBuildSeconds + 3599) / 3600),
+							LexToString(CeilHours(Facility->RemainingBuildSeconds)),
 							FString::FromInt(Facility->GridX),
 							FString::FromInt(Facility->GridY),
 							FString::FromInt(Facility->GridWidth),
@@ -3873,7 +3877,7 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 						? LocalizedFormat(
 							TEXT("strategic.facility-repair-active-tooltip-format"),
 							TEXT("repair active • {0} h remaining • {1} refundable"),
-							{ LexToString((Facility->RemainingRepairSeconds + 3599) / 3600),
+							{ LexToString(CeilHours(Facility->RemainingRepairSeconds)),
 								LexToString(Facility->RepairCancellationRefund) })
 						: Facility->Damage > 0
 							? (Facility->bCanRepair
@@ -3881,7 +3885,7 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 									TEXT("strategic.facility-repair-available-tooltip-format"),
 									TEXT("repair available • {0} funds • {1} h"),
 									{ LexToString(Facility->RepairCost),
-										LexToString((Facility->RepairDurationSeconds + 3599) / 3600) })
+										LexToString(CeilHours(Facility->RepairDurationSeconds)) })
 								: LocalizedDiagnostic(
 									Facility->RepairUnavailableReasonCode,
 									Facility->RepairUnavailableReason))
@@ -4124,7 +4128,7 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 				const FString RepairingLabel = LocalizedFormat(
 					TEXT("strategic.facility-repairing-cancel-format"),
 					TEXT("REPAIRING  {0} h  •  CANCEL +{1}"),
-					{ LexToString((Facility.RemainingRepairSeconds + 3599) / 3600),
+					{ LexToString(CeilHours(Facility.RemainingRepairSeconds)),
 						LexToString(Facility.RepairCancellationRefund) });
 				RenderedDynamicLabels.Add(RepairingLabel);
 				LeftBox->AddSlot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
@@ -4148,7 +4152,7 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 					{
 						FString::FromInt(Facility.Damage),
 						LexToString(Facility.RepairCost),
-						LexToString((Facility.RepairDurationSeconds + 3599) / 3600)
+						LexToString(CeilHours(Facility.RepairDurationSeconds))
 					});
 				RenderedDynamicLabels.Add(RepairLabel);
 				const FString RepairTooltip = Facility.bCanRepair
@@ -4156,7 +4160,7 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 						TEXT("strategic.facility-repair-start-tooltip-format"),
 						TEXT("Reserve {0} funds now; restore all current damage after {1} strategic hours."),
 						{ LexToString(Facility.RepairCost),
-							LexToString((Facility.RepairDurationSeconds + 3599) / 3600) })
+							LexToString(CeilHours(Facility.RepairDurationSeconds)) })
 					: LocalizedDiagnostic(
 						Facility.RepairUnavailableReasonCode,
 						Facility.RepairUnavailableReason);
@@ -4320,13 +4324,13 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 			DutyDetail = LocalizedFormat(
 				TEXT("strategic.personnel-training-duty-format"), TEXT(" • {0} {1} h"),
 				{ TrainingFocusLabel(Person.TrainingFocus),
-					LexToString((Person.RemainingTrainingSeconds + 3599) / 3600) });
+					LexToString(CeilHours(Person.RemainingTrainingSeconds)) });
 		}
 		else if (Person.StatusType == EPersonnelStatus::Recovering)
 		{
 			DutyDetail = LocalizedFormat(
 				TEXT("strategic.personnel-recovery-duty-format"), TEXT(" • {0} h recovery"),
-				{ LexToString((Person.RemainingRecoverySeconds + 3599) / 3600) });
+				{ LexToString(CeilHours(Person.RemainingRecoverySeconds)) });
 		}
 		else if (Person.StatusType == EPersonnelStatus::Stewarding)
 		{
@@ -4334,7 +4338,7 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 				TEXT("strategic.personnel-stewardship-duty-format"), TEXT(" • {0} {1} d"),
 				{
 					StewardshipFocusLabel(Person.Stewardship.ActiveFocus),
-					LexToString((Person.Stewardship.RemainingSeconds + 86399) / 86400)
+					LexToString(CeilDays(Person.Stewardship.RemainingSeconds))
 				});
 		}
 		if (Person.bAssignedToCraft)
@@ -5354,7 +5358,7 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 			FString::FromInt(CurrentSnapshot.AdversaryMissionsLaunched),
 			FString::FromInt(CurrentSnapshot.AdversaryMissionsThwarted),
 			FString::FromInt(CurrentSnapshot.AdversaryMissionsEscaped),
-			LexToString((CurrentSnapshot.NextAdversaryMissionSeconds + 3599) / 3600),
+			CeilHours(CurrentSnapshot.NextAdversaryMissionSeconds),
 			FString::Printf(TEXT("%+lld"), CurrentSnapshot.MonthlyFunding),
 			LexToString(CurrentSnapshot.MonthlyOutgoings),
 			FString::Printf(TEXT("%+lld"), CurrentSnapshot.NetMonthlyFunding)
