@@ -999,6 +999,83 @@ bool FStrategicResearchSpecializationBenefitTest::RunTest(const FString& Paramet
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicFabricationSpecializationBenefitTest,
+	"UEGT.Core.StrategicCommands.FabricationSpecializationBenefit",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicFabricationSpecializationBenefitTest::RunTest(const FString& Parameters)
+{
+	FResolvedRuleSet Rules;
+	FFacilityRule FabricationWorks;
+	FabricationWorks.Identity.RuleId = TEXT("facility.test-fabrication-works");
+	FabricationWorks.DisplayName = TEXT("Fabrication Works");
+	FabricationWorks.EngineerCapacity = 6;
+	FabricationWorks.MaxIntegrity = 100;
+	Rules.Facilities.Add(FabricationWorks.Identity.RuleId, FabricationWorks);
+	FItemRule Product;
+	Product.Identity.RuleId = TEXT("item.test-fabrication-rate");
+	Product.DisplayName = TEXT("Fabrication Rate Product");
+	Product.ManufactureHours = 2;
+	Rules.Items.Add(Product.Identity.RuleId, Product);
+
+	FStrategicSimulationConfig Config;
+	Config.ManufacturingFacilityId = FabricationWorks.Identity.RuleId;
+	FCampaignState State;
+	State.Funds = 1000;
+	FStrategicBaseState& Base = State.Bases.AddDefaulted_GetRef();
+	Base.BaseId = FGuid(0x5a550001, 0x5a550002, 0x5a550003, 0x5a550004);
+	Base.Name = TEXT("Fabrication Station");
+	FBaseFacilityState& InstalledFacility = Base.Facilities.AddDefaulted_GetRef();
+	InstalledFacility.InstanceId = FGuid(0x5a550011, 0x5a550012, 0x5a550013, 0x5a550014);
+	InstalledFacility.FacilityId = FabricationWorks.Identity.RuleId;
+
+	const uint64 InitialRandomState = State.SimulationRandom.GetStateForSave();
+	const FStrategicBaseSpecializationView Specialization =
+		FStrategicCommandService::EvaluateBaseSpecialization(Base, Rules);
+	TestTrue(TEXT("Fabrication Works specialization exposes its 20 percent throughput consequence"),
+		Specialization.bSpecialized
+		&& Specialization.SpecializationId
+			== FName(TEXT("base.specialization.fabrication-works"))
+		&& Specialization.OperationalBenefitMetricId
+			== FName(TEXT("base.specialization.manufacturing-rate"))
+		&& Specialization.OperationalBenefitValue == 20
+		&& FStrategicCommandService::EvaluateBaseManufacturingRatePercent(Base, Rules) == 120);
+
+	FStartManufacturingCommand Start;
+	Start.ExpectedSequence = State.CommandSequence;
+	Start.ProjectId = FGuid(0x5a550021, 0x5a550022, 0x5a550023, 0x5a550024);
+	Start.BaseId = Base.BaseId;
+	Start.ItemId = Product.Identity.RuleId;
+	Start.Units = 1;
+	const FStrategicCommandResult Started =
+		FStrategicCommandService::Execute(State, Rules, Config, Start);
+	TestTrue(TEXT("Specialized manufacturing starts on the operational Fabrication Works facility"),
+		Started.bAccepted && State.ManufacturingProjects.Num() == 1);
+
+	FSetManufacturingStaffCommand Staff;
+	Staff.ExpectedSequence = State.CommandSequence;
+	Staff.ProjectId = Start.ProjectId;
+	Staff.AssignedEngineers = 1;
+	const FStrategicCommandResult Staffed =
+		FStrategicCommandService::Execute(State, Rules, Staff);
+	TestTrue(TEXT("Specialized manufacturing accepts one engineer"), Staffed.bAccepted);
+
+	FAdvanceStrategicTimeCommand Advance;
+	Advance.ExpectedSequence = State.CommandSequence;
+	Advance.Rate = EStrategicTimeRate::OneHour;
+	const FStrategicCommandResult Advanced =
+		FStrategicCommandService::Execute(State, Rules, Config, Advance);
+	TestTrue(TEXT("Fabrication throughput advances by exactly 120 percent over one hour"),
+		Advanced.bAccepted
+		&& Advanced.ExecutedSlices == 720
+		&& State.StrategicTime.Utc == FDateTime(2035, 1, 1, 13, 0, 0)
+		&& State.ManufacturingProjects.Num() == 1
+		&& State.ManufacturingProjects[0].AccumulatedWorkSeconds == 4320
+		&& State.SimulationRandom.GetStateForSave() == InitialRandomState);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicMonthlyFinanceTest,
 	"UEGT.Core.StrategicCommands.MonthlyFinances",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

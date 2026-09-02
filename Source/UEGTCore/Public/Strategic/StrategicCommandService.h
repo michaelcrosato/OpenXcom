@@ -4029,6 +4029,11 @@ public:
 		const FStrategicBaseState& Base,
 		const FResolvedRuleSet& Rules);
 
+	/** Derived manufacturing throughput percentage supplied by a specialized Fabrication Works base. */
+	static int32 EvaluateBaseManufacturingRatePercent(
+		const FStrategicBaseState& Base,
+		const FResolvedRuleSet& Rules);
+
 	static FBaseStorageEvaluation EvaluateBaseStorage(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,

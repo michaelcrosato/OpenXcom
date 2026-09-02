@@ -86,7 +86,9 @@ namespace StrategicCommandServicePrivate
 				TEXT("base.specialization.fabrication-works"),
 				TEXT("base.specialization.engineer-capacity"),
 				NormalizeBaseSpecializationCapacity(FacilityEngineerCapacity, 10),
-				FMath::Max<int64>(0, FacilityEngineerCapacity)
+				FMath::Max<int64>(0, FacilityEngineerCapacity),
+				TEXT("base.specialization.manufacturing-rate"),
+				20
 			},
 			{
 				TEXT("base.specialization.flight-operations"),
@@ -6795,6 +6797,23 @@ int32 FStrategicCommandService::EvaluateBaseResearchRatePercent(
 		100 + Specialization.OperationalBenefitValue, 100, 300));
 }
 
+int32 FStrategicCommandService::EvaluateBaseManufacturingRatePercent(
+	const FStrategicBaseState& Base,
+	const FResolvedRuleSet& Rules)
+{
+	const FStrategicBaseSpecializationView Specialization =
+		EvaluateBaseSpecialization(Base, Rules);
+	if (!Specialization.bSpecialized
+		|| Specialization.OperationalBenefitMetricId
+			!= FName(TEXT("base.specialization.manufacturing-rate"))
+		|| Specialization.OperationalBenefitValue <= 0)
+	{
+		return 100;
+	}
+	return static_cast<int32>(FMath::Clamp<int64>(
+		100 + Specialization.OperationalBenefitValue, 100, 300));
+}
+
 FBaseStorageEvaluation FStrategicCommandService::EvaluateBaseStorage(
 	const FCampaignState& State,
 	const FResolvedRuleSet& Rules,
@@ -10406,6 +10425,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	static_cast<void>(ValidatedMonthlyOutgoings);
 	constexpr int32 MaximumResearchRatePercent = 300;
+	constexpr int32 MaximumManufacturingRatePercent = 300;
 	for (const FResearchProjectState& Project : State.ResearchProjects)
 	{
 		const FResearchRule* Research = Rules.Research.Find(Project.ResearchId);
@@ -10439,8 +10459,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			return Result;
 		}
 		int64 MaximumAdditionalWork = 0;
+		int64 ScaledMaximumAdditionalWork = 0;
 		if (!TryMultiplyNonNegative(Project.AssignedEngineers, RequestedSeconds, MaximumAdditionalWork)
-			|| Project.AccumulatedWorkSeconds > MAX_int64 - MaximumAdditionalWork)
+			|| !TryMultiplyNonNegative(MaximumAdditionalWork, MaximumManufacturingRatePercent,
+				ScaledMaximumAdditionalWork)
+			|| (ScaledMaximumAdditionalWork / 100) > MAX_int64 - Project.AccumulatedWorkSeconds)
 		{
 			AddError(Result, TEXT("manufacturing_progress_overflow"), TEXT("Manufacturing progress would exceed the campaign numeric range."));
 			return Result;
@@ -10614,9 +10637,13 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 					continue;
 				}
 				int64 WorkThisSlice = 0;
+				int64 ScaledWorkThisSlice = 0;
 				int64 NewProgress = 0;
+				const int32 ManufacturingRatePercent =
+					FStrategicCommandService::EvaluateBaseManufacturingRatePercent(*ManufacturingBase, Rules);
 				if (!TryMultiplyNonNegative(Project.AssignedEngineers, SliceSeconds, WorkThisSlice)
-					|| !TryAdd(Project.AccumulatedWorkSeconds, WorkThisSlice, NewProgress))
+					|| !TryMultiplyNonNegative(WorkThisSlice, ManufacturingRatePercent, ScaledWorkThisSlice)
+					|| !TryAdd(Project.AccumulatedWorkSeconds, ScaledWorkThisSlice / 100, NewProgress))
 				{
 					bSimulationFailed = true;
 					bStopRequested = true;

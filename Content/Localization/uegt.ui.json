@@ -2715,6 +2715,11 @@
       "translations": { "en": "+{0}% RESEARCH RATE", "fr": "+{0}% VITESSE DE RECHERCHE", "de": "+{0}% FORSCHUNGSTEMPO", "es": "+{0}% RITMO DE INVESTIGACIÓN", "ja": "+{0}% 研究速度" }
     },
     {
+      "key": "strategic.manufacturing-rate-format",
+      "source": "+{0}% FABRICATION RATE",
+      "translations": { "en": "+{0}% FABRICATION RATE", "fr": "+{0}% VITESSE DE FABRICATION", "de": "+{0}% FERTIGUNGSTEMPO", "es": "+{0}% RITMO DE FABRICACIÓN", "ja": "+{0}% 製造速度" }
+    },
+    {
       "key": "strategic.research-active-no-lab-format",
       "source": "{0} scientists • {1}",
       "translations": { "en": "{0} scientists • {1}", "fr": "{0} scientifiques • {1}", "de": "{0} Wissenschaftler • {1}", "es": "{0} científicos • {1}", "ja": "科学者 {0} 名 • {1}" }
@@ -4511,8 +4516,8 @@
     },
     {
       "key": "strategic.base-specialization-guidance",
-      "source": "Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel; other profiles add no separate effect.",
-      "translations": { "en": "Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel; other profiles add no separate effect.", "fr": "Dérivé du rendement des installations opérationnelles ; ce profil évolue quand l'infrastructure est réparée ou perdue. Un profil Relais signal fournit un canal Relay Weave supplémentaire ; les autres profils n'ajoutent aucun effet distinct.", "de": "Aus der Leistung betriebsbereiter Anlagen abgeleitet; dieses Profil ändert sich bei Reparatur oder Verlust von Infrastruktur. Ein Signalrelais-Profil stellt einen zusätzlichen Relay-Weave-Kanal bereit; andere Profile haben keinen eigenen Effekt.", "es": "Derivado del rendimiento de las instalaciones operativas; este perfil se actualiza al reparar o perder infraestructura. Un perfil de Relé de señal aporta un canal adicional de Relay Weave; los demás perfiles no añaden ningún efecto independiente.", "ja": "稼働中の施設出力から導出され、施設の修復や喪失で更新されます。信号リレープロファイルはRelay Weaveの中継回線を1本追加し、他のプロファイルに個別の効果はありません。" }
+      "source": "Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel, a Research Enclave profile increases research throughput by 20%, and a Fabrication Works profile increases fabrication throughput by 20%; other profiles add no separate effect.",
+      "translations": { "en": "Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel, a Research Enclave profile increases research throughput by 20%, and a Fabrication Works profile increases fabrication throughput by 20%; other profiles add no separate effect.", "fr": "Dérivé du rendement des installations opérationnelles ; ce profil évolue quand l'infrastructure est réparée ou perdue. Un profil Relais signal fournit un canal Relay Weave supplémentaire, un profil Enclave de recherche augmente la vitesse de recherche de 20 %, et un profil Atelier de fabrication augmente la vitesse de fabrication de 20 % ; les autres profils n'ajoutent aucun effet distinct.", "de": "Aus der Leistung betriebsbereiter Anlagen abgeleitet; dieses Profil ändert sich bei Reparatur oder Verlust von Infrastruktur. Ein Signalrelais-Profil stellt einen zusätzlichen Relay-Weave-Kanal bereit, ein Forschungsenklave-Profil erhöht das Forschungstempo um 20 % und ein Fertigungswerk-Profil das Fertigungstempo um 20 %; andere Profile haben keinen eigenen Effekt.", "es": "Derivado del rendimiento de las instalaciones operativas; este perfil se actualiza al reparar o perder infraestructura. Un perfil de Relé de señal aporta un canal adicional de Relay Weave, un perfil de Enclave de investigación aumenta el ritmo de investigación un 20 % y un perfil de Taller de fabricación aumenta el ritmo de fabricación un 20 %; los demás perfiles no añaden ningún efecto independiente.", "ja": "稼働中の施設出力から導出され、施設の修復や喪失で更新されます。信号リレープロファイルはRelay Weaveの中継回線を1本追加し、研究拠点プロファイルは研究速度を20%高め、製造工廠プロファイルは製造速度を20%高めます。他のプロファイルに個別の効果はありません。" }
     },
     {
       "key": "strategic.base-specialization-operational-format",
@@ -4593,6 +4598,11 @@
       "key": "strategic.base-specialization-metric-research-rate",
       "source": "RESEARCH RATE",
       "translations": { "en": "RESEARCH RATE", "fr": "VITESSE DE RECHERCHE", "de": "FORSCHUNGSTEMPO", "es": "RITMO DE INVESTIGACIÓN", "ja": "研究速度" }
+    },
+    {
+      "key": "strategic.base-specialization-metric-manufacturing-rate",
+      "source": "FABRICATION RATE",
+      "translations": { "en": "FABRICATION RATE", "fr": "VITESSE DE FABRICATION", "de": "FERTIGUNGSTEMPO", "es": "RITMO DE FABRICACIÓN", "ja": "製造速度" }
     },
     {
       "key": "strategic.facility-empty-cell-format",

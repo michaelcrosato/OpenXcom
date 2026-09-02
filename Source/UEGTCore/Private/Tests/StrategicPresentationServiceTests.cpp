@@ -352,6 +352,41 @@ bool FStrategicBaseSpecializationProjectionTest::RunTest(const FString& Paramete
 		&& ResearchProjectView->ResearchRatePercent == 120
 		&& !ResearchProjectView->bPaused
 		&& ResearchProjectView->RemainingSeconds == 6000);
+	FCampaignState ManufacturingCampaign;
+	FStrategicBaseState& ManufacturingBase = ManufacturingCampaign.Bases.AddDefaulted_GetRef();
+	ManufacturingBase.BaseId = FGuid(0x5a540001, 0x5a540002, 0x5a540003, 0x5a540004);
+	ManufacturingBase.Name = TEXT("Fabrication Station");
+	FBaseFacilityState& ManufacturingFacility = ManufacturingBase.Facilities.AddDefaulted_GetRef();
+	ManufacturingFacility.InstanceId = FGuid(0x5a540011, 0x5a540012, 0x5a540013, 0x5a540014);
+	ManufacturingFacility.FacilityId = TEXT("facility.test-specialization-fabrication");
+	FItemRule ManufacturingRule;
+	ManufacturingRule.Identity.RuleId = TEXT("item.test-specialization-rate");
+	ManufacturingRule.DisplayName = TEXT("Specialization Rate Product");
+	ManufacturingRule.ManufactureHours = 2;
+	Rules.Items.Add(ManufacturingRule.Identity.RuleId, ManufacturingRule);
+	FManufacturingProjectState& ManufacturingProject =
+		ManufacturingCampaign.ManufacturingProjects.AddDefaulted_GetRef();
+	ManufacturingProject.ProjectId = FGuid(0x5a540021, 0x5a540022, 0x5a540023, 0x5a540024);
+	ManufacturingProject.ItemId = ManufacturingRule.Identity.RuleId;
+	ManufacturingProject.BaseId = ManufacturingBase.BaseId;
+	ManufacturingProject.AssignedEngineers = 1;
+	ManufacturingProject.UnitsRemaining = 1;
+	const FStrategicDashboardSnapshot ManufacturingSnapshot =
+		FStrategicPresentationService::BuildDashboard(ManufacturingCampaign, Rules, {});
+	const FStrategicProjectView* ManufacturingProjectView = ManufacturingSnapshot.Projects.FindByPredicate(
+		[](const FStrategicProjectView& Project)
+		{
+			return Project.Type == EStrategicProjectType::Manufacturing;
+		});
+	TestTrue(TEXT("Fabrication Works exposes its derived throughput in the read model and ETA"),
+		ManufacturingProjectView != nullptr
+		&& ManufacturingSnapshot.Bases.Num() == 1
+		&& ManufacturingSnapshot.Bases[0].Specialization.bSpecialized
+		&& ManufacturingSnapshot.Bases[0].Specialization.SpecializationId
+			== FName(TEXT("base.specialization.fabrication-works"))
+		&& ManufacturingSnapshot.Bases[0].Specialization.OperationalBenefitValue == 20
+		&& ManufacturingProjectView->ManufacturingRatePercent == 120
+		&& ManufacturingProjectView->RemainingSeconds == 6000);
 	return true;
 }
 

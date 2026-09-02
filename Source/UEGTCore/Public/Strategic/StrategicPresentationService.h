@@ -2263,6 +2263,10 @@ struct UEGTCORE_API FStrategicProjectView
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	int32 ResearchRatePercent = 100;
 
+	/** Effective fabrication throughput percentage at the project's base, including a derived specialization benefit. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int32 ManufacturingRatePercent = 100;
+
 	/** Facility requirements are populated for research projects in authored stable order. */
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	TArray<FName> RequiredFacilityIds;

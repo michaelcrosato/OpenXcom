@@ -2923,6 +2923,9 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		const FStrategicBaseState* ProjectBase = FindBase(Campaign, Project.BaseId);
 		const FStrategicBaseView* ProjectBaseView = Snapshot.Bases.FindByPredicate(
 			[&Project](const FStrategicBaseView& BaseView) { return BaseView.BaseId == Project.BaseId; });
+		View.ManufacturingRatePercent = ProjectBase != nullptr
+			? FStrategicCommandService::EvaluateBaseManufacturingRatePercent(*ProjectBase, Rules)
+			: 100;
 		if (Rule != nullptr)
 		{
 			for (const FManufacturingInputRule& Input : Rule->ManufactureInputs)
@@ -2968,7 +2971,9 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		}
 		View.Progress = Progress(Project.AccumulatedWorkSeconds, RequiredPerUnit);
 		View.RemainingSeconds = Project.AssignedEngineers > 0
-			? (TotalRemainingWork + Project.AssignedEngineers - 1) / Project.AssignedEngineers
+			? (TotalRemainingWork * 100
+				+ static_cast<int64>(Project.AssignedEngineers) * View.ManufacturingRatePercent - 1)
+				/ (static_cast<int64>(Project.AssignedEngineers) * View.ManufacturingRatePercent)
 			: 0;
 		View.AssignedStaff = Project.AssignedEngineers;
 		View.Detail = FString::Printf(TEXT("%d units • %d engineers • %s"), Project.UnitsRemaining,
