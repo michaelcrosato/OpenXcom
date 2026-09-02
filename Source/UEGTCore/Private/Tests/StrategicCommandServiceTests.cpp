@@ -17227,6 +17227,36 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 		}
 	}
 
+	FCampaignSaveEnvelope ForeignTacticalWeaponEnvelope = MagazineWrite.Envelope;
+	FTacticalUnitState* ForeignTacticalWeaponUnit = ForeignTacticalWeaponEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
+		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+	TestNotNull(TEXT("Magazine save fixture has a player weapon state"), ForeignTacticalWeaponUnit);
+	if (ForeignTacticalWeaponUnit != nullptr && !ForeignTacticalWeaponUnit->WeaponStates.IsEmpty())
+	{
+		ForeignTacticalWeaponUnit->WeaponStates[0].WeaponItemId = TEXT("item.sky-lance");
+		const FCampaignSaveValidationResult ForeignTacticalWeaponValidation = FCampaignSaveCodec::Validate(
+			ForeignTacticalWeaponEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects tactical weapons absent from the personnel loadout"),
+			ForeignTacticalWeaponValidation.bSucceeded);
+		TestTrue(TEXT("Foreign tactical weapon has a stable player diagnostic"),
+			ForeignTacticalWeaponValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
+	}
+
+	FCampaignSaveEnvelope ForeignTacticalMagazineEnvelope = MagazineWrite.Envelope;
+	FTacticalUnitState* ForeignTacticalMagazineUnit = ForeignTacticalMagazineEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
+		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+	TestNotNull(TEXT("Magazine save fixture has a player ejected magazine"), ForeignTacticalMagazineUnit);
+	if (ForeignTacticalMagazineUnit != nullptr && !ForeignTacticalMagazineUnit->EjectedMagazines.IsEmpty())
+	{
+		ForeignTacticalMagazineUnit->EjectedMagazines[0].AmmunitionItemId = TEXT("item.sky-lance-rounds");
+		const FCampaignSaveValidationResult ForeignTacticalMagazineValidation = FCampaignSaveCodec::Validate(
+			ForeignTacticalMagazineEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects ejected magazines absent from the personnel loadout"),
+			ForeignTacticalMagazineValidation.bSucceeded);
+		TestTrue(TEXT("Foreign tactical magazine has a stable player diagnostic"),
+			ForeignTacticalMagazineValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
+	}
+
 	FCampaignSaveEnvelope LegacyV26 = MagazineWrite.Envelope;
 	LegacyV26.Header.FormatVersion = 26;
 	for (FTacticalBattleState& LegacyBattle : LegacyV26.State.TacticalBattles)

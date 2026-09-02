@@ -3351,10 +3351,47 @@ namespace CampaignSavePrivate
 					{
 						const FPersonnelState* Person = State.Personnel.FindByPredicate(
 							[&Unit](const FPersonnelState& Entry) { return Entry.PersonnelId == Unit.PersonnelId; });
+						bool bPlayerLoadoutOwnershipValid = Person != nullptr;
+						if (Person != nullptr)
+						{
+							TMap<FName, int32> PersonnelEquipmentCounts;
+							for (const FName ItemId : Person->EquippedItems)
+							{
+								++PersonnelEquipmentCounts.FindOrAdd(ItemId);
+							}
+							TMap<FName, int32> TacticalEquipmentCounts;
+							for (const FTacticalWeaponState& WeaponState : Unit.WeaponStates)
+							{
+								bPlayerLoadoutOwnershipValid &= Person->EquippedItems.Contains(WeaponState.WeaponItemId);
+								++TacticalEquipmentCounts.FindOrAdd(WeaponState.WeaponItemId);
+							}
+							for (const FInventoryStack& Stack : Unit.CarriedItems)
+							{
+								bPlayerLoadoutOwnershipValid &= Stack.Quantity <= PersonnelEquipmentCounts.FindRef(Stack.ItemId);
+								if (Stack.Quantity > 0)
+								{
+									TacticalEquipmentCounts.FindOrAdd(Stack.ItemId) += Stack.Quantity;
+								}
+							}
+							for (const FTacticalMagazineState& Magazine : Unit.EjectedMagazines)
+							{
+								bPlayerLoadoutOwnershipValid &= Person->EquippedItems.Contains(Magazine.WeaponItemId)
+									&& Person->EquippedItems.Contains(Magazine.AmmunitionItemId);
+								if (Magazine.LoadedAmmunition > 0)
+								{
+									++TacticalEquipmentCounts.FindOrAdd(Magazine.AmmunitionItemId);
+								}
+							}
+							for (const TPair<FName, int32>& EquipmentCount : TacticalEquipmentCounts)
+							{
+								bPlayerLoadoutOwnershipValid &= EquipmentCount.Value <= PersonnelEquipmentCounts.FindRef(EquipmentCount.Key);
+							}
+						}
 						if (!Unit.PersonnelId.IsValid() || PlayerPersonnelIds.Contains(Unit.PersonnelId)
 							|| Operation == nullptr || !Operation->AgentIds.Contains(Unit.PersonnelId) || Person == nullptr
 							|| Unit.SourceRuleId != Person->RoleId || Unit.DisplayName != Person->DisplayName
-							|| Unit.MaxHealth != Person->MaxHealth || Unit.CurrentHealth > Person->CurrentHealth)
+							|| Unit.MaxHealth != Person->MaxHealth || Unit.CurrentHealth > Person->CurrentHealth
+							|| !bPlayerLoadoutOwnershipValid)
 						{
 							AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_tactical_player_unit"), FString::Printf(TEXT("Tactical battle '%s' contains a player unit outside its operation roster."), *Battle.BattleId.ToString()));
 						}
