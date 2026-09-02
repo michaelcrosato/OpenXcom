@@ -10,6 +10,10 @@
 
 namespace UEGTAudioDirectorPrivate
 {
+	constexpr float AmbientDuckLevel = 0.28f;
+	constexpr float AmbientDuckAttackSeconds = 0.04f;
+	constexpr float AmbientDuckReleaseSeconds = 0.16f;
+
 	bool IsTacticalLocationEvent(const EStrategicEventType Type)
 	{
 		switch (Type)
@@ -193,6 +197,21 @@ FName UUEGTAudioDirector::GetModeName(const EUEGTAudioPresentationMode Mode)
 	}
 }
 
+float UUEGTAudioDirector::GetAmbientDuckLevel()
+{
+	return UEGTAudioDirectorPrivate::AmbientDuckLevel;
+}
+
+float UUEGTAudioDirector::GetAmbientDuckAttackSeconds()
+{
+	return UEGTAudioDirectorPrivate::AmbientDuckAttackSeconds;
+}
+
+float UUEGTAudioDirector::GetAmbientDuckReleaseSeconds()
+{
+	return UEGTAudioDirectorPrivate::AmbientDuckReleaseSeconds;
+}
+
 bool UUEGTAudioDirector::TryGetLatestTacticalEventCell(
 	const FStrategicCommandResult& Result,
 	FIntVector& OutCell)
@@ -293,6 +312,10 @@ bool UUEGTAudioDirector::PlayGeneratedCue(
 	++Diagnostics.PlaybackComponentsCreated;
 	if (bAmbient)
 	{
+		if (Diagnostics.bAmbientDucked)
+		{
+			Component->SetVolumeMultiplier(GetAmbientDuckLevel());
+		}
 		AmbientComponents.Add(Component);
 		AmbientWaves.Add(Wave);
 	}
@@ -300,6 +323,7 @@ bool UUEGTAudioDirector::PlayGeneratedCue(
 	{
 		ForegroundComponents.Add(Component);
 		ForegroundWaves.Add(Wave);
+		DuckAmbient(static_cast<float>(Generated.NumFrames) / static_cast<float>(Generated.SampleRate));
 	}
 	return true;
 }
@@ -341,6 +365,7 @@ void UUEGTAudioDirector::StopAmbient()
 	if (UWorld* World = PlaybackWorld.Get())
 	{
 		World->GetTimerManager().ClearTimer(AmbientTimerHandle);
+		World->GetTimerManager().ClearTimer(AmbientDuckTimerHandle);
 	}
 	for (UAudioComponent* Component : AmbientComponents)
 	{
@@ -352,6 +377,61 @@ void UUEGTAudioDirector::StopAmbient()
 	AmbientComponents.Reset();
 	AmbientWaves.Reset();
 	Diagnostics.bAmbientScheduled = false;
+	Diagnostics.bAmbientDucked = false;
+}
+
+void UUEGTAudioDirector::DuckAmbient(const float HoldSeconds)
+{
+	UWorld* World = PlaybackWorld.Get();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	int32 DuckedComponents = 0;
+	for (UAudioComponent* Component : AmbientComponents)
+	{
+		if (IsValid(Component) && Component->IsPlaying())
+		{
+			Component->AdjustVolume(
+				GetAmbientDuckAttackSeconds(),
+				GetAmbientDuckLevel(),
+				EAudioFaderCurve::Logarithmic);
+			++DuckedComponents;
+		}
+	}
+	if (DuckedComponents == 0)
+	{
+		return;
+	}
+
+	Diagnostics.bAmbientDucked = true;
+	++Diagnostics.AmbientDuckRequests;
+	const float ExistingRelease = World->GetTimerManager().GetTimerRemaining(AmbientDuckTimerHandle);
+	const float ReleaseDelay = FMath::Max(
+		0.01f,
+		FMath::Max(HoldSeconds, ExistingRelease));
+	World->GetTimerManager().SetTimer(
+		AmbientDuckTimerHandle,
+		this,
+		&UUEGTAudioDirector::ReleaseAmbientDuck,
+		ReleaseDelay,
+		false);
+}
+
+void UUEGTAudioDirector::ReleaseAmbientDuck()
+{
+	for (UAudioComponent* Component : AmbientComponents)
+	{
+		if (IsValid(Component) && Component->IsPlaying())
+		{
+			Component->AdjustVolume(
+				GetAmbientDuckReleaseSeconds(),
+				1.0f,
+				EAudioFaderCurve::Logarithmic);
+		}
+	}
+	Diagnostics.bAmbientDucked = false;
 }
 
 void UUEGTAudioDirector::PruneFinishedAudio()

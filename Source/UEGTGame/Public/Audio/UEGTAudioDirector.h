@@ -59,6 +59,12 @@ struct UEGTGAME_API FUEGTAudioDirectorDiagnostics
 	bool bAmbientScheduled = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Audio")
+	bool bAmbientDucked = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Audio")
+	int32 AmbientDuckRequests = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Audio")
 	bool bLastPlaybackPositional = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Audio")
@@ -94,6 +100,9 @@ public:
 		const FStrategicCommandResult& Result,
 		FIntVector& OutCell);
 	static FName GetModeName(EUEGTAudioPresentationMode Mode);
+	static float GetAmbientDuckLevel();
+	static float GetAmbientDuckAttackSeconds();
+	static float GetAmbientDuckReleaseSeconds();
 
 protected:
 	virtual void BeginDestroy() override;
@@ -103,11 +112,14 @@ private:
 	USoundAttenuation* GetOrCreateTacticalPositionalAttenuation();
 	void PlayAmbientPulse();
 	void StopAmbient();
+	void DuckAmbient(float HoldSeconds);
+	void ReleaseAmbientDuck();
 	void PruneFinishedAudio();
 	static bool TryGetAmbientCue(EUEGTAudioPresentationMode Mode, EUEGTAudioCue& OutCue);
 
 	TWeakObjectPtr<UWorld> PlaybackWorld;
 	FTimerHandle AmbientTimerHandle;
+	FTimerHandle AmbientDuckTimerHandle;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UAudioComponent>> ForegroundComponents;

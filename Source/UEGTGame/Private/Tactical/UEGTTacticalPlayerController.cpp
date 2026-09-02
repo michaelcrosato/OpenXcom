@@ -4693,7 +4693,7 @@ void AUEGTTacticalPlayerController::LogRuntimeAudioDemo()
 	const FUEGTAudioDirectorDiagnostics Audio = AudioDirector->GetDiagnostics();
 	const UUEGTUserSettings* Settings = UUEGTUserSettings::Get();
 	UE_LOG(LogTemp, Display,
-		TEXT("UEGTAudioDemo state: source=procedural-runtime cues=%d mode=%s requests=%d components=%d component=%s playing=%s cue=%s frames=%d bytes=%d fingerprint=%u ambient=%s master=%d muteUnfocused=%s"),
+		TEXT("UEGTAudioDemo state: source=procedural-runtime cues=%d mode=%s requests=%d components=%d component=%s playing=%s cue=%s frames=%d bytes=%d fingerprint=%u ambient=%s ducked=%s duckRequests=%d master=%d muteUnfocused=%s"),
 		FUEGTAudioSynthesisService::GetCueTypes().Num(),
 		*UUEGTAudioDirector::GetModeName(Audio.Mode).ToString(),
 		Audio.PlayRequests,
@@ -4705,6 +4705,8 @@ void AUEGTTacticalPlayerController::LogRuntimeAudioDemo()
 		Audio.LastQueuedBytes,
 		Audio.LastFingerprint,
 		Audio.bAmbientScheduled ? TEXT("true") : TEXT("false"),
+		Audio.bAmbientDucked ? TEXT("true") : TEXT("false"),
+		Audio.AmbientDuckRequests,
 		Settings != nullptr ? Settings->GetMasterVolumePercent() : -1,
 		Settings != nullptr && Settings->ShouldMuteWhenUnfocused() ? TEXT("true") : TEXT("false"));
 }

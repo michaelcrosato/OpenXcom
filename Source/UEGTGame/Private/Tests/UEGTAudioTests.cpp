@@ -71,6 +71,14 @@ bool FUEGTAudioEventRoutingTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Presentation-mode routing can be exercised without an audio device"), ModeDirector);
 	if (ModeDirector != nullptr)
 	{
+		TestTrue(TEXT("Foreground cues use a bounded ambient duck level"),
+			UUEGTAudioDirector::GetAmbientDuckLevel() > 0.0f
+			&& UUEGTAudioDirector::GetAmbientDuckLevel() < 1.0f);
+		TestTrue(TEXT("Ambient duck release is longer than its attack and remains brief"),
+			UUEGTAudioDirector::GetAmbientDuckAttackSeconds() > 0.0f
+			&& UUEGTAudioDirector::GetAmbientDuckReleaseSeconds()
+			> UUEGTAudioDirector::GetAmbientDuckAttackSeconds()
+			&& UUEGTAudioDirector::GetAmbientDuckReleaseSeconds() < 1.0f);
 		ModeDirector->Initialize(nullptr);
 		ModeDirector->SetPresentationMode(EUEGTAudioPresentationMode::MainMenu);
 		const FUEGTAudioDirectorDiagnostics MenuAudio = ModeDirector->GetDiagnostics();
@@ -182,6 +190,10 @@ bool FUEGTAudioEventRoutingTest::RunTest(const FString& Parameters)
 			PositionalAudio.PlayRequests == 1
 			&& PositionalAudio.bLastPlaybackPositional
 			&& PositionalAudio.LastPlaybackLocation == Location);
+		TestFalse(TEXT("Unavailable playback cannot claim to have ducked ambience"),
+			PositionalAudio.bAmbientDucked);
+		TestEqual(TEXT("Unavailable playback does not count an ambient duck request"),
+			PositionalAudio.AmbientDuckRequests, 0);
 		PositionalDirector->Shutdown();
 	}
 	return true;
