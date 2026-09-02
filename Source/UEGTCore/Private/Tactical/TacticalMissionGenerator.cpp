@@ -26,6 +26,14 @@ namespace TacticalMissionGeneratorPrivate
 		Diagnostic.Message = MoveTemp(Message);
 	}
 
+	int32 ClampPersonnelStatWithBonus(const int32 BaseValue, const int32 Bonus)
+	{
+		return static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(BaseValue) + static_cast<int64>(Bonus),
+			1,
+			100));
+	}
+
 	const FTacticalOperationState* FindOperation(const FCampaignState& Campaign, const FGuid& OperationId)
 	{
 		return Campaign.TacticalOperations.FindByPredicate(
@@ -583,14 +591,14 @@ FTacticalGenerationResult FTacticalMissionGenerator::Generate(
 		Unit.MaxHealth = Person->MaxHealth;
 		Unit.CurrentHealth = Person->CurrentHealth;
 		const bool bReceivesLegacyRelay = LegacyRelayRecipientIds.Contains(Person->PersonnelId);
-		Unit.Accuracy = FMath::Clamp(
-			Person->Accuracy + (bReceivesLegacyRelay ? LegacyRelay.AccuracyBonus : 0), 1, 100);
-		Unit.Resolve = FMath::Clamp(
-			Person->Resolve + (bReceivesLegacyRelay ? LegacyRelay.ResolveBonus : 0), 1, 100);
-		Unit.Mobility = FMath::Clamp(
-			Person->Mobility + (bReceivesLegacyRelay ? LegacyRelay.MobilityBonus : 0), 1, 100);
-		Unit.Strength = FMath::Clamp(
-			Person->Strength + (bReceivesLegacyRelay ? LegacyRelay.StrengthBonus : 0), 1, 100);
+		Unit.Accuracy = ClampPersonnelStatWithBonus(
+			Person->Accuracy, bReceivesLegacyRelay ? LegacyRelay.AccuracyBonus : 0);
+		Unit.Resolve = ClampPersonnelStatWithBonus(
+			Person->Resolve, bReceivesLegacyRelay ? LegacyRelay.ResolveBonus : 0);
+		Unit.Mobility = ClampPersonnelStatWithBonus(
+			Person->Mobility, bReceivesLegacyRelay ? LegacyRelay.MobilityBonus : 0);
+		Unit.Strength = ClampPersonnelStatWithBonus(
+			Person->Strength, bReceivesLegacyRelay ? LegacyRelay.StrengthBonus : 0);
 		Unit.MaxActionPoints = FMath::Clamp(
 			6 + Unit.Mobility / 20 + SquadBondActionPointBonuses.FindRef(Person->PersonnelId), 6, 20);
 		Unit.RemainingActionPoints = Unit.MaxActionPoints;
@@ -859,16 +867,16 @@ bool FTacticalMissionGenerator::ValidateBattle(
 			const bool bReceivesLegacyRelay = Person != nullptr
 				&& LegacyRelayRecipientIds.Contains(Person->PersonnelId);
 			const int32 ExpectedAccuracy = Person != nullptr
-				? FMath::Clamp(Person->Accuracy + (bReceivesLegacyRelay ? LegacyRelay.AccuracyBonus : 0), 1, 100)
+				? ClampPersonnelStatWithBonus(Person->Accuracy, bReceivesLegacyRelay ? LegacyRelay.AccuracyBonus : 0)
 				: 0;
 			const int32 ExpectedResolve = Person != nullptr
-				? FMath::Clamp(Person->Resolve + (bReceivesLegacyRelay ? LegacyRelay.ResolveBonus : 0), 1, 100)
+				? ClampPersonnelStatWithBonus(Person->Resolve, bReceivesLegacyRelay ? LegacyRelay.ResolveBonus : 0)
 				: 0;
 			const int32 ExpectedMobility = Person != nullptr
-				? FMath::Clamp(Person->Mobility + (bReceivesLegacyRelay ? LegacyRelay.MobilityBonus : 0), 1, 100)
+				? ClampPersonnelStatWithBonus(Person->Mobility, bReceivesLegacyRelay ? LegacyRelay.MobilityBonus : 0)
 				: 0;
 			const int32 ExpectedStrength = Person != nullptr
-				? FMath::Clamp(Person->Strength + (bReceivesLegacyRelay ? LegacyRelay.StrengthBonus : 0), 1, 100)
+				? ClampPersonnelStatWithBonus(Person->Strength, bReceivesLegacyRelay ? LegacyRelay.StrengthBonus : 0)
 				: 0;
 			const int32 BondActionPointBonus = SquadBondActionPointBonuses.FindRef(Unit.PersonnelId);
 			const int32 BondMoraleBonus = SquadBondMoraleBonuses.FindRef(Unit.PersonnelId);

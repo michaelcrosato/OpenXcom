@@ -14395,6 +14395,36 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 			FTacticalMissionGenerator::ValidateBattle(FirstBattle, First, Rules, GenerationDiagnostics));
 		TestTrue(TEXT("Valid battlefield produces no generator diagnostics"), GenerationDiagnostics.IsEmpty());
 
+		FCampaignState ExtremePersonnelStats = First;
+		FPersonnelState* ExtremePersonnel = ExtremePersonnelStats.Personnel.FindByPredicate(
+			[SecondAgentId](const FPersonnelState& Person) { return Person.PersonnelId == SecondAgentId; });
+		if (ExtremePersonnel != nullptr && First.TacticalOperations.Num() == 1)
+		{
+			ExtremePersonnel->Accuracy = MAX_int32;
+			const FTacticalGenerationResult ExtremeGeneration = FTacticalMissionGenerator::Generate(
+				ExtremePersonnelStats, Rules, First.TacticalOperations[0].OperationId);
+			const FTacticalUnitState* ExtremeGeneratedUnit = ExtremeGeneration.Battle.Units.FindByPredicate(
+				[SecondAgentId](const FTacticalUnitState& Unit) { return Unit.PersonnelId == SecondAgentId; });
+			TestTrue(TEXT("Extreme personnel stat projects to a bounded tactical accuracy"),
+				ExtremeGeneration.bSucceeded && ExtremeGeneratedUnit != nullptr && ExtremeGeneratedUnit->Accuracy == 100);
+
+			if (ExtremeGeneration.bSucceeded && ExtremeGeneratedUnit != nullptr)
+			{
+				FTacticalBattleState ExtremeValidationBattle = ExtremeGeneration.Battle;
+				FTacticalUnitState* ExtremeValidationUnit = ExtremeValidationBattle.Units.FindByPredicate(
+					[SecondAgentId](const FTacticalUnitState& Unit) { return Unit.PersonnelId == SecondAgentId; });
+				if (ExtremeValidationUnit != nullptr)
+				{
+					ExtremeValidationUnit->Accuracy = 100;
+				}
+				TArray<FTacticalGenerationDiagnostic> ExtremeValidationDiagnostics;
+				TestTrue(TEXT("Battle validation accepts the same bounded extreme personnel projection"),
+					ExtremeValidationUnit != nullptr
+					&& FTacticalMissionGenerator::ValidateBattle(
+						ExtremeValidationBattle, ExtremePersonnelStats, Rules, ExtremeValidationDiagnostics));
+			}
+		}
+
 		FTacticalBattleState InvalidPlayerIdentity = FirstBattle;
 		FTacticalUnitState* InvalidPlayerUnit = InvalidPlayerIdentity.Units.FindByPredicate(
 			[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
