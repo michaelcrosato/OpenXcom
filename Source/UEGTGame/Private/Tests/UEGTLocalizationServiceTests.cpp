@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, and base specialization expose one thousand four hundred eighty-two localized keys"),
-		Loaded.Catalog.Entries.Num(), 1482);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, and facility-construction safeguards expose one thousand four hundred ninety-five localized keys"),
+		Loaded.Catalog.Entries.Num(), 1495);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1482);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1495);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1381,6 +1381,58 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("storage_usage_overflow"), TEXT("Raw storage-usage diagnostic"), TEXT("en-US")),
 		FString(TEXT("Storage reservations or commitments exceed the supported numeric range.")));
+	TestEqual(TEXT("Exact French operations-facility diagnostics preserve the required base anchor"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("operations_facility_required"), TEXT("Raw operations-facility diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Maintenez opérationnelle l'installation d'opérations requise par la base.")));
+	TestEqual(TEXT("Exact German unknown-facility diagnostics identify unavailable authored rules"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_facility"), TEXT("Raw unknown-facility diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Eine von dieser Basis benötigte Anlagenregel ist nicht verfügbar.")));
+	TestEqual(TEXT("Exact Spanish facility-state diagnostics preserve durability and repair identity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_facility_state"), TEXT("Raw facility-state diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La instalación tiene un estado de integridad o reparación no válido.")));
+	TestEqual(TEXT("Exact Japanese facility-damage diagnostics preserve the positive-value guard"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_facility_damage"), TEXT("Raw facility-damage diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("施設の損傷値は正でなければなりません。")));
+	TestEqual(TEXT("Exact French disabled-facility diagnostics preserve the terminal state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("facility_already_disabled"), TEXT("Raw disabled-facility diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Cette installation est déjà complètement hors service.")));
+	TestEqual(TEXT("Exact German facility-instance diagnostics identify missing targets"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_facility_instance"), TEXT("Raw facility-instance diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die ausgewählte Anlageninstanz existiert nicht.")));
+	TestEqual(TEXT("Exact Spanish starting-layout diagnostics preserve the grid-fit failure"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("starting_facility_layout_failed"), TEXT("Raw starting-layout diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La distribución inicial de instalaciones no cabe en la cuadrícula de base configurada.")));
+	TestEqual(TEXT("Exact Japanese construction-project diagnostics identify invalid saved state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_construction_project"), TEXT("Raw construction-project diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("施設建設プロジェクトの保存状態が無効です。")));
+	TestEqual(TEXT("Exact French construction-state diagnostics preserve the progress range"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_construction_state"), TEXT("Raw construction-state diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La progression de la construction de l'installation est hors de la plage prise en charge.")));
+	TestEqual(TEXT("Exact German construction-id diagnostics preserve identity validation"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_construction_id"), TEXT("Raw construction-id diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die IDs des Bauprojekts und der Anlageninstanz müssen gültig sein.")));
+	TestEqual(TEXT("Exact Spanish duplicate-construction diagnostics identify active identities"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("duplicate_construction_id"), TEXT("Raw duplicate-construction diagnostic"), TEXT("es-ES")),
+		FString(TEXT("El identificador del proyecto de construcción o de la instancia de instalación ya está activo.")));
+	TestEqual(TEXT("Exact Japanese duplicate-facility diagnostics identify base collisions"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("duplicate_facility_instance"), TEXT("Raw duplicate-facility diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("施設インスタンスのIDは基地内にすでに存在します。")));
+	TestEqual(TEXT("Exact French construction-overflow diagnostics identify mobilization arithmetic"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("facility_construction_overflow"), TEXT("Raw construction-overflow diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La durée de construction ou la mobilisation du Cadre de travaux dépasse la plage prise en charge.")));
 	TestEqual(TEXT("Exact French interception rule diagnostics identify the missing formation data"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("invalid_interception_rules"), TEXT("Raw interception-rules diagnostic"), TEXT("fr-FR")),

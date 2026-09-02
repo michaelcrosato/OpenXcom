@@ -5240,6 +5240,71 @@
       "translations": { "en": "This facility has no active repair to cancel.", "fr": "Cette installation n'a aucune réparation active à annuler.", "de": "Für diese Anlage läuft keine Reparatur, die abgebrochen werden könnte.", "es": "Esta instalación no tiene ninguna reparación activa que cancelar.", "ja": "この施設には中止できる修理がありません。" }
     },
     {
+      "key": "diagnostic.operations-facility-required",
+      "source": "Keep the base's required operations facility operational.",
+      "translations": { "en": "Keep the base's required operations facility operational.", "fr": "Maintenez opérationnelle l'installation d'opérations requise par la base.", "de": "Die erforderliche Operationsanlage der Basis muss betriebsbereit bleiben.", "es": "Mantén operativa la instalación de operaciones necesaria de la base.", "ja": "基地に必要な作戦施設を稼働状態に保ってください。" }
+    },
+    {
+      "key": "diagnostic.unknown-facility",
+      "source": "An authored facility rule required by this base is unavailable.",
+      "translations": { "en": "An authored facility rule required by this base is unavailable.", "fr": "Une règle d'installation requise par cette base est indisponible.", "de": "Eine von dieser Basis benötigte Anlagenregel ist nicht verfügbar.", "es": "No está disponible una regla de instalación necesaria para esta base.", "ja": "この基地に必要な施設ルールを利用できません。" }
+    },
+    {
+      "key": "diagnostic.invalid-facility-state",
+      "source": "The facility has invalid durability or repair state.",
+      "translations": { "en": "The facility has invalid durability or repair state.", "fr": "L'installation a un état de durabilité ou de réparation invalide.", "de": "Die Anlage weist einen ungültigen Haltbarkeits- oder Reparaturstatus auf.", "es": "La instalación tiene un estado de integridad o reparación no válido.", "ja": "施設の耐久度または修理状態が無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-facility-damage",
+      "source": "Facility damage must be positive.",
+      "translations": { "en": "Facility damage must be positive.", "fr": "Les dégâts infligés à une installation doivent être positifs.", "de": "Anlagenschaden muss positiv sein.", "es": "El daño de la instalación debe ser positivo.", "ja": "施設の損傷値は正でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.facility-already-disabled",
+      "source": "This facility is already fully disabled.",
+      "translations": { "en": "This facility is already fully disabled.", "fr": "Cette installation est déjà complètement hors service.", "de": "Diese Anlage ist bereits vollständig außer Betrieb.", "es": "Esta instalación ya está completamente inutilizada.", "ja": "この施設はすでに完全に停止しています。" }
+    },
+    {
+      "key": "diagnostic.unknown-facility-instance",
+      "source": "The selected facility instance does not exist.",
+      "translations": { "en": "The selected facility instance does not exist.", "fr": "L'instance d'installation sélectionnée n'existe pas.", "de": "Die ausgewählte Anlageninstanz existiert nicht.", "es": "La instancia de instalación seleccionada no existe.", "ja": "選択した施設インスタンスは存在しません。" }
+    },
+    {
+      "key": "diagnostic.starting-facility-layout-failed",
+      "source": "The starting facility layout cannot fit the configured base grid.",
+      "translations": { "en": "The starting facility layout cannot fit the configured base grid.", "fr": "L'agencement initial des installations ne tient pas dans la grille de base configurée.", "de": "Die anfängliche Anlagenanordnung passt nicht in das konfigurierte Basisraster.", "es": "La distribución inicial de instalaciones no cabe en la cuadrícula de base configurada.", "ja": "開始時の施設配置が、設定された基地グリッドに収まりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-construction-project",
+      "source": "The facility construction project has invalid saved state.",
+      "translations": { "en": "The facility construction project has invalid saved state.", "fr": "Le projet de construction d'installation possède un état sauvegardé invalide.", "de": "Das Anlagenbauprojekt weist einen ungültigen gespeicherten Zustand auf.", "es": "El proyecto de construcción de la instalación tiene un estado guardado no válido.", "ja": "施設建設プロジェクトの保存状態が無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-construction-state",
+      "source": "Facility construction progress is outside the supported range.",
+      "translations": { "en": "Facility construction progress is outside the supported range.", "fr": "La progression de la construction de l'installation est hors de la plage prise en charge.", "de": "Der Baufortschritt der Anlage liegt außerhalb des unterstützten Bereichs.", "es": "El progreso de construcción de la instalación está fuera del rango admitido.", "ja": "施設建設の進行度がサポート範囲外です。" }
+    },
+    {
+      "key": "diagnostic.invalid-construction-id",
+      "source": "Construction project and facility instance IDs must be valid.",
+      "translations": { "en": "Construction project and facility instance IDs must be valid.", "fr": "Les identifiants du projet de construction et de l'instance d'installation doivent être valides.", "de": "Die IDs des Bauprojekts und der Anlageninstanz müssen gültig sein.", "es": "Los identificadores del proyecto de construcción y de la instancia de instalación deben ser válidos.", "ja": "建設プロジェクトと施設インスタンスのIDは有効でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.duplicate-construction-id",
+      "source": "The construction project or facility instance ID is already active.",
+      "translations": { "en": "The construction project or facility instance ID is already active.", "fr": "L'identifiant du projet de construction ou de l'instance d'installation est déjà actif.", "de": "Die ID des Bauprojekts oder der Anlageninstanz ist bereits aktiv.", "es": "El identificador del proyecto de construcción o de la instancia de instalación ya está activo.", "ja": "建設プロジェクトまたは施設インスタンスのIDはすでに使用中です。" }
+    },
+    {
+      "key": "diagnostic.duplicate-facility-instance",
+      "source": "The facility instance ID already exists at the base.",
+      "translations": { "en": "The facility instance ID already exists at the base.", "fr": "L'identifiant de l'instance d'installation existe déjà dans la base.", "de": "Die ID der Anlageninstanz ist in der Basis bereits vorhanden.", "es": "El identificador de la instancia de instalación ya existe en la base.", "ja": "施設インスタンスのIDは基地内にすでに存在します。" }
+    },
+    {
+      "key": "diagnostic.facility-construction-overflow",
+      "source": "Facility construction duration or Works Cadre mobilization exceeds the supported range.",
+      "translations": { "en": "Facility construction duration or Works Cadre mobilization exceeds the supported range.", "fr": "La durée de construction ou la mobilisation du Cadre de travaux dépasse la plage prise en charge.", "de": "Die Baudauer der Anlage oder die Mobilisierung des Werkkaders überschreitet den unterstützten Bereich.", "es": "La duración de construcción o la movilización del Cuadro de obras supera el rango admitido.", "ja": "施設の建設期間または作業班の動員がサポート範囲を超えています。" }
+    },
+    {
       "key": "diagnostic.craft-capacity-full",
       "source": "The primary base has no open craft berth.",
       "translations": { "en": "The primary base has no open craft berth.", "fr": "La base principale n'a aucun poste d'appareil libre.", "de": "Die Hauptbasis hat keinen freien Fluggerätstellplatz.", "es": "La base principal no tiene plazas libres para naves.", "ja": "主基地には航空機の空き格納枠がありません。" }
