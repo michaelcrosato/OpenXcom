@@ -5175,6 +5175,11 @@
       "translations": { "en": "Free storage capacity before completing this order.", "fr": "Libérez de la capacité de stockage avant de terminer cette commande.", "de": "Schaffen Sie Lagerkapazität, bevor Sie diesen Auftrag abschließen.", "es": "Libera capacidad de almacenamiento antes de completar esta orden.", "ja": "この命令を完了する前に保管容量を空けてください。" }
     },
     {
+      "key": "diagnostic.storage-capacity-overflow",
+      "source": "Storage capacity exceeds the supported numeric range after specialization scaling.",
+      "translations": { "en": "Storage capacity exceeds the supported numeric range after specialization scaling.", "fr": "La capacité de stockage dépasse la plage numérique prise en charge après la mise à l'échelle de la spécialisation.", "de": "Die Lagerkapazität überschreitet nach der Skalierung durch die Spezialisierung den unterstützten numerischen Bereich.", "es": "La capacidad de almacenamiento supera el rango numérico admitido después del escalado de especialización.", "ja": "専門化によるスケーリング後、保管容量がサポートされる数値範囲を超えています。" }
+    },
+    {
       "key": "diagnostic.salvage-disposition-required",
       "source": "Retain or sell recovered salvage before this craft can continue operations.",
       "translations": { "en": "Retain or sell recovered salvage before this craft can continue operations.", "fr": "Conservez ou vendez le matériel récupéré avant que cet appareil puisse poursuivre ses opérations.", "de": "Behalte oder verkaufe die Bergung, bevor dieses Fluggerät den Betrieb fortsetzen kann.", "es": "Conserva o vende la recuperación antes de que esta nave pueda continuar sus operaciones.", "ja": "この航空機が運用を続ける前に、回収物を保持または売却してください。" }

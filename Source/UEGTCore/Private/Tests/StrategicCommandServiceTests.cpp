@@ -1134,6 +1134,20 @@ bool FStrategicLogisticsSpecializationBenefitTest::RunTest(const FString& Parame
 		&& DamagedStorage.bValid && DamagedStorage.Capacity == 0
 		&& DamagedStorage.Used == 30 && DamagedStorage.Overflow == 30
 		&& State.SimulationRandom.GetStateForSave() == InitialRandomState);
+
+	Rules.Facilities.FindChecked(LogisticsDepot.Identity.RuleId).StorageCapacity = 1000001;
+	InstalledDepot.Damage = 0;
+	const FBaseStorageEvaluation InvalidStorage =
+		FStrategicCommandService::EvaluateBaseStorage(State, Rules, Base.BaseId);
+	TestTrue(TEXT("Storage facility capacity rejects the authored upper-bound overflow without mutating campaign state"),
+		!InvalidStorage.bValid && InvalidStorage.bEnforced
+		&& InvalidStorage.Diagnostics.Num() == 1
+		&& InvalidStorage.Diagnostics[0].Code
+			== FName(TEXT("invalid_storage_facility"))
+		&& State.CommandSequence == 17
+		&& State.Bases.Num() == 1
+		&& Base.Facilities.Num() == 1
+		&& State.SimulationRandom.GetStateForSave() == InitialRandomState);
 	return true;
 }
 
