@@ -92,6 +92,8 @@ public:
 	bool UsesSemanticMarkerGeometry() const;
 	/** Deterministic height encoding for a currently visible unit's stance, health, and morale. */
 	static float CalculateUnitMarkerHeightScale(const FTacticalHudUnitView& Unit);
+	/** Deterministic footprint encoding for a unit's remaining action points. */
+	static float CalculateUnitMarkerFootprintScale(const FTacticalHudUnitView& Unit);
 	/** Deterministic height encoding for active objective interaction progress. */
 	static float CalculateObjectiveMarkerHeightScale(const FTacticalHudObjectiveView& Objective);
 	/** Deterministic height encoding for visible terrain integrity, with legacy full-health fallback. */

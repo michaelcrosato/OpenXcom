@@ -76,6 +76,24 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	MoraleUnit.CurrentMorale = 20;
 	TestTrue(TEXT("Tactical marker silhouette shortens for low morale"),
 		AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MoraleUnit) < HighMoraleHeight);
+	FTacticalHudUnitView ReadinessUnit;
+	ReadinessUnit.MaxActionPoints = 6;
+	ReadinessUnit.RemainingActionPoints = 6;
+	const float FullReadinessFootprint = AUEGTTacticalBoardActor::CalculateUnitMarkerFootprintScale(ReadinessUnit);
+	ReadinessUnit.RemainingActionPoints = 1;
+	TestTrue(TEXT("Tactical marker footprint narrows as action points are spent"),
+		AUEGTTacticalBoardActor::CalculateUnitMarkerFootprintScale(ReadinessUnit) < FullReadinessFootprint);
+	ReadinessUnit.RemainingActionPoints = MAX_int32;
+	TestTrue(TEXT("Tactical marker footprint clamps at full readiness"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateUnitMarkerFootprintScale(ReadinessUnit),
+			0.44f));
+	ReadinessUnit.MaxActionPoints = 0;
+	ReadinessUnit.RemainingActionPoints = 0;
+	TestTrue(TEXT("Legacy unit snapshots retain their original marker footprint"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateUnitMarkerFootprintScale(ReadinessUnit),
+			0.44f));
 	MarkerUnit.bIncapacitated = true;
 	TestEqual(TEXT("Incapacitated marker silhouette retains the low profile"),
 		AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MarkerUnit), 0.18f);

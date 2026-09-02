@@ -442,6 +442,28 @@ float AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(const FTacticalHud
 	return StanceScale * (0.62f + HealthRatio * 0.38f) * MoraleScale;
 }
 
+float AUEGTTacticalBoardActor::CalculateUnitMarkerFootprintScale(
+	const FTacticalHudUnitView& Unit)
+{
+	if (Unit.bLastKnown)
+	{
+		return 0.32f;
+	}
+	if (Unit.bIncapacitated)
+	{
+		return 0.3f;
+	}
+	if (Unit.MaxActionPoints <= 0)
+	{
+		return 0.44f;
+	}
+	const float ActionRatio = FMath::Clamp(
+		static_cast<float>(Unit.RemainingActionPoints) / Unit.MaxActionPoints,
+		0.0f,
+		1.0f);
+	return 0.34f + ActionRatio * 0.1f;
+}
+
 float AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(
 	const FTacticalHudObjectiveView& Objective)
 {
@@ -507,7 +529,7 @@ void AUEGTTacticalBoardActor::AddUnitMarker(
 		Component,
 		FIntVector(Unit.X, Unit.Y, Unit.Z),
 		Unit.bLastKnown ? 24.0f : 42.0f,
-		Unit.bLastKnown ? 0.32f : (Unit.bIncapacitated ? 0.3f : 0.44f),
+		CalculateUnitMarkerFootprintScale(Unit),
 		Unit.bLastKnown ? 0.28f : CalculateUnitMarkerHeightScale(Unit));
 }
 
