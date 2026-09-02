@@ -476,7 +476,16 @@ float AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(
 		static_cast<float>(ClaimedInteractions) / static_cast<float>(RequiredInteractions),
 		0.0f,
 		1.0f);
-	return 0.45f + ProgressRatio * 0.55f;
+	float BaseHeight = 0.45f;
+	if (Objective.Type == ETacticalObjectiveType::Recover)
+	{
+		BaseHeight = 0.55f;
+	}
+	else if (Objective.Type == ETacticalObjectiveType::Control)
+	{
+		BaseHeight = 0.65f;
+	}
+	return BaseHeight + ProgressRatio * (1.0f - BaseHeight);
 }
 
 float AUEGTTacticalBoardActor::CalculateTerrainMarkerHeightScale(

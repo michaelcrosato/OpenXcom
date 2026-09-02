@@ -103,6 +103,13 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 		FMath::IsNearlyEqual(
 			AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(MarkerObjective),
 			0.45f));
+	MarkerObjective.Type = ETacticalObjectiveType::Recover;
+	const float RecoverObjectiveBase = AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(MarkerObjective);
+	MarkerObjective.Type = ETacticalObjectiveType::Control;
+	TestTrue(TEXT("Objective marker silhouette distinguishes authored objective types"),
+		RecoverObjectiveBase > 0.45f
+		&& AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(MarkerObjective) > RecoverObjectiveBase);
+	MarkerObjective.Type = ETacticalObjectiveType::Disrupt;
 	MarkerObjective.PlayerInteractions = 2;
 	MarkerObjective.AdversaryInteractions = 1;
 	TestTrue(TEXT("Objective marker height reflects combined interaction progress"),
