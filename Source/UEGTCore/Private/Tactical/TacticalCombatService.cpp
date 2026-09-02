@@ -169,13 +169,19 @@ namespace TacticalCombatPrivate
 					AddDiagnostic(Result, TEXT("tactical_weapon_not_carried"), TEXT("Player weapon has no tactical magazine state in this battle."));
 					return false;
 				}
-				const int32 RequiredAmmunition = Weapon->TacticalAmmunitionPerAttack * OutProfile.ProjectileCount;
-				if (WeaponState->LoadedAmmunition < RequiredAmmunition)
+				const int64 RequiredAmmunition = static_cast<int64>(Weapon->TacticalAmmunitionPerAttack)
+					* static_cast<int64>(OutProfile.ProjectileCount);
+				if (RequiredAmmunition <= 0 || RequiredAmmunition > MAX_int32)
+				{
+					AddDiagnostic(Result, TEXT("invalid_tactical_ammunition_profile"), TEXT("The weapon's ammunition cost cannot be represented safely for the selected fire mode."));
+					return false;
+				}
+				if (static_cast<int64>(WeaponState->LoadedAmmunition) < RequiredAmmunition)
 				{
 					AddDiagnostic(Result, TEXT("tactical_weapon_empty"), TEXT("Player weapon lacks enough loaded ammunition for the selected fire mode."));
 					return false;
 				}
-				OutProfile.AmmunitionCost = RequiredAmmunition;
+				OutProfile.AmmunitionCost = static_cast<int32>(RequiredAmmunition);
 			}
 			return true;
 		}

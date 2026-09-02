@@ -13994,6 +13994,21 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 	using namespace StrategicCommandServiceTests;
 
 	FResolvedRuleSet Rules = MakeRules();
+	FItemRule* ServiceRifle = Rules.Items.Find(TEXT("item.service-rifle"));
+	if (ServiceRifle == nullptr)
+	{
+		return false;
+	}
+	ServiceRifle->TacticalAmmunitionItemId = TEXT("item.test-service-rifle-magazine");
+	ServiceRifle->TacticalMagazineCapacity = 6;
+	ServiceRifle->TacticalAmmunitionPerAttack = 1;
+	ServiceRifle->TacticalReloadActionPointCost = 2;
+	FItemRule ServiceRifleMagazine;
+	ServiceRifleMagazine.Identity.RuleId = TEXT("item.test-service-rifle-magazine");
+	ServiceRifleMagazine.DisplayName = TEXT("Test Service Rifle Magazine");
+	ServiceRifleMagazine.Category = TEXT("ammunition");
+	ServiceRifleMagazine.Mass = 1;
+	Rules.Items.Add(ServiceRifleMagazine.Identity.RuleId, ServiceRifleMagazine);
 	FPersonnelDoctrineRule RelayDoctrine;
 	RelayDoctrine.Identity.RuleId = TEXT("doctrine.clear-sight");
 	RelayDoctrine.DisplayName = TEXT("Clear Sight");
@@ -14020,6 +14035,8 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 		RelayDoctrine.Identity.RuleId };
 	FPersonnelState& SecondAgent = AddTestPersonnel(First, SecondAgentId, TEXT("Pavel Orin"));
 	SecondAgent.Missions = 8;
+	FirstAgent.EquippedItems.Add(TEXT("item.service-rifle"));
+	SecondAgent.EquippedItems.Add(TEXT("item.service-rifle"));
 	FPersonnelSquadBondState& ExistingBond = First.PersonnelSquadBonds.AddDefaulted_GetRef();
 	ExistingBond.FirstPersonnelId = FirstAgentId;
 	ExistingBond.SecondPersonnelId = SecondAgentId;
@@ -18679,6 +18696,20 @@ bool FTacticalFireModesAndBlastTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Blast tactical state matches deterministic replay"),
 		MakeTacticalBattleFingerprint(Replay.TacticalBattles[0]),
 		MakeTacticalBattleFingerprint(First.TacticalBattles[0]));
+
+	FResolvedRuleSet OverflowRules = Rules;
+	FItemRule* OverflowRifle = OverflowRules.Items.Find(TEXT("item.service-rifle"));
+	if (OverflowRifle != nullptr)
+	{
+		OverflowRifle->TacticalAmmunitionPerAttack = MAX_int32;
+		OverflowRifle->TacticalBurstShotCount = 8;
+		const FTacticalAttackPreview OverflowPreview = FTacticalCombatService::PreviewUnitAttack(
+			First.TacticalBattles[0], First, OverflowRules, AttackerUnitId, BurstTargetId,
+			TEXT("item.service-rifle"), ETacticalFireMode::Burst);
+		TestFalse(TEXT("Overflowing burst ammunition cost is rejected before preview arithmetic wraps"), OverflowPreview.bSucceeded);
+		TestTrue(TEXT("Overflowing burst ammunition cost has a stable diagnostic"),
+			OverflowPreview.HasDiagnostic(TEXT("invalid_tactical_ammunition_profile")));
+	}
 
 	const FCampaignSaveWriteResult BlastWrite = FCampaignSaveCodec::Serialize(FCampaignSaveCodec::CreateNew(
 		First, MakePackages(), TEXT("0.17.0-fire-mode-blast-test"), FDateTime(2026, 8, 30, 6, 0, 0), FGuid(777, 778, 779, 780)));

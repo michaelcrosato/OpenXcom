@@ -7355,6 +7355,11 @@
       "translations": { "en": "Adversary combatant has no valid intrinsic attack profile.", "fr": "Le combattant adverse ne possède aucun profil d'attaque intrinsèque valide.", "de": "Der gegnerische Kämpfer besitzt kein gültiges intrinsisches Angriffsprofil.", "es": "El combatiente adversario no tiene un perfil de ataque intrínseco válido.", "ja": "敵対戦闘員に有効な固有攻撃プロファイルがありません。" }
     },
     {
+      "key": "diagnostic.invalid-tactical-ammunition-profile",
+      "source": "The weapon's ammunition cost cannot be represented safely for the selected fire mode.",
+      "translations": { "en": "The weapon's ammunition cost cannot be represented safely for the selected fire mode.", "fr": "Le coût en munitions de l'arme ne peut pas être représenté en toute sécurité pour le mode de tir sélectionné.", "de": "Die Munitionskosten der Waffe können für den gewählten Feuermodus nicht sicher dargestellt werden.", "es": "El coste de munición del arma no se puede representar de forma segura para el modo de fuego seleccionado.", "ja": "選択した射撃モードでは、武器の弾薬コストを安全に表現できません。" }
+    },
+    {
       "key": "diagnostic.invalid-tactical-battle",
       "source": "Tactical battle identity, operation link, dimensions, phase, weather, random state, cells, or cargo are invalid.",
       "translations": { "en": "Tactical battle identity, operation link, dimensions, phase, weather, random state, cells, or cargo are invalid.", "fr": "L'identité, le lien d'opération, les dimensions, la phase, la météo, l'état aléatoire, les cases ou la cargaison de la bataille tactique sont invalides.", "de": "Identität, Einsatzverknüpfung, Abmessungen, Phase, Wetter, Zufallszustand, Zellen oder Fracht des taktischen Gefechts sind ungültig.", "es": "La identidad, el vínculo de operación, las dimensiones, la fase, el clima, el estado aleatorio, las celdas o la carga de la batalla táctica no son válidos.", "ja": "戦術戦闘の識別情報、作戦リンク、寸法、フェーズ、天候、乱数状態、セル、または貨物が無効です。" }
