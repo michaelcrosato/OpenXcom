@@ -685,6 +685,23 @@ bool FTacticalNavigationGridStateValidationTest::RunTest(const FString& Paramete
 	TestEqual(TEXT("Direct smoke query clamps extreme persisted smoke before multiplication"),
 		FTacticalNavigationService::ComputeSmokeObscuration(ExtremeSmoke, 0, 0, 1, 0), 37);
 
+	FResolvedRuleSet ExtremeMovementRules = Fixture.Rules;
+	FTacticalTerrainRule* ExtremeMovementFloor = ExtremeMovementRules.TacticalTerrains.Find(TEXT("terrain.presentation-floor"));
+	FTacticalBattleState ExtremeMovement = Fixture.Campaign.TacticalBattles[0];
+	FTacticalUnitState* ExtremeMovementUnit = ExtremeMovement.Units.FindByPredicate(
+		[&Fixture](const FTacticalUnitState& Unit) { return Unit.UnitId == Fixture.PlayerUnitId; });
+	if (ExtremeMovementFloor != nullptr && ExtremeMovementUnit != nullptr)
+	{
+		ExtremeMovementFloor->MoveCost = MAX_int32;
+		ExtremeMovementUnit->Stance = ETacticalStance::Crouched;
+		const FTacticalReachabilityResult ExtremeReachability = FTacticalNavigationService::ComputeReachableCells(
+			ExtremeMovement, ExtremeMovementRules, Fixture.PlayerUnitId, 2);
+		TestTrue(TEXT("Extreme movement costs do not wrap into negative reachable costs"),
+			ExtremeReachability.bSucceeded
+				&& !ExtremeReachability.Cells.ContainsByPredicate(
+					[](const FTacticalReachableCell& Cell) { return Cell.TotalCost < 0; }));
+	}
+
 	FTacticalBattleState ExcessFire = Fixture.Campaign.TacticalBattles[0];
 	ExcessFire.Cells[0].Fire = 101;
 	const FTacticalVisibilityResult ExcessFireVisibility = FTacticalNavigationService::ComputePlayerVisibility(

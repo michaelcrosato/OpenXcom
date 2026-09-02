@@ -144,6 +144,23 @@ namespace TacticalNavigationPrivate
 		return Terrain == nullptr || (Terrain->bBlocksVision && Cell.CurrentIntegrity > 0 && !Cell.bDoorOpen);
 	}
 
+	int32 MovementStepCost(
+		const FTacticalTerrainRule& CurrentTerrain,
+		const FTacticalTerrainRule& Terrain,
+		const bool bVertical,
+		const int32 StanceMoveSurcharge)
+	{
+		const int64 BaseCost = bVertical
+			? FMath::Max<int64>(
+				FMath::Clamp<int64>(static_cast<int64>(CurrentTerrain.VerticalMoveCost), 0, 20),
+				FMath::Clamp<int64>(static_cast<int64>(Terrain.VerticalMoveCost), 0, 20))
+			: FMath::Clamp<int64>(static_cast<int64>(Terrain.MoveCost), 1, 20);
+		return static_cast<int32>(FMath::Clamp<int64>(
+			BaseCost + static_cast<int64>(StanceMoveSurcharge),
+			1,
+			21));
+	}
+
 	int32 RoundRatio(const int64 Numerator, const int32 Denominator)
 	{
 		check(Denominator > 0);
@@ -419,10 +436,13 @@ FTacticalPathResult FTacticalNavigationService::FindPath(
 			{
 				continue;
 			}
-			const int32 StepCost = bVertical
-				? FMath::Max(CurrentTerrain->VerticalMoveCost, Terrain->VerticalMoveCost) + StanceMoveSurcharge
-				: Terrain->MoveCost + StanceMoveSurcharge;
-			const int32 NewCost = Current.Cost + StepCost;
+			const int32 StepCost = MovementStepCost(*CurrentTerrain, *Terrain, bVertical, StanceMoveSurcharge);
+			const int64 CandidateCost = static_cast<int64>(Current.Cost) + static_cast<int64>(StepCost);
+			if (CandidateCost > MAX_int32)
+			{
+				continue;
+			}
+			const int32 NewCost = static_cast<int32>(CandidateCost);
 			if (NewCost < Distances[NextIndex]
 				|| (NewCost == Distances[NextIndex]
 					&& (Previous[NextIndex] == INDEX_NONE || Current.CellIndex < Previous[NextIndex])))
@@ -550,12 +570,11 @@ FTacticalReachabilityResult FTacticalNavigationService::ComputeReachableCells(
 			{
 				continue;
 			}
-			const int32 StepCost = bVertical
-				? FMath::Max(CurrentTerrain->VerticalMoveCost, Terrain->VerticalMoveCost) + StanceMoveSurcharge
-				: Terrain->MoveCost + StanceMoveSurcharge;
-			const int32 NewCost = Current.Cost + StepCost;
-			if (NewCost <= MaximumCost && NewCost < Distances[NextIndex])
+			const int32 StepCost = MovementStepCost(*CurrentTerrain, *Terrain, bVertical, StanceMoveSurcharge);
+			const int64 CandidateCost = static_cast<int64>(Current.Cost) + static_cast<int64>(StepCost);
+			if (CandidateCost <= MaximumCost && CandidateCost < Distances[NextIndex])
 			{
+				const int32 NewCost = static_cast<int32>(CandidateCost);
 				Distances[NextIndex] = NewCost;
 				HeapPush(Open, { NextIndex, NewCost });
 			}
