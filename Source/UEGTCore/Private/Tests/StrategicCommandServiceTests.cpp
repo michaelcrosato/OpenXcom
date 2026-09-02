@@ -13867,6 +13867,60 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Pending tactical operation deserializes"), PendingRead.bSucceeded);
 	TestEqual(TEXT("Pending tactical operation round-trips"), PendingRead.Envelope.State.TacticalOperations.Num(), 1);
 
+	FCampaignState DuplicateCargoOperation = First;
+	FTacticalOperationState* DuplicateCargoOperationState = DuplicateCargoOperation.TacticalOperations.FindByPredicate(
+		[](const FTacticalOperationState& Operation)
+		{
+			return Operation.Type == ETacticalOperationType::SiteRecovery;
+		});
+	FCraftState* DuplicateCargoCraft = DuplicateCargoOperation.Craft.FindByPredicate(
+		[&DuplicateCargoOperationState](const FCraftState& Craft)
+		{
+			return DuplicateCargoOperationState != nullptr && Craft.CraftId == DuplicateCargoOperationState->CraftId;
+		});
+	TestTrue(TEXT("Duplicate cargo fixture has a distinct craft and operation stack available"),
+		DuplicateCargoOperationState != nullptr && DuplicateCargoCraft != nullptr
+		&& DuplicateCargoOperationState->Cargo.Num() == 1 && DuplicateCargoCraft->Cargo.Num() == 1);
+	if (DuplicateCargoOperationState != nullptr && DuplicateCargoCraft != nullptr
+		&& DuplicateCargoOperationState->Cargo.Num() == 1 && DuplicateCargoCraft->Cargo.Num() == 1)
+	{
+		const FName DuplicateCargoItemId = DuplicateCargoOperationState->Cargo[0].ItemId;
+		const int32 DuplicateCargoQuantity = DuplicateCargoOperationState->Cargo[0].Quantity;
+		FInventoryStack& AdditionalCraftCargo = DuplicateCargoCraft->Cargo.AddDefaulted_GetRef();
+		AdditionalCraftCargo.ItemId = TEXT("item.signal-probe");
+		AdditionalCraftCargo.Quantity = 1;
+		FInventoryStack& DuplicateOperationCargo = DuplicateCargoOperationState->Cargo.AddDefaulted_GetRef();
+		DuplicateOperationCargo.ItemId = DuplicateCargoItemId;
+		DuplicateOperationCargo.Quantity = DuplicateCargoQuantity;
+
+		const FTacticalGenerationResult DuplicateCargoGeneration = FTacticalMissionGenerator::Generate(
+			DuplicateCargoOperation, Rules, DuplicateCargoOperationState->OperationId);
+		TestFalse(TEXT("Tactical generation rejects duplicate operation cargo stacks"), DuplicateCargoGeneration.bSucceeded);
+		TestTrue(TEXT("Duplicate operation cargo has a stable generation diagnostic"),
+			DuplicateCargoGeneration.HasDiagnostic(TEXT("invalid_tactical_battle")));
+
+		FGenerateTacticalBattleCommand DuplicateCargoGenerate;
+		DuplicateCargoGenerate.ExpectedSequence = DuplicateCargoOperation.CommandSequence;
+		DuplicateCargoGenerate.OperationId = DuplicateCargoOperationState->OperationId;
+		const FStrategicCommandResult DuplicateCargoResult = FStrategicCommandService::Execute(
+			DuplicateCargoOperation, Rules, DuplicateCargoGenerate);
+		TestFalse(TEXT("Tactical operations reject duplicate cargo stack IDs"), DuplicateCargoResult.bAccepted);
+		TestTrue(TEXT("Duplicate tactical cargo has a stable operation diagnostic"),
+			DuplicateCargoResult.HasDiagnostic(TEXT("invalid_tactical_operation")));
+		TestTrue(TEXT("Rejected duplicate tactical cargo creates no battlefield"),
+			DuplicateCargoOperation.TacticalBattles.IsEmpty());
+
+		const FCampaignSaveEnvelope DuplicateCargoEnvelope = FCampaignSaveCodec::CreateNew(
+			DuplicateCargoOperation, MakePackages(), TEXT("0.45.0-duplicate-cargo"),
+			DuplicateCargoOperation.StrategicTime.Utc, FGuid(0x91000025, 2, 3, 4));
+		const FCampaignSaveValidationResult DuplicateCargoValidation = FCampaignSaveCodec::Validate(
+			DuplicateCargoEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects duplicate tactical cargo stack IDs"),
+			DuplicateCargoValidation.bSucceeded);
+		TestTrue(TEXT("Saved duplicate tactical cargo has a stable operation diagnostic"),
+			DuplicateCargoValidation.HasDiagnostic(TEXT("invalid_tactical_operation")));
+	}
+
 	FCampaignState EmptyTacticalRoster = First;
 	EmptyTacticalRoster.Craft[0].AssignedAgentIds.Reset();
 	EmptyTacticalRoster.TacticalOperations[0].AgentIds.Reset();

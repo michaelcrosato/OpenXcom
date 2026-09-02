@@ -3015,8 +3015,14 @@ namespace CampaignSavePrivate
 							bool bCargoMatches = Craft != nullptr && Operation.Cargo.Num() == Craft->Cargo.Num();
 							if (bCargoMatches)
 							{
+								TSet<FName> OperationCargoItemIds;
 								for (const FInventoryStack& Stack : Operation.Cargo)
 								{
+									if (OperationCargoItemIds.Contains(Stack.ItemId))
+									{
+										bCargoMatches = false;
+										break;
+									}
 									const FInventoryStack* CraftStack = Craft->Cargo.FindByPredicate(
 										[&Stack](const FInventoryStack& Entry) { return Entry.ItemId == Stack.ItemId; });
 									if (CraftStack == nullptr || CraftStack->Quantity != Stack.Quantity)
@@ -3024,6 +3030,7 @@ namespace CampaignSavePrivate
 										bCargoMatches = false;
 										break;
 									}
+									OperationCargoItemIds.Add(Stack.ItemId);
 								}
 							}
 							bool bBaseAgentsValid = bBaseDefense && !Operation.AgentIds.IsEmpty();

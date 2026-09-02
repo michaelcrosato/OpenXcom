@@ -100,14 +100,20 @@ namespace TacticalMissionGeneratorPrivate
 		{
 			return false;
 		}
+		TSet<FName> SeenItemIds;
 		for (const FInventoryStack& Stack : Left)
 		{
+			if (SeenItemIds.Contains(Stack.ItemId))
+			{
+				return false;
+			}
 			const FInventoryStack* Other = Right.FindByPredicate(
 				[&Stack](const FInventoryStack& Entry) { return Entry.ItemId == Stack.ItemId; });
 			if (Other == nullptr || Other->Quantity != Stack.Quantity)
 			{
 				return false;
 			}
+			SeenItemIds.Add(Stack.ItemId);
 		}
 		return true;
 	}
