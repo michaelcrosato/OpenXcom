@@ -5335,6 +5335,56 @@
       "translations": { "en": "Only available personnel can perform this action.", "fr": "Seul le personnel disponible peut effectuer cette action.", "de": "Nur verfügbares Personal kann diese Aktion ausführen.", "es": "Solo el personal disponible puede realizar esta acción.", "ja": "待機中の人員のみこの行動を実行できます。" }
     },
     {
+      "key": "diagnostic.agent-unavailable",
+      "source": "Assigned field agents must be available at the craft's home base.",
+      "translations": { "en": "Assigned field agents must be available at the craft's home base.", "fr": "Les agents de terrain affectés doivent être disponibles dans la base d'attache de l'appareil.", "de": "Zugewiesene Feldagenten müssen an der Heimatbasis des Fluggeräts verfügbar sein.", "es": "Los agentes de campo asignados deben estar disponibles en la base de origen de la nave.", "ja": "配属されたフィールドエージェントは航空機の所属基地で待機中でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.pilot-unavailable",
+      "source": "The assigned pilot must be available at the craft's home base.",
+      "translations": { "en": "The assigned pilot must be available at the craft's home base.", "fr": "Le pilote affecté doit être disponible dans la base d'attache de l'appareil.", "de": "Der zugewiesene Pilot muss an der Heimatbasis des Fluggeräts verfügbar sein.", "es": "El piloto asignado debe estar disponible en la base de origen de la nave.", "ja": "配属された操縦士は航空機の所属基地で待機中でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.personnel-not-field-agent",
+      "source": "Only field-agent personnel can join a craft roster.",
+      "translations": { "en": "Only field-agent personnel can join a craft roster.", "fr": "Seuls les agents de terrain peuvent rejoindre l'équipage d'un appareil.", "de": "Nur Feldagenten können der Besatzung eines Fluggeräts beitreten.", "es": "Solo el personal de campo puede unirse a la tripulación de una nave.", "ja": "航空機の搭乗員名簿に加えられるのはフィールドエージェントだけです。" }
+    },
+    {
+      "key": "diagnostic.personnel-not-pilot",
+      "source": "Only personnel with a pilot role can be assigned to craft.",
+      "translations": { "en": "Only personnel with a pilot role can be assigned to craft.", "fr": "Seul le personnel ayant un rôle de pilote peut être affecté à un appareil.", "de": "Nur Personal mit einer Pilotenrolle kann einem Fluggerät zugewiesen werden.", "es": "Solo el personal con rol de piloto puede asignarse a una nave.", "ja": "操縦士役割の人員だけを航空機に配属できます。" }
+    },
+    {
+      "key": "diagnostic.personnel-in-tactical-battle",
+      "source": "Personnel in an active tactical battle cannot be damaged from the strategic layer.",
+      "translations": { "en": "Personnel in an active tactical battle cannot be damaged from the strategic layer.", "fr": "Le personnel engagé dans une bataille tactique active ne peut pas subir de dégâts depuis la couche stratégique.", "de": "Personal in einer aktiven taktischen Schlacht kann nicht von der strategischen Ebene aus beschädigt werden.", "es": "El personal que participa en una batalla táctica activa no puede recibir daño desde la capa estratégica.", "ja": "戦術戦闘中の人員に戦略レイヤーから損傷を与えることはできません。" }
+    },
+    {
+      "key": "diagnostic.personnel-capacity-overflow",
+      "source": "The base's personnel capacity exceeds the supported range.",
+      "translations": { "en": "The base's personnel capacity exceeds the supported range.", "fr": "La capacité en personnel de la base dépasse la plage prise en charge.", "de": "Die Personalkapazität der Basis überschreitet den unterstützten Bereich.", "es": "La capacidad de personal de la base supera el rango admitido.", "ja": "基地の人員容量がサポート範囲を超えています。" }
+    },
+    {
+      "key": "diagnostic.craft-capacity-overflow",
+      "source": "The base's craft capacity exceeds the supported range.",
+      "translations": { "en": "The base's craft capacity exceeds the supported range.", "fr": "La capacité d'appareils de la base dépasse la plage prise en charge.", "de": "Die Fluggerätkapazität der Basis überschreitet den unterstützten Bereich.", "es": "La capacidad de naves de la base supera el rango admitido.", "ja": "基地の航空機容量がサポート範囲を超えています。" }
+    },
+    {
+      "key": "diagnostic.equipment-capacity-exceeded",
+      "source": "A personnel loadout can contain at most 16 item units.",
+      "translations": { "en": "A personnel loadout can contain at most 16 item units.", "fr": "L'équipement d'un membre du personnel peut contenir au maximum 16 unités d'objet.", "de": "Eine Personalausrüstung kann höchstens 16 Gegenstandseinheiten enthalten.", "es": "El equipamiento de una persona puede contener como máximo 16 unidades de objetos.", "ja": "人員の装備には最大16個のアイテム単位を含められます。" }
+    },
+    {
+      "key": "diagnostic.craft-equipment-capacity-exceeded",
+      "source": "The craft's equipment capacity would be exceeded.",
+      "translations": { "en": "The craft's equipment capacity would be exceeded.", "fr": "La capacité d'équipement de l'appareil serait dépassée.", "de": "Die Ausrüstungskapazität des Fluggeräts würde überschritten.", "es": "Se superaría la capacidad de equipo de la nave.", "ja": "航空機の装備容量を超えます。" }
+    },
+    {
+      "key": "diagnostic.craft-not-airborne",
+      "source": "Only an airborne craft with an assigned pilot can recover.",
+      "translations": { "en": "Only an airborne craft with an assigned pilot can recover.", "fr": "Seul un appareil en vol avec un pilote affecté peut être récupéré.", "de": "Nur ein fliegendes Fluggerät mit zugewiesenem Piloten kann geborgen werden.", "es": "Solo se puede recuperar una nave en vuelo con un piloto asignado.", "ja": "操縦士が配属された飛行中の航空機だけを回収できます。" }
+    },
+    {
       "key": "diagnostic.personnel-already-at-base",
       "source": "This personnel member is already stationed at the destination base.",
       "translations": { "en": "This personnel member is already stationed at the destination base.", "fr": "Ce membre du personnel est déjà stationné dans la base de destination.", "de": "Dieses Personalmitglied ist bereits an der Zielbasis stationiert.", "es": "Este miembro del personal ya está destinado en la base de destino.", "ja": "この人員はすでに移動先の基地に配属されています。" }

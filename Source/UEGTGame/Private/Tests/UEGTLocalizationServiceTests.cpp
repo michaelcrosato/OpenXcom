@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, and facility-construction safeguards expose one thousand four hundred ninety-five localized keys"),
-		Loaded.Catalog.Entries.Num(), 1495);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, and personnel-craft safeguards expose one thousand five hundred five localized keys"),
+		Loaded.Catalog.Entries.Num(), 1505);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1495);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1505);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1433,6 +1433,46 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("facility_construction_overflow"), TEXT("Raw construction-overflow diagnostic"), TEXT("fr-FR")),
 		FString(TEXT("La durée de construction ou la mobilisation du Cadre de travaux dépasse la plage prise en charge.")));
+	TestEqual(TEXT("Exact French field-agent availability diagnostics preserve the craft-base gate"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("agent_unavailable"), TEXT("Raw agent-availability diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Les agents de terrain affectés doivent être disponibles dans la base d'attache de l'appareil.")));
+	TestEqual(TEXT("Exact German pilot availability diagnostics preserve the craft-base gate"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("pilot_unavailable"), TEXT("Raw pilot-availability diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Der zugewiesene Pilot muss an der Heimatbasis des Fluggeräts verfügbar sein.")));
+	TestEqual(TEXT("Exact Spanish field-agent role diagnostics reject pilot personnel"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("personnel_not_field_agent"), TEXT("Raw field-agent-role diagnostic"), TEXT("es-ES")),
+		FString(TEXT("Solo el personal de campo puede unirse a la tripulación de una nave.")));
+	TestEqual(TEXT("Exact Japanese pilot-role diagnostics reject non-pilots"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("personnel_not_pilot"), TEXT("Raw pilot-role diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("操縦士役割の人員だけを航空機に配属できます。")));
+	TestEqual(TEXT("Exact French tactical-personnel diagnostics preserve layer ownership"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("personnel_in_tactical_battle"), TEXT("Raw tactical-personnel diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Le personnel engagé dans une bataille tactique active ne peut pas subir de dégâts depuis la couche stratégique.")));
+	TestEqual(TEXT("Exact German personnel-capacity diagnostics preserve the numeric boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("personnel_capacity_overflow"), TEXT("Raw personnel-capacity diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Personalkapazität der Basis überschreitet den unterstützten Bereich.")));
+	TestEqual(TEXT("Exact Spanish craft-capacity diagnostics preserve the numeric boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("craft_capacity_overflow"), TEXT("Raw craft-capacity diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La capacidad de naves de la base supera el rango admitido.")));
+	TestEqual(TEXT("Exact Japanese personnel-equipment diagnostics preserve the loadout limit"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("equipment_capacity_exceeded"), TEXT("Raw equipment-capacity diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("人員の装備には最大16個のアイテム単位を含められます。")));
+	TestEqual(TEXT("Exact French craft-equipment diagnostics preserve the slot guard"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("craft_equipment_capacity_exceeded"), TEXT("Raw craft-equipment diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La capacité d'équipement de l'appareil serait dépassée.")));
+	TestEqual(TEXT("Exact German airborne-recovery diagnostics preserve the pilot requirement"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("craft_not_airborne"), TEXT("Raw airborne-recovery diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Nur ein fliegendes Fluggerät mit zugewiesenem Piloten kann geborgen werden.")));
 	TestEqual(TEXT("Exact French interception rule diagnostics identify the missing formation data"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("invalid_interception_rules"), TEXT("Raw interception-rules diagnostic"), TEXT("fr-FR")),
