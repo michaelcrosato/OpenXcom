@@ -17084,6 +17084,22 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 		&& MakeTacticalBattleFingerprint(MagazineRead.Envelope.State.TacticalBattles[0])
 			== MakeTacticalBattleFingerprint(First.TacticalBattles[0]));
 
+	FCampaignSaveEnvelope AdversaryMagazineEnvelope = MagazineWrite.Envelope;
+	FTacticalUnitState* AdversaryWithMagazine = AdversaryMagazineEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
+		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Adversary; });
+	TestNotNull(TEXT("Magazine save fixture has an adversary unit"), AdversaryWithMagazine);
+	if (AdversaryWithMagazine != nullptr)
+	{
+		AdversaryWithMagazine->EjectedMagazines.Add({
+			FName(TEXT("item.service-rifle")), FName(TEXT("item.test-rifle-magazine")), 1 });
+		const FCampaignSaveValidationResult AdversaryMagazineValidation = FCampaignSaveCodec::Validate(
+			AdversaryMagazineEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects tactical magazines on intrinsic adversaries"),
+			AdversaryMagazineValidation.bSucceeded);
+		TestTrue(TEXT("Adversary magazine rejection has a stable diagnostic"),
+			AdversaryMagazineValidation.HasDiagnostic(TEXT("invalid_tactical_adversary_unit")));
+	}
+
 	FCampaignSaveEnvelope LegacyV26 = MagazineWrite.Envelope;
 	LegacyV26.Header.FormatVersion = 26;
 	for (FTacticalBattleState& LegacyBattle : LegacyV26.State.TacticalBattles)

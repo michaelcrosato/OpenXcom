@@ -3352,7 +3352,8 @@ namespace CampaignSavePrivate
 						PlayerPersonnelIds.Add(Unit.PersonnelId);
 					}
 					else if (Unit.PersonnelId.IsValid() || Unit.bExtracted
-						|| !Unit.WeaponStates.IsEmpty() || !Unit.CarriedItems.IsEmpty())
+						|| !Unit.WeaponStates.IsEmpty() || !Unit.CarriedItems.IsEmpty()
+						|| !Unit.EjectedMagazines.IsEmpty())
 					{
 						AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_tactical_adversary_unit"), FString::Printf(TEXT("Tactical battle '%s' adversary unit has a strategic personnel id."), *Battle.BattleId.ToString()));
 					}
