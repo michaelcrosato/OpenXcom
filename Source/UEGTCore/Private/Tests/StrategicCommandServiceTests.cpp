@@ -2865,6 +2865,24 @@ bool FStrategicWorksCadreStaffingTest::RunTest(const FString& Parameters)
 		&& OverLimitResult.HasDiagnostic(TEXT("works_cadre_limit_exceeded"))
 		&& State.CommandSequence == OverLimit.ExpectedSequence);
 
+	FCampaignState ExtremePlacement = MakeStateWithBase();
+	ExtremePlacement.Bases[0].Facilities.Reset();
+	FStrategicSimulationConfig ExtremePlacementConfig = MakeConfig();
+	ExtremePlacementConfig.BaseGridWidth = MAX_int32;
+	FStartFacilityConstructionCommand ExtremePlacementCommand;
+	ExtremePlacementCommand.ExpectedSequence = ExtremePlacement.CommandSequence;
+	ExtremePlacementCommand.ProjectId = FGuid(0xc1100001, 0xc1100002, 0xc1100003, 0xc1100004);
+	ExtremePlacementCommand.FacilityInstanceId = FGuid(0xc1200001, 0xc1200002, 0xc1200003, 0xc1200004);
+	ExtremePlacementCommand.BaseId = TestBaseId;
+	ExtremePlacementCommand.FacilityId = TEXT("facility.compact-store");
+	ExtremePlacementCommand.GridX = MAX_int32;
+	const FStrategicCommandResult ExtremePlacementResult = FStrategicCommandService::Execute(
+		ExtremePlacement, Rules, ExtremePlacementConfig, ExtremePlacementCommand);
+	TestTrue(TEXT("Facility placement rejects a right edge that would overflow 32-bit coordinates"),
+		!ExtremePlacementResult.bAccepted
+		&& ExtremePlacementResult.HasDiagnostic(TEXT("facility_out_of_bounds"))
+		&& ExtremePlacement.FacilityConstructionProjects.IsEmpty());
+
 	FSetWorksCadreStaffCommand Assign = OverLimit;
 	Assign.AssignedEngineers = 3;
 	const FWorksCadreStaffEvaluation AssignmentEvaluation =

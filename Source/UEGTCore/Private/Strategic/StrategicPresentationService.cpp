@@ -196,7 +196,12 @@ namespace StrategicPresentationPrivate
 		const int32 BWidth,
 		const int32 BHeight)
 	{
-		return AX < BX + BWidth && AX + AWidth > BX && AY < BY + BHeight && AY + AHeight > BY;
+		const int64 ARight = static_cast<int64>(AX) + AWidth;
+		const int64 ABottom = static_cast<int64>(AY) + AHeight;
+		const int64 BRight = static_cast<int64>(BX) + BWidth;
+		const int64 BBottom = static_cast<int64>(BY) + BHeight;
+		return static_cast<int64>(AX) < BRight && ARight > BX
+			&& static_cast<int64>(AY) < BBottom && ABottom > BY;
 	}
 
 	bool RectanglesAreAdjacent(
@@ -209,10 +214,14 @@ namespace StrategicPresentationPrivate
 		const int32 BWidth,
 		const int32 BHeight)
 	{
-		const bool bVertical = (AX + AWidth == BX || BX + BWidth == AX)
-			&& AY < BY + BHeight && AY + AHeight > BY;
-		const bool bHorizontal = (AY + AHeight == BY || BY + BHeight == AY)
-			&& AX < BX + BWidth && AX + AWidth > BX;
+		const int64 ARight = static_cast<int64>(AX) + AWidth;
+		const int64 ABottom = static_cast<int64>(AY) + AHeight;
+		const int64 BRight = static_cast<int64>(BX) + BWidth;
+		const int64 BBottom = static_cast<int64>(BY) + BHeight;
+		const bool bVertical = (ARight == BX || BRight == AX)
+			&& static_cast<int64>(AY) < BBottom && ABottom > BY;
+		const bool bHorizontal = (ABottom == BY || BBottom == AY)
+			&& static_cast<int64>(AX) < BRight && ARight > BX;
 		return bVertical || bHorizontal;
 	}
 
@@ -225,8 +234,9 @@ namespace StrategicPresentationPrivate
 		const int32 X,
 		const int32 Y)
 	{
-		if (X < 0 || Y < 0 || X + Candidate.GridWidth > Config.BaseGridWidth
-			|| Y + Candidate.GridHeight > Config.BaseGridHeight)
+		if (X < 0 || Y < 0 || Candidate.GridWidth <= 0 || Candidate.GridHeight <= 0
+			|| static_cast<int64>(X) + Candidate.GridWidth > Config.BaseGridWidth
+			|| static_cast<int64>(Y) + Candidate.GridHeight > Config.BaseGridHeight)
 		{
 			return false;
 		}

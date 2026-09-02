@@ -1909,7 +1909,12 @@ namespace StrategicCommandServicePrivate
 		const int32 BWidth,
 		const int32 BHeight)
 	{
-		return AX < BX + BWidth && AX + AWidth > BX && AY < BY + BHeight && AY + AHeight > BY;
+		const int64 ARight = static_cast<int64>(AX) + AWidth;
+		const int64 ABottom = static_cast<int64>(AY) + AHeight;
+		const int64 BRight = static_cast<int64>(BX) + BWidth;
+		const int64 BBottom = static_cast<int64>(BY) + BHeight;
+		return static_cast<int64>(AX) < BRight && ARight > BX
+			&& static_cast<int64>(AY) < BBottom && ABottom > BY;
 	}
 
 	bool RectanglesAreAdjacent(
@@ -1922,10 +1927,14 @@ namespace StrategicCommandServicePrivate
 		const int32 BWidth,
 		const int32 BHeight)
 	{
-		const bool bVerticalEdge = (AX + AWidth == BX || BX + BWidth == AX)
-			&& AY < BY + BHeight && AY + AHeight > BY;
-		const bool bHorizontalEdge = (AY + AHeight == BY || BY + BHeight == AY)
-			&& AX < BX + BWidth && AX + AWidth > BX;
+		const int64 ARight = static_cast<int64>(AX) + AWidth;
+		const int64 ABottom = static_cast<int64>(AY) + AHeight;
+		const int64 BRight = static_cast<int64>(BX) + BWidth;
+		const int64 BBottom = static_cast<int64>(BY) + BHeight;
+		const bool bVerticalEdge = (ARight == BX || BRight == AX)
+			&& static_cast<int64>(AY) < BBottom && ABottom > BY;
+		const bool bHorizontalEdge = (ABottom == BY || BBottom == AY)
+			&& static_cast<int64>(AX) < BRight && ARight > BX;
 		return bVerticalEdge || bHorizontalEdge;
 	}
 
@@ -2050,8 +2059,8 @@ namespace StrategicCommandServicePrivate
 		FName& OutFailureCode)
 	{
 		if (GridX < 0 || GridY < 0 || Candidate.GridWidth <= 0 || Candidate.GridHeight <= 0
-			|| GridX + Candidate.GridWidth > Config.BaseGridWidth
-			|| GridY + Candidate.GridHeight > Config.BaseGridHeight)
+			|| static_cast<int64>(GridX) + Candidate.GridWidth > Config.BaseGridWidth
+			|| static_cast<int64>(GridY) + Candidate.GridHeight > Config.BaseGridHeight)
 		{
 			OutFailureCode = TEXT("facility_out_of_bounds");
 			return false;
