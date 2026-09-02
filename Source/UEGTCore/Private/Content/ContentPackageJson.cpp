@@ -320,6 +320,15 @@ namespace ContentPackageJsonPrivate
 		return true;
 	}
 
+	int64 ComputeTacticalMapCellCount(const int32 Width, const int32 Height, const int32 Levels)
+	{
+		if (Width < 8 || Width > 64 || Height < 12 || Height > 96 || Levels < 1 || Levels > 4)
+		{
+			return MAX_int64;
+		}
+		return static_cast<int64>(Width) * static_cast<int64>(Height) * static_cast<int64>(Levels);
+	}
+
 	bool ReadTacticalDamageType(
 		const TSharedPtr<FJsonObject>& Object,
 		const TCHAR* Field,
@@ -1372,7 +1381,7 @@ namespace ContentPackageJsonPrivate
 		bValid &= ValidateNonNegative(OutRule.ObjectiveExperienceReward, TEXT("objectiveExperienceReward"), Context, Result);
 		bValid &= ValidatePositive(OutRule.ObjectiveActionPointCost, TEXT("objectiveActionPointCost"), Context, Result);
 		bValid &= ValidatePositive(OutRule.ExtractionActionPointCost, TEXT("extractionActionPointCost"), Context, Result);
-		const int64 MapCells = static_cast<int64>(OutRule.MapWidth) * OutRule.MapHeight * OutRule.MapLevels;
+		const int64 MapCells = ComputeTacticalMapCellCount(OutRule.MapWidth, OutRule.MapHeight, OutRule.MapLevels);
 		const int64 MaximumEnemies = static_cast<int64>(OutRule.BaseEnemyCount) + static_cast<int64>(OutRule.EnemiesPerThreat) * 10;
 		if ((OutRule.Context != ETacticalMissionContext::StrategicSite && OutRule.Context != ETacticalMissionContext::BaseDefense)
 			|| (OutRule.Context == ETacticalMissionContext::BaseDefense && OutRule.MapLevels != 1)

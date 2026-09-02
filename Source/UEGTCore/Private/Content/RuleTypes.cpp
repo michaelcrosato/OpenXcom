@@ -39,6 +39,15 @@ namespace RuleSetBuilderPrivate
 			});
 	}
 
+	int64 ComputeTacticalMapCellCount(const int32 Width, const int32 Height, const int32 Levels)
+	{
+		if (Width < 8 || Width > 64 || Height < 12 || Height > 96 || Levels < 1 || Levels > 4)
+		{
+			return MAX_int64;
+		}
+		return static_cast<int64>(Width) * static_cast<int64>(Height) * static_cast<int64>(Levels);
+	}
+
 	template <typename RuleType>
 	void ApplyRules(
 		const FName PackageId,
@@ -454,7 +463,7 @@ namespace RuleSetBuilderPrivate
 		}
 		for (const FTacticalMissionRule& Rule : Package.TacticalMissions)
 		{
-			const int64 MapCells = static_cast<int64>(Rule.MapWidth) * Rule.MapHeight * Rule.MapLevels;
+			const int64 MapCells = ComputeTacticalMapCellCount(Rule.MapWidth, Rule.MapHeight, Rule.MapLevels);
 			const int64 MaximumEnemies = static_cast<int64>(Rule.BaseEnemyCount) + static_cast<int64>(Rule.EnemiesPerThreat) * 10;
 			const bool bKnownAiPosture = Rule.AiPosture == ETacticalAiPosture::Assault
 				|| Rule.AiPosture == ETacticalAiPosture::SignalPressure

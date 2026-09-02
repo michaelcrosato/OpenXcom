@@ -747,6 +747,17 @@ bool FContentJsonTacticalRulesTest::RunTest(const FString& Parameters)
 			&& Parsed.Package.TacticalMissions[0].ObjectiveExperienceReward == 70);
 		const FRuleSetBuildResult Built = FRuleSetBuilder::Build({ Parsed.Package });
 		TestTrue(TEXT("Tactical rule cross-references resolve"), Built.bSucceeded);
+		if (Parsed.Package.TacticalMissions.Num() == 1)
+		{
+			FContentPackage ExtremeDimensions = Parsed.Package;
+			ExtremeDimensions.TacticalMissions[0].MapWidth = MAX_int32;
+			ExtremeDimensions.TacticalMissions[0].MapHeight = MAX_int32;
+			ExtremeDimensions.TacticalMissions[0].MapLevels = MAX_int32;
+			const FRuleSetBuildResult ExtremeBuild = FRuleSetBuilder::Build({ ExtremeDimensions });
+			TestFalse(TEXT("Rule building rejects extreme tactical map dimensions without overflowing"), ExtremeBuild.bSucceeded);
+			TestTrue(TEXT("Extreme tactical map dimensions have the shared rule-value diagnostic"),
+				ExtremeBuild.HasDiagnostic(TEXT("invalid_rule_value")));
+		}
 	}
 	const FString LandingTacticalJson = TacticalJson.Replace(
 		TEXT("\"displayName\": \"Test Recovery\","),
@@ -772,6 +783,15 @@ bool FContentJsonTacticalRulesTest::RunTest(const FString& Parameters)
 	const FContentPackageParseResult TooNarrowResult = FContentPackageJson::ParseString(TooNarrow, TEXT("tactical-too-narrow.json"));
 	TestFalse(TEXT("Unsupported tactical map dimensions are rejected"), TooNarrowResult.bSucceeded);
 	TestTrue(TEXT("Unsupported tactical map dimensions are diagnosed"), TooNarrowResult.HasDiagnostic(TEXT("invalid_field_value")));
+	const FString ExtremeDimensions = TacticalJson
+		.Replace(TEXT("\"mapWidth\": 12"), TEXT("\"mapWidth\": 2147483647"))
+		.Replace(TEXT("\"mapHeight\": 18"), TEXT("\"mapHeight\": 2147483647"))
+		.Replace(TEXT("\"mapLevels\": 2"), TEXT("\"mapLevels\": 2147483647"));
+	const FContentPackageParseResult ExtremeDimensionsResult = FContentPackageJson::ParseString(
+		ExtremeDimensions, TEXT("tactical-extreme-dimensions.json"));
+	TestFalse(TEXT("JSON parsing rejects extreme tactical map dimensions without overflowing"), ExtremeDimensionsResult.bSucceeded);
+	TestTrue(TEXT("Extreme JSON tactical map dimensions have a field-value diagnostic"),
+		ExtremeDimensionsResult.HasDiagnostic(TEXT("invalid_field_value")));
 	const FString UnknownObjectiveType = TacticalJson.Replace(TEXT("\"objectiveType\": \"control\""), TEXT("\"objectiveType\": \"capture\""));
 	const FContentPackageParseResult UnknownObjectiveTypeResult = FContentPackageJson::ParseString(UnknownObjectiveType, TEXT("tactical-unknown-objective.json"));
 	TestFalse(TEXT("Unknown tactical objective types are rejected"), UnknownObjectiveTypeResult.bSucceeded);
