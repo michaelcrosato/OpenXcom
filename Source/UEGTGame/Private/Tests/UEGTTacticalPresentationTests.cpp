@@ -313,6 +313,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Completed objectives retain a non-interactive terminal marker"), Board->GetRenderedCompletedObjectiveCount(), 1);
 	TestEqual(TEXT("Failed objectives retain a non-interactive terminal marker"), Board->GetRenderedFailedObjectiveCount(), 1);
 	TestEqual(TEXT("Path previews render every visible-level step"), Board->GetRenderedPathCount(), 2);
+	TestEqual(TEXT("Visible target cells receive a dedicated hover emphasis marker"), Board->GetRenderedHoverCount(), 1);
 	TestEqual(TEXT("Selected units receive a dedicated emphasis marker"), Board->GetRenderedSelectionCount(), 1);
 	TestEqual(TEXT("Vertical connector cells receive a dedicated traversal marker"), Board->GetRenderedConnectorCount(), 1);
 	TestEqual(TEXT("Covered cells receive a dedicated cover marker"), Board->GetRenderedCoverCount(), 1);
@@ -606,6 +607,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Board also clears last-known adversary markers atomically"), Board->GetRenderedLastKnownAdversaryCount(), 0);
 	TestEqual(TEXT("Board clears completed objective markers atomically"), Board->GetRenderedCompletedObjectiveCount(), 0);
 	TestEqual(TEXT("Board clears failed objective markers atomically"), Board->GetRenderedFailedObjectiveCount(), 0);
+	TestEqual(TEXT("Board clears hover emphasis markers atomically"), Board->GetRenderedHoverCount(), 0);
 	TestTrue(TEXT("Temporary game world shuts down cleanly"), TestWorld.DestroyTestWorld(false));
 	return true;
 }

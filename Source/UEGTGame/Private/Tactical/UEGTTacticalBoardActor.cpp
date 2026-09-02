@@ -389,6 +389,17 @@ void AUEGTTacticalBoardActor::UpdateAnimatedEffects(const bool bAnimate)
 		1.0f,
 		2.4f,
 		1.13f);
+	UpdateEmphasis(
+		HoverInstances,
+		HoverCells,
+		4.0f,
+		0.88f,
+		0.018f,
+		0.08f,
+		0.12f,
+		1.5f,
+		2.0f,
+		0.0f);
 }
 
 FVector AUEGTTacticalBoardActor::GridToWorld(
@@ -568,6 +579,7 @@ void AUEGTTacticalBoardActor::ClearBoard()
 	AdversaryUnitCells.Reset();
 	ObjectiveIds.Reset();
 	ObjectiveCells.Reset();
+	HoverCells.Reset();
 	SelectionCells.Reset();
 }
 
@@ -733,7 +745,9 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 	}
 	if (Snapshot.Hover.bHasCell && Snapshot.Hover.bCellVisible && Snapshot.Hover.Z == Snapshot.ViewedLevel)
 	{
-		AddCellMarker(HoverInstances, FIntVector(Snapshot.Hover.X, Snapshot.Hover.Y, Snapshot.Hover.Z), 4.0f, 0.88f, 0.018f);
+		const FIntVector HoverCell(Snapshot.Hover.X, Snapshot.Hover.Y, Snapshot.Hover.Z);
+		HoverCells.Add(HoverCell);
+		AddCellMarker(HoverInstances, HoverCell, 4.0f, 0.88f, 0.018f);
 	}
 	UpdateAnimatedEffects(!bReduceMotion);
 }
@@ -842,6 +856,11 @@ int32 AUEGTTacticalBoardActor::GetRenderedFailedObjectiveCount() const
 int32 AUEGTTacticalBoardActor::GetRenderedPathCount() const
 {
 	return PathInstances != nullptr ? PathInstances->GetInstanceCount() : 0;
+}
+
+int32 AUEGTTacticalBoardActor::GetRenderedHoverCount() const
+{
+	return HoverInstances != nullptr ? HoverInstances->GetInstanceCount() : 0;
 }
 
 int32 AUEGTTacticalBoardActor::GetRenderedSelectionCount() const

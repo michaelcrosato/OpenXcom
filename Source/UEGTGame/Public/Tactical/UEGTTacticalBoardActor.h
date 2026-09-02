@@ -80,6 +80,7 @@ public:
 	int32 GetRenderedLastKnownAdversaryCount() const;
 	int32 GetRenderedObjectiveCount() const;
 	int32 GetRenderedPathCount() const;
+	int32 GetRenderedHoverCount() const;
 	int32 GetRenderedSelectionCount() const;
 	int32 GetRenderedConnectorCount() const;
 	int32 GetRenderedCoverCount() const;
@@ -212,6 +213,7 @@ private:
 	TArray<FIntVector> AdversaryUnitCells;
 	TArray<FName> ObjectiveIds;
 	TArray<FIntVector> ObjectiveCells;
+	TArray<FIntVector> HoverCells;
 	TArray<FIntVector> SelectionCells;
 	EUEGTColorVisionMode ColorVisionMode = EUEGTColorVisionMode::Standard;
 	bool bUseHighContrast = true;
