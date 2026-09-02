@@ -14047,6 +14047,20 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Save validation rejects an invalid last-known adversary snapshot"), InvalidMemoryValidation.bSucceeded);
 	TestTrue(TEXT("Invalid tactical memory has a stable diagnostic"),
 		InvalidMemoryValidation.HasDiagnostic(TEXT("invalid_tactical_memory")));
+	FCampaignSaveEnvelope InvalidPlayerIdentityEnvelope = BattleWrite.Envelope;
+	FTacticalUnitState* InvalidSavedPlayer = InvalidPlayerIdentityEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
+		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+	if (InvalidSavedPlayer != nullptr)
+	{
+		InvalidSavedPlayer->DisplayName = TEXT("Tampered Persisted Identity");
+		InvalidPlayerIdentityEnvelope.Header.SaveChecksum =
+			FCampaignSaveCodec::ComputeEnvelopeChecksum(InvalidPlayerIdentityEnvelope);
+		const FCampaignSaveValidationResult InvalidPlayerIdentityValidation = FCampaignSaveCodec::Validate(
+			InvalidPlayerIdentityEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects tactical player identity drift"), InvalidPlayerIdentityValidation.bSucceeded);
+		TestTrue(TEXT("Tactical player identity drift has a stable diagnostic"),
+			InvalidPlayerIdentityValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
+	}
 	FCampaignSaveEnvelope InvalidWeatherEnvelope = BattleWrite.Envelope;
 	InvalidWeatherEnvelope.State.TacticalBattles[0].WindDirection = ETacticalWindDirection::Calm;
 	InvalidWeatherEnvelope.State.TacticalBattles[0].WindStrength = 2;
