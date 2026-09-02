@@ -14880,6 +14880,214 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FTacticalAiPostureBalanceCorpusTest,
+	"UEGT.Core.Tactical.AI.PostureBalanceCorpus",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FTacticalAiPostureBalanceCorpusTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	constexpr int32 ScenarioCount = 256;
+	constexpr int32 PostureCount = 4;
+	const ETacticalAiPosture Postures[PostureCount] = {
+		ETacticalAiPosture::Assault,
+		ETacticalAiPosture::SignalPressure,
+		ETacticalAiPosture::ObjectivePush,
+		ETacticalAiPosture::Sentinel
+	};
+	FCampaignState ProbeCampaign = MakeStateWithBase();
+	FResolvedRuleSet Rules = MakeRules();
+	int32 PostureDecisionCounts[PostureCount] = { 0, 0, 0, 0 };
+	int32 ActionCounts[PostureCount][7] = {};
+	TSet<int32> SignalUtilityValues;
+	bool bEveryDecisionSucceeded = true;
+	bool bEveryDecisionReplayed = true;
+	bool bEveryPolicyIdentityExact = true;
+	bool bEveryRandomStateUnchanged = true;
+
+	auto MakeBattle = [](const int64 Seed, const ETacticalAiPosture Posture)
+	{
+		FTacticalBattleState Battle;
+		const uint32 SeedKey = static_cast<uint32>(Seed);
+		Battle.BattleId = FGuid(0x504f5300u + SeedKey, 0x00000001u, 0x00000002u, static_cast<uint32>(Posture) + 1u);
+		Battle.OperationId = FGuid(0x504f5300u + SeedKey, 0x00000003u, 0x00000004u, 0x00000005u);
+		Battle.SiteId = FGuid(0x504f5300u + SeedKey, 0x00000006u, 0x00000007u, 0x00000008u);
+		Battle.MissionRuleId = TEXT("tactical.test-recovery");
+		Battle.CreatedUtc = FDateTime(2035, 1, 1, 12, 0, 0);
+		Battle.Width = 12;
+		Battle.Height = 7;
+		Battle.Levels = 1;
+		Battle.TurnLimit = 30;
+		Battle.TurnNumber = 1;
+		Battle.Phase = ETacticalBattlePhase::AdversaryTurn;
+		Battle.ActiveTeam = ETacticalTeam::Adversary;
+		Battle.TacticalRandom.Initialize(0x50000000LL + Seed);
+		for (int32 Y = 0; Y < Battle.Height; ++Y)
+		{
+			for (int32 X = 0; X < Battle.Width; ++X)
+			{
+				FTacticalCellState& Cell = Battle.Cells.AddDefaulted_GetRef();
+				Cell.X = X;
+				Cell.Y = Y;
+				Cell.Z = 0;
+				Cell.TerrainRuleId = TEXT("terrain.test-deck");
+			}
+		}
+
+		FTacticalUnitState& Adversary = Battle.Units.AddDefaulted_GetRef();
+		Adversary.UnitId = FGuid(0x41490000u + SeedKey, 0x00000010u, 0x00000020u, 0x00000030u);
+		Adversary.SourceRuleId = TEXT("unit.test-scout");
+		Adversary.DisplayName = TEXT("Corpus Scout");
+		Adversary.Team = ETacticalTeam::Adversary;
+		Adversary.X = 1;
+		Adversary.Y = 3;
+		Adversary.Z = 0;
+		Adversary.MaxHealth = 40;
+		Adversary.CurrentHealth = 40;
+		Adversary.Accuracy = 45;
+		Adversary.Resolve = 50;
+		Adversary.Mobility = 55;
+		Adversary.Strength = 42;
+		Adversary.MaxActionPoints = 8;
+		Adversary.RemainingActionPoints = 8;
+		Adversary.MaxMorale = 100;
+		Adversary.CurrentMorale = 100;
+		Adversary.Stance = ETacticalStance::Standing;
+
+		FTacticalUnitState& Player = Battle.Units.AddDefaulted_GetRef();
+		Player.UnitId = FGuid(0x504c0000u + SeedKey, 0x00000040u, 0x00000050u, 0x00000060u);
+		Player.SourceRuleId = TEXT("role.field-agent");
+		Player.DisplayName = TEXT("Corpus Agent");
+		Player.Team = ETacticalTeam::Player;
+		Player.X = 4 + static_cast<int32>(Seed % 3);
+		Player.Y = 3;
+		Player.Z = 0;
+		Player.MaxHealth = 55;
+		Player.CurrentHealth = 12 + static_cast<int32>(Seed % 29);
+		Player.Accuracy = 50;
+		Player.Resolve = 35 + static_cast<int32>((Seed * 7) % 46);
+		Player.Mobility = 52;
+		Player.Strength = 53;
+		Player.MaxActionPoints = 8;
+		Player.RemainingActionPoints = 8;
+		Player.MaxMorale = 100;
+		Player.CurrentMorale = 20 + static_cast<int32>((Seed * 11) % 81);
+
+		if (Posture == ETacticalAiPosture::ObjectivePush)
+		{
+			FTacticalObjectiveState& Objective = Battle.Objectives.AddDefaulted_GetRef();
+			Objective.ObjectiveId = TEXT("objective.test-control");
+			Objective.X = 10;
+			Objective.Y = 3;
+			Objective.Z = 0;
+			Objective.Type = ETacticalObjectiveType::Control;
+			Objective.Status = ETacticalObjectiveStatus::Active;
+			Objective.RequiredInteractions = 3;
+		}
+		return Battle;
+	};
+
+	auto MakeDecisionFingerprint = [](const FTacticalAiDecision& Decision)
+	{
+		FString Fingerprint = FString::Printf(
+			TEXT("%d:%d:%d:%s:%s:%s:%d,%d,%d:%d:%d:%d:%d:%d:%d"),
+			static_cast<int32>(Decision.Posture),
+			static_cast<int32>(Decision.Goal),
+			static_cast<int32>(Decision.ActionType),
+			*Decision.UnitId.ToString(EGuidFormats::Digits),
+			*Decision.TargetUnitId.ToString(EGuidFormats::Digits),
+			*Decision.ObjectiveId.ToString(),
+			Decision.DestinationX, Decision.DestinationY, Decision.DestinationZ,
+			static_cast<int32>(Decision.DesiredStance),
+			Decision.PerceivedHostileCount, Decision.MovementCost, Decision.HitChance,
+			Decision.UtilityScore, Decision.bSucceeded ? 1 : 0);
+		for (const FTacticalAiDiagnostic& Diagnostic : Decision.Diagnostics)
+		{
+			Fingerprint += TEXT(":");
+			Fingerprint += Diagnostic.Code.ToString();
+		}
+		return Fingerprint;
+	};
+
+	for (int64 Seed = 1; Seed <= ScenarioCount; ++Seed)
+	{
+		for (int32 PostureIndex = 0; PostureIndex < PostureCount; ++PostureIndex)
+		{
+			const ETacticalAiPosture Posture = Postures[PostureIndex];
+			FResolvedRuleSet ScenarioRules = Rules;
+			FTacticalUnitRule& UnitRule = ScenarioRules.TacticalUnits.FindChecked(TEXT("unit.test-scout"));
+			FTacticalMissionRule& MissionRule = ScenarioRules.TacticalMissions.FindChecked(TEXT("tactical.test-recovery"));
+			MissionRule.AiPosture = Posture;
+			if (Posture == ETacticalAiPosture::SignalPressure)
+			{
+				UnitRule.SignalPower = 70;
+				UnitRule.SignalRange = 12;
+				UnitRule.SignalActionPointCost = 4;
+			}
+			else if (Posture == ETacticalAiPosture::Sentinel)
+			{
+				UnitRule.AttackRange = 1;
+			}
+
+			const FTacticalBattleState Battle = MakeBattle(Seed, Posture);
+			const int64 InitialDrawCount = Battle.TacticalRandom.DrawCount;
+			const FTacticalAiDecision Decision = FTacticalAiService::ChooseAction(
+				Battle, ProbeCampaign, ScenarioRules, Battle.Units[0].UnitId);
+			const FTacticalAiDecision ReplayDecision = FTacticalAiService::ChooseAction(
+				Battle, ProbeCampaign, ScenarioRules, Battle.Units[0].UnitId);
+			bEveryDecisionSucceeded &= Decision.bSucceeded;
+			bEveryDecisionReplayed &= MakeDecisionFingerprint(Decision) == MakeDecisionFingerprint(ReplayDecision);
+			bEveryPolicyIdentityExact &= Decision.Posture == Posture
+				&& FTacticalAiService::GetPosturePolicyId(Decision.Posture).IsValid();
+			bEveryRandomStateUnchanged &= Battle.TacticalRandom.DrawCount == InitialDrawCount;
+			if (Decision.bSucceeded)
+			{
+				++PostureDecisionCounts[PostureIndex];
+				const int32 ActionIndex = static_cast<int32>(Decision.ActionType);
+				if (ActionIndex >= 0 && ActionIndex < 7)
+				{
+					++ActionCounts[PostureIndex][ActionIndex];
+				}
+				if (Posture == ETacticalAiPosture::SignalPressure)
+				{
+					SignalUtilityValues.Add(Decision.UtilityScore);
+				}
+			}
+		}
+	}
+
+	AddInfo(FString::Printf(
+		TEXT("Tactical AI posture corpus: scenarios=%d decisions=%d/%d/%d/%d assault-attacks=%d signal-projections=%d objective-moves=%d sentinel-guards=%d signal-utility-values=%d"),
+		ScenarioCount, PostureDecisionCounts[0], PostureDecisionCounts[1],
+		PostureDecisionCounts[2], PostureDecisionCounts[3],
+		ActionCounts[0][static_cast<int32>(ETacticalAiActionType::AttackUnit)],
+		ActionCounts[1][static_cast<int32>(ETacticalAiActionType::ProjectSignal)],
+		ActionCounts[2][static_cast<int32>(ETacticalAiActionType::Move)],
+		ActionCounts[3][static_cast<int32>(ETacticalAiActionType::ChangeStance)],
+		SignalUtilityValues.Num()));
+	TestTrue(TEXT("Every seeded posture decision succeeds"), bEveryDecisionSucceeded);
+	TestTrue(TEXT("Every seeded posture decision repeats exactly"), bEveryDecisionReplayed);
+	TestTrue(TEXT("Every seeded decision reports a valid authored posture policy"), bEveryPolicyIdentityExact);
+	TestTrue(TEXT("Pure AI planning consumes no tactical random draws"), bEveryRandomStateUnchanged);
+	for (int32 PostureIndex = 0; PostureIndex < PostureCount; ++PostureIndex)
+	{
+		const FString Label = FString::Printf(TEXT("Posture corpus resolves profile %d for every seed"), PostureIndex);
+		TestEqual(*Label, PostureDecisionCounts[PostureIndex], ScenarioCount);
+	}
+	TestEqual(TEXT("Assault corpus prefers direct attacks when targets are in range"),
+		ActionCounts[0][static_cast<int32>(ETacticalAiActionType::AttackUnit)], ScenarioCount);
+	TestEqual(TEXT("Signal-pressure corpus prefers intrinsic signal projection"),
+		ActionCounts[1][static_cast<int32>(ETacticalAiActionType::ProjectSignal)], ScenarioCount);
+	TestEqual(TEXT("Objective-push corpus advances under visible opposition"),
+		ActionCounts[2][static_cast<int32>(ETacticalAiActionType::Move)], ScenarioCount);
+	TestEqual(TEXT("Sentinel corpus holds with a defensive stance change"),
+		ActionCounts[3][static_cast<int32>(ETacticalAiActionType::ChangeStance)], ScenarioCount);
+	TestTrue(TEXT("Signal-pressure utility varies with authored combat context"), SignalUtilityValues.Num() > 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FTacticalMovementVisibilityTurnFlowTest,
 	"UEGT.Core.Tactical.Commands.MovementVisibilityTurnFlowAndReplay",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
