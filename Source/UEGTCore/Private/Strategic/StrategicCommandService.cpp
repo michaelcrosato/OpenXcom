@@ -56,6 +56,18 @@ namespace StrategicCommandServicePrivate
 			100));
 	}
 
+	int32 RollPersonnelStat(
+		const int32 BaseValue,
+		const int32 Minimum,
+		const int32 Maximum,
+		FDeterministicRandomStream& Random)
+	{
+		return static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(BaseValue) + Random.NextIntInclusive(-5, 5),
+			Minimum,
+			Maximum));
+	}
+
 	struct FBaseSpecializationCandidate
 	{
 		FName SpecializationId;
@@ -11265,12 +11277,17 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 					Person.DisplayName = Order.DisplayName;
 					Person.RoleId = Order.RoleId;
 					Person.BaseId = Order.BaseId;
-					Person.MaxHealth = FMath::Clamp(Role.BaseHealth + Transaction.SimulationRandom.NextIntInclusive(-5, 5), 1, 200);
+					Person.MaxHealth = RollPersonnelStat(
+						Role.BaseHealth, 1, 200, Transaction.SimulationRandom);
 					Person.CurrentHealth = Person.MaxHealth;
-					Person.Accuracy = FMath::Clamp(Role.BaseAccuracy + Transaction.SimulationRandom.NextIntInclusive(-5, 5), 1, 100);
-					Person.Resolve = FMath::Clamp(Role.BaseResolve + Transaction.SimulationRandom.NextIntInclusive(-5, 5), 1, 100);
-					Person.Mobility = FMath::Clamp(Role.BaseMobility + Transaction.SimulationRandom.NextIntInclusive(-5, 5), 1, 100);
-					Person.Strength = FMath::Clamp(Role.BaseStrength + Transaction.SimulationRandom.NextIntInclusive(-5, 5), 1, 100);
+					Person.Accuracy = RollPersonnelStat(
+						Role.BaseAccuracy, 1, 100, Transaction.SimulationRandom);
+					Person.Resolve = RollPersonnelStat(
+						Role.BaseResolve, 1, 100, Transaction.SimulationRandom);
+					Person.Mobility = RollPersonnelStat(
+						Role.BaseMobility, 1, 100, Transaction.SimulationRandom);
+					Person.Strength = RollPersonnelStat(
+						Role.BaseStrength, 1, 100, Transaction.SimulationRandom);
 					FStrategicEvent& Arrived = AddEvent(Result, EStrategicEventType::PersonnelArrived, NextSequence, Slice.CurrentUtc);
 					Arrived.BaseId = Order.BaseId;
 					Arrived.ProjectId = Order.OrderId;

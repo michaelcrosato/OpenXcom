@@ -7536,6 +7536,69 @@ bool FStrategicPersonnelRecruitmentTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicPersonnelRecruitmentStatBoundaryTest,
+	"UEGT.Core.StrategicCommands.PersonnelRecruitmentStatBoundaries",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicPersonnelRecruitmentStatBoundaryTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	for (const int32 ExtremeBaseValue : { MIN_int32, MAX_int32 })
+	{
+		const bool bMinimum = ExtremeBaseValue == MIN_int32;
+		FResolvedRuleSet Rules = MakeRules();
+		FStrategicSimulationConfig Config = MakeConfig();
+		Config.MaxGeneralPersonnelPerBase = 1;
+		FCampaignState State = MakeStateWithBase();
+		State.SimulationRandom.Initialize(777);
+
+		FRecruitPersonnelCommand Recruit;
+		Recruit.ExpectedSequence = State.CommandSequence;
+		Recruit.OrderId = FGuid(bMinimum ? 171 : 181, 172, 173, 174);
+		Recruit.PersonnelId = FGuid(bMinimum ? 175 : 185, 176, 177, 178);
+		Recruit.BaseId = TestBaseId;
+		Recruit.RoleId = TEXT("role.field-agent");
+		Recruit.DisplayName = bMinimum ? TEXT("Minimum Roll") : TEXT("Maximum Roll");
+		const FStrategicCommandResult Started =
+			FStrategicCommandService::Execute(State, Rules, Config, Recruit);
+
+		FPersonnelRoleRule* Role = Rules.PersonnelRoles.Find(Recruit.RoleId);
+		if (Role != nullptr)
+		{
+			Role->BaseHealth = ExtremeBaseValue;
+			Role->BaseAccuracy = ExtremeBaseValue;
+			Role->BaseResolve = ExtremeBaseValue;
+			Role->BaseMobility = ExtremeBaseValue;
+			Role->BaseStrength = ExtremeBaseValue;
+		}
+
+		FAdvanceStrategicTimeCommand Advance;
+		Advance.ExpectedSequence = State.CommandSequence;
+		Advance.Rate = EStrategicTimeRate::OneHour;
+		const FStrategicCommandResult Arrived =
+			FStrategicCommandService::Execute(State, Rules, Config, Advance);
+		const int32 ExpectedHealth = bMinimum ? 1 : 200;
+		const int32 ExpectedStat = bMinimum ? 1 : 100;
+		TestTrue(
+			bMinimum
+				? TEXT("Minimum recruitment rule stats arrive without signed wrap")
+				: TEXT("Maximum recruitment rule stats arrive without signed wrap"),
+			Started.bAccepted && Arrived.bAccepted
+				&& State.RecruitmentOrders.IsEmpty()
+				&& State.Personnel.Num() == 1
+				&& State.Personnel[0].MaxHealth == ExpectedHealth
+				&& State.Personnel[0].CurrentHealth == ExpectedHealth
+				&& State.Personnel[0].Accuracy == ExpectedStat
+				&& State.Personnel[0].Resolve == ExpectedStat
+				&& State.Personnel[0].Mobility == ExpectedStat
+				&& State.Personnel[0].Strength == ExpectedStat);
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicPersonnelTransferDismissalTest,
 	"UEGT.Core.StrategicCommands.PersonnelTransferAndDismissal",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
