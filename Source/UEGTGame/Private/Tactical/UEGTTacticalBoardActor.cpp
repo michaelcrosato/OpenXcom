@@ -434,8 +434,12 @@ float AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(const FTacticalHud
 	const float HealthRatio = Unit.MaxHealth > 0
 		? FMath::Clamp(static_cast<float>(Unit.CurrentHealth) / Unit.MaxHealth, 0.0f, 1.0f)
 		: 1.0f;
+	const float MoraleRatio = Unit.MaxMorale > 0
+		? FMath::Clamp(static_cast<float>(Unit.CurrentMorale) / Unit.MaxMorale, 0.0f, 1.0f)
+		: 1.0f;
 	const float StanceScale = Unit.Stance == ETacticalStance::Crouched ? 0.52f : 0.74f;
-	return StanceScale * (0.62f + HealthRatio * 0.38f);
+	const float MoraleScale = 0.82f + MoraleRatio * 0.18f;
+	return StanceScale * (0.62f + HealthRatio * 0.38f) * MoraleScale;
 }
 
 float AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(

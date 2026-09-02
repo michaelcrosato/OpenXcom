@@ -67,6 +67,15 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	const float DamagedHeight = AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MarkerUnit);
 	TestTrue(TEXT("Tactical marker silhouette shortens for crouched stance"), CrouchedHeight < StandingHeight);
 	TestTrue(TEXT("Tactical marker silhouette shortens for damaged health"), DamagedHeight < StandingHeight);
+	FTacticalHudUnitView MoraleUnit;
+	MoraleUnit.MaxHealth = 100;
+	MoraleUnit.CurrentHealth = 100;
+	MoraleUnit.MaxMorale = 100;
+	MoraleUnit.CurrentMorale = 100;
+	const float HighMoraleHeight = AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MoraleUnit);
+	MoraleUnit.CurrentMorale = 20;
+	TestTrue(TEXT("Tactical marker silhouette shortens for low morale"),
+		AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MoraleUnit) < HighMoraleHeight);
 	MarkerUnit.bIncapacitated = true;
 	TestEqual(TEXT("Incapacitated marker silhouette retains the low profile"),
 		AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MarkerUnit), 0.18f);

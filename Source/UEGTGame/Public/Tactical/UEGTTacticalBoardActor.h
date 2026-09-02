@@ -90,7 +90,7 @@ public:
 	int32 GetRenderedFailedObjectiveCount() const;
 	/** Returns whether the board has loaded the semantic primitive profile for tactical markers. */
 	bool UsesSemanticMarkerGeometry() const;
-	/** Deterministic height encoding for a currently visible unit's stance and health. */
+	/** Deterministic height encoding for a currently visible unit's stance, health, and morale. */
 	static float CalculateUnitMarkerHeightScale(const FTacticalHudUnitView& Unit);
 	/** Deterministic height encoding for active objective interaction progress. */
 	static float CalculateObjectiveMarkerHeightScale(const FTacticalHudObjectiveView& Objective);
