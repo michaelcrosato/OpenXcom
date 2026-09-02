@@ -3399,6 +3399,12 @@ namespace CampaignSavePrivate
 						|| Objective.AdversaryInteractions < 0 || Objective.AdversaryInteractions > Objective.RequiredInteractions
 						|| (Objective.Type != ETacticalObjectiveType::Control && Objective.AdversaryInteractions != 0)
 						|| (Objective.CompletedInteractions > 0 && Objective.AdversaryInteractions > 0)
+						|| (Objective.Status == ETacticalObjectiveStatus::Active
+							&& (Objective.CompletedInteractions >= Objective.RequiredInteractions
+								|| Objective.AdversaryInteractions >= Objective.RequiredInteractions))
+						|| (Objective.Status == ETacticalObjectiveStatus::Completed
+							&& (Objective.CompletedInteractions != Objective.RequiredInteractions
+								|| Objective.AdversaryInteractions != 0))
 						|| !bObjectivePhaseValid)
 					{
 						AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_tactical_objective"), FString::Printf(TEXT("Tactical battle '%s' contains an invalid objective or objective phase."), *Battle.BattleId.ToString()));

@@ -17100,6 +17100,23 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 			AdversaryMagazineValidation.HasDiagnostic(TEXT("invalid_tactical_adversary_unit")));
 	}
 
+	FCampaignSaveEnvelope ImpossibleCompletedObjectiveEnvelope = MagazineWrite.Envelope;
+	FTacticalObjectiveState* ImpossibleCompletedObjective = ImpossibleCompletedObjectiveEnvelope.State.TacticalBattles[0].Objectives.FindByPredicate(
+		[](const FTacticalObjectiveState& Objective) { return Objective.Status == ETacticalObjectiveStatus::Active; });
+	TestNotNull(TEXT("Magazine save fixture has an active objective"), ImpossibleCompletedObjective);
+	if (ImpossibleCompletedObjective != nullptr)
+	{
+		ImpossibleCompletedObjective->Status = ETacticalObjectiveStatus::Completed;
+		ImpossibleCompletedObjective->CompletedInteractions = 0;
+		ImpossibleCompletedObjective->AdversaryInteractions = 0;
+		const FCampaignSaveValidationResult ImpossibleCompletedObjectiveValidation = FCampaignSaveCodec::Validate(
+			ImpossibleCompletedObjectiveEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects completed objectives without required interactions"),
+			ImpossibleCompletedObjectiveValidation.bSucceeded);
+		TestTrue(TEXT("Impossible objective status has a stable diagnostic"),
+			ImpossibleCompletedObjectiveValidation.HasDiagnostic(TEXT("invalid_tactical_objective")));
+	}
+
 	FCampaignSaveEnvelope LegacyV26 = MagazineWrite.Envelope;
 	LegacyV26.Header.FormatVersion = 26;
 	for (FTacticalBattleState& LegacyBattle : LegacyV26.State.TacticalBattles)
