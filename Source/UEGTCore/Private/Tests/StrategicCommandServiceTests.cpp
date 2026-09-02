@@ -9070,6 +9070,9 @@ bool FStrategicInterceptionCombatVictoryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Weapon fire emits an event"), Victory.HasEvent(EStrategicEventType::CraftWeaponFired));
 	TestTrue(TEXT("Lethal round emits contact destruction"), Victory.HasEvent(EStrategicEventType::StrategicContactDestroyed));
 	TestTrue(TEXT("Lethal round emits victory"), Victory.HasEvent(EStrategicEventType::InterceptionWon));
+	TestFalse(TEXT("Campaign victory does not apply a next-wave aftershock"),
+		Victory.HasEvent(EStrategicEventType::InterceptionAftershockApplied)
+		&& State.NextAdversaryMissionSeconds == 0);
 	TestTrue(TEXT("Victory creates a strategic site"), Victory.HasEvent(EStrategicEventType::StrategicSiteCreated));
 	TestTrue(TEXT("Combat round emits a summary event"), Victory.HasEvent(EStrategicEventType::InterceptionRoundResolved));
 	TestTrue(TEXT("Victory requests a decision pause"), Victory.bDecisionPause);
@@ -11712,6 +11715,22 @@ bool FStrategicLandingOutcomeTest::RunTest(const FString& Parameters)
 	FStrategicSimulationConfig Config = MakeConfig();
 	Config.FailurePressureThreshold = 100;
 	Config.VictoryThwartedMissions = 10;
+	int64 AftershockSeconds = 0;
+	TestTrue(TEXT("Default aftershock scales a threat-two contact to exactly one hour"),
+		FStrategicCommandService::CalculateInterceptionAftershockSeconds(
+			2, Config, AftershockSeconds)
+		&& AftershockSeconds == 2 * 30 * 60LL);
+	FStrategicSimulationConfig DisabledAftershockConfig = Config;
+	DisabledAftershockConfig.InterceptionAftershockMinutesPerThreat = 0;
+	TestTrue(TEXT("Zero aftershock tuning is a valid deterministic disable switch"),
+		FStrategicCommandService::CalculateInterceptionAftershockSeconds(
+			10, DisabledAftershockConfig, AftershockSeconds)
+		&& AftershockSeconds == 0);
+	FStrategicSimulationConfig InvalidAftershockConfig = Config;
+	InvalidAftershockConfig.InterceptionAftershockMinutesPerThreat = 361;
+	TestFalse(TEXT("Out-of-range aftershock tuning is rejected before arithmetic"),
+		FStrategicCommandService::CalculateInterceptionAftershockSeconds(
+			2, InvalidAftershockConfig, AftershockSeconds));
 	FCampaignState LaunchedState = MakeStateWithBase();
 	LaunchedState.SimulationRandom.Initialize(0x4c414e44);
 	LaunchedState.NextAdversaryMissionSeconds = 5;
@@ -11745,6 +11764,9 @@ bool FStrategicLandingOutcomeTest::RunTest(const FString& Parameters)
 	InterceptionWeapon.WeaponItemId = TEXT("item.sky-lance");
 	InterceptionWeapon.Ammunition = 6;
 	Intercepted.StrategicContacts[0].Status = EStrategicContactStatus::Engaged;
+	const FGuid InterceptedMissionId = Intercepted.AdversaryMissions[0].MissionId;
+	const FName InterceptedMissionRuleId = Intercepted.AdversaryMissions[0].MissionRuleId;
+	const int64 CountdownBeforeInterception = Intercepted.NextAdversaryMissionSeconds;
 	FResolveInterceptionRoundCommand Resolve;
 	Resolve.ExpectedSequence = Intercepted.CommandSequence;
 	Resolve.ContactId = Intercepted.StrategicContacts[0].ContactId;
@@ -11757,6 +11779,24 @@ bool FStrategicLandingOutcomeTest::RunTest(const FString& Parameters)
 		&& !Destroyed.HasEvent(EStrategicEventType::StrategicContactLanded)
 		&& Intercepted.StrategicContacts.IsEmpty() && Intercepted.AdversaryMissions.IsEmpty()
 		&& Intercepted.AdversaryMissionsThwarted == 1);
+	const FStrategicEvent* Aftershock = Destroyed.Events.FindByPredicate(
+		[](const FStrategicEvent& Event)
+		{
+			return Event.Type == EStrategicEventType::InterceptionAftershockApplied;
+		});
+	TestTrue(TEXT("Authored interception records one threat-scaled aftershock with exact telemetry"),
+		Aftershock != nullptr
+		&& Aftershock->MissionId == InterceptedMissionId
+		&& Aftershock->ContactId == Resolve.ContactId
+		&& Aftershock->RuleId == InterceptedMissionRuleId
+		&& Aftershock->Quantity == 2
+		&& Aftershock->Amount == 2 * 30 * 60LL
+		&& Aftershock->PreviousAdversaryMissionSeconds == CountdownBeforeInterception
+		&& Aftershock->AdversaryMissionDelaySeconds == 2 * 30 * 60LL
+		&& Aftershock->NextAdversaryMissionSeconds
+			== CountdownBeforeInterception + 2 * 30 * 60LL
+		&& Intercepted.NextAdversaryMissionSeconds
+			== CountdownBeforeInterception + 2 * 30 * 60LL);
 	TestTrue(TEXT("Interception yields the longer-lived lower-threat wreckage profile"),
 		Intercepted.StrategicSites.Num() == 1
 		&& Intercepted.StrategicSites[0].Type == EStrategicSiteType::Wreckage

@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, craft-state safeguards, personnel-integrity safeguards, control safeguards, base-site safeguards, and tactical-resolution safeguards expose one thousand six hundred twenty-one localized keys"),
-		Loaded.Catalog.Entries.Num(), 1621);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, craft-state safeguards, personnel-integrity safeguards, control safeguards, base-site safeguards, tactical-resolution safeguards, and interception aftershock expose one thousand six hundred twenty-two localized keys"),
+		Loaded.Catalog.Entries.Num(), 1622);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -366,6 +366,12 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.Resolve(
 			TEXT("strategic.interception-contact-maneuver-tooltip"), TEXT("fallback"), TEXT("ja")),
 		FString(TEXT("接触はベクトル観測から始まり、船体が35%を超えた状態で2ラウンド完了すると信号シアへ移行し、船体が35%以下になると離脱線反撃へ切り替えます。機動選択による追加の乱数消費はありません。")));
+	TestEqual(TEXT("German interception aftershock result preserves the exact delay telemetry"),
+		FString::Format(
+			*Loaded.Catalog.Resolve(
+				TEXT("strategic.contact-interception-aftershock-format"), TEXT("fallback"), TEXT("de")),
+			{ TEXT("ABSTANDSCHIRM"), TEXT("60:00") }),
+		FString(TEXT("Abfangrunde ausgewertet • ABSTANDSCHIRM • die nächste gegnerische Welle wird um 60:00 verzögert.")));
 	TestEqual(TEXT("French precision-screen doctrine snapshot is exact"),
 		Loaded.Catalog.Resolve(
 			TEXT("strategic.base-defense-doctrine-precision"), TEXT("fallback"), TEXT("fr")),
@@ -1149,7 +1155,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1621);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1622);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),

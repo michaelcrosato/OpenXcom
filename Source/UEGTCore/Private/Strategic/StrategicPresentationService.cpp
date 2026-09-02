@@ -566,6 +566,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 	}
 	if (Config.BaseGridWidth <= 0 || Config.BaseGridHeight <= 0
 		|| Config.MaxGeneralPersonnelPerBase <= 0
+		|| Config.InterceptionAftershockMinutesPerThreat < 0
+		|| Config.InterceptionAftershockMinutesPerThreat > 360
 		|| Config.MutualAidConvoyTransitHours <= 0
 		|| Config.MutualAidConvoyTransitHours > 8760)
 	{

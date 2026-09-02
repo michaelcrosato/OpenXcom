@@ -7782,6 +7782,23 @@ void AUEGTTacticalPlayerController::ResolveContactInterception(
 	Command.ContactId = ContactId;
 	Command.Posture = Posture;
 	const FStrategicCommandResult Result = Instance->ResolveInterceptionRound(Command);
+	const FStrategicEvent* Aftershock = Result.Events.FindByPredicate(
+		[](const FStrategicEvent& Event)
+		{
+			return Event.Type == EStrategicEventType::InterceptionAftershockApplied;
+		});
+	if (Aftershock != nullptr)
+	{
+		PresentStrategicCommandResult(Result, UEGTTacticalControllerPrivate::LocalizedFormat(
+			TEXT("strategic.contact-interception-aftershock-format"),
+			TEXT("Interception round resolved • {0} • next adversary wave delayed by {1}."),
+			{
+				UEGTTacticalControllerPrivate::LocalizedInterceptionPosture(Posture),
+				UEGTTacticalControllerPrivate::CompactMinutesSeconds(
+					Aftershock->AdversaryMissionDelaySeconds)
+			}));
+		return;
+	}
 	PresentStrategicCommandResult(Result, UEGTTacticalControllerPrivate::LocalizedFormat(
 		TEXT("strategic.contact-interception-posture-resolved-format"),
 		TEXT("Interception round resolved • {0} • events: {1}."),

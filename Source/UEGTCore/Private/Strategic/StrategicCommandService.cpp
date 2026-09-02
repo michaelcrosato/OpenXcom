@@ -3041,6 +3041,8 @@ namespace StrategicCommandServicePrivate
 	bool ValidateAdversaryConfig(const FStrategicSimulationConfig& Config, FStrategicCommandResult& Result)
 	{
 		if (Config.StartingAdversaryDelayHours <= 0
+			|| Config.InterceptionAftershockMinutesPerThreat < 0
+			|| Config.InterceptionAftershockMinutesPerThreat > 360
 			|| Config.MaxActiveAdversaryMissions <= 0
 			|| Config.FailurePressureThreshold <= 0 || Config.FailurePressureThreshold > 100
 			|| Config.VictoryThwartedMissions <= 0
@@ -5803,6 +5805,27 @@ bool FStrategicCommandService::ScaleAdversaryEscapeConsequence(
 	return GetAdversaryDifficultyTuning(Difficulty, Config, Tuning)
 		&& StrategicCommandServicePrivate::TryScaleNonNegativeByPercent(
 			BaseValue, Tuning.EscapeConsequencePercent, OutValue);
+}
+
+bool FStrategicCommandService::CalculateInterceptionAftershockSeconds(
+	const int32 ContactThreatRating,
+	const FStrategicSimulationConfig& Config,
+	int64& OutSeconds)
+{
+	OutSeconds = 0;
+	if (ContactThreatRating <= 0 || ContactThreatRating > 10
+		|| Config.InterceptionAftershockMinutesPerThreat < 0
+		|| Config.InterceptionAftershockMinutesPerThreat > 360)
+	{
+		return false;
+	}
+	int64 DelayMinutes = 0;
+	return StrategicCommandServicePrivate::TryMultiplyNonNegative(
+		ContactThreatRating,
+		Config.InterceptionAftershockMinutesPerThreat,
+		DelayMinutes)
+		&& StrategicCommandServicePrivate::TryMultiplyNonNegative(
+			DelayMinutes, 60, OutSeconds);
 }
 
 int32 FStrategicCommandService::GetRegionalFundingPercent(const int32 Support)
@@ -20309,6 +20332,12 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		const FName ContactRuleId = Contact->ContactRuleId;
 		const int32 ContactLongitude = Contact->LongitudeMilliDegrees;
 		const int32 ContactLatitude = Contact->LatitudeMilliDegrees;
+		const FAdversaryMissionState* ExistingMission = FindAdversaryMission(Transaction, ContactId);
+		const bool bHasAdversaryMission = ExistingMission != nullptr;
+		const FGuid MissionId = ExistingMission != nullptr ? ExistingMission->MissionId : FGuid();
+		const FName MissionRuleId = ExistingMission != nullptr
+			? ExistingMission->MissionRuleId
+			: NAME_None;
 		Transaction.CampaignScore = PotentialScore;
 		FStrategicSiteState& Site = Transaction.StrategicSites.AddDefaulted_GetRef();
 		Site.SiteId = ContactId;
@@ -20337,6 +20366,46 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			Result.Events.Reset();
 			AddError(Result, TEXT("adversary_state_overflow"), TEXT("Adversary mission resolution exceeded the campaign numeric range."));
 			return Result;
+		}
+		if (bHasAdversaryMission && Transaction.Outcome == ECampaignOutcome::Ongoing
+			&& Transaction.NextAdversaryMissionSeconds > 0)
+		{
+			int64 AftershockSeconds = 0;
+			if (!FStrategicCommandService::CalculateInterceptionAftershockSeconds(
+				ContactRule->ThreatRating, Config, AftershockSeconds))
+			{
+				Result.Events.Reset();
+				AddError(Result, TEXT("adversary_state_overflow"),
+					TEXT("Interception aftershock exceeded the campaign numeric range."));
+				return Result;
+			}
+			if (AftershockSeconds > 0)
+			{
+				const int64 PreviousAdversaryMissionSeconds = Transaction.NextAdversaryMissionSeconds;
+				if (!TryAdd(
+					PreviousAdversaryMissionSeconds,
+					AftershockSeconds,
+					Transaction.NextAdversaryMissionSeconds))
+				{
+					Result.Events.Reset();
+					AddError(Result, TEXT("adversary_state_overflow"),
+						TEXT("Interception aftershock exceeded the campaign numeric range."));
+					return Result;
+				}
+				FStrategicEvent& Aftershock = AddEvent(
+					Result,
+					EStrategicEventType::InterceptionAftershockApplied,
+					NextSequence,
+					Transaction.StrategicTime.Utc);
+				Aftershock.MissionId = MissionId;
+				Aftershock.ContactId = ContactId;
+				Aftershock.RuleId = MissionRuleId;
+				Aftershock.Amount = AftershockSeconds;
+				Aftershock.Quantity = ContactRule->ThreatRating;
+				Aftershock.PreviousAdversaryMissionSeconds = PreviousAdversaryMissionSeconds;
+				Aftershock.AdversaryMissionDelaySeconds = AftershockSeconds;
+				Aftershock.NextAdversaryMissionSeconds = Transaction.NextAdversaryMissionSeconds;
+			}
 		}
 		for (FCraftState& Craft : Transaction.Craft)
 		{

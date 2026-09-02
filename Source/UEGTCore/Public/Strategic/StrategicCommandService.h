@@ -134,6 +134,10 @@ struct UEGTCORE_API FStrategicSimulationConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Strategic")
 	int32 WreckageSiteLifetimeHours = 72;
 
+	/** Deterministic next-wave delay added per threat point after a successful interception. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Strategic", meta = (ClampMin = "0", ClampMax = "360"))
+	int32 InterceptionAftershockMinutesPerThreat = 30;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Strategic")
 	int32 StartingAdversaryDelayHours = 24;
 
@@ -2114,7 +2118,9 @@ enum class EStrategicEventType : uint8
 	/** Engineers were reassigned to or from a base's facility-mobilization cadre. */
 	WorksCadreStaffChanged,
 	/** A base selected a new future-work construction-versus-repair charter. */
-	WorksCadreCharterChanged
+	WorksCadreCharterChanged,
+	/** A successful interception extended the next adversary-wave countdown. */
+	InterceptionAftershockApplied
 };
 
 USTRUCT(BlueprintType)
@@ -2504,6 +2510,18 @@ struct UEGTCORE_API FStrategicEvent
 	/** Exact contact route progress removed by a pursuit consequence, in seconds. */
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic")
 	int64 ContactRouteDelaySeconds = 0;
+
+	/** Exact adversary-wave countdown before an interception aftershock. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic")
+	int64 PreviousAdversaryMissionSeconds = 0;
+
+	/** Exact deterministic delay added to the next adversary-wave countdown. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic")
+	int64 AdversaryMissionDelaySeconds = 0;
+
+	/** Exact adversary-wave countdown after an interception aftershock. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic")
+	int64 NextAdversaryMissionSeconds = 0;
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic")
 	FName RegionId;
@@ -3958,6 +3976,12 @@ public:
 		ECampaignDifficulty Difficulty,
 		const FStrategicSimulationConfig& Config,
 		int64& OutValue);
+
+	/** Calculates the exact deterministic next-wave delay for a successful interception. */
+	static bool CalculateInterceptionAftershockSeconds(
+		int32 ContactThreatRating,
+		const FStrategicSimulationConfig& Config,
+		int64& OutSeconds);
 
 	/** Support tiers fund at 0/75/100/110 percent for suspended/strained/committed/allied partners. */
 	static int32 GetRegionalFundingPercent(int32 Support);

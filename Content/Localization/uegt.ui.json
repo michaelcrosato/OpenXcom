@@ -3925,6 +3925,11 @@
       "translations": { "en": "Interception round resolved • {0} • events: {1}.", "fr": "Tour d'interception résolu • {0} • événements : {1}.", "de": "Abfangrunde ausgewertet • {0} • Ereignisse: {1}.", "es": "Ronda de intercepción resuelta • {0} • eventos: {1}.", "ja": "迎撃ラウンド解決 • {0} • イベント {1}件。" }
     },
     {
+      "key": "strategic.contact-interception-aftershock-format",
+      "source": "Interception round resolved • {0} • next adversary wave delayed by {1}.",
+      "translations": { "en": "Interception round resolved • {0} • next adversary wave delayed by {1}.", "fr": "Tour d'interception résolu • {0} • la prochaine vague adverse est retardée de {1}.", "de": "Abfangrunde ausgewertet • {0} • die nächste gegnerische Welle wird um {1} verzögert.", "es": "Ronda de intercepción resuelta • {0} • la próxima oleada enemiga se retrasa {1}.", "ja": "迎撃ラウンド解決 • {0} • 次の敵波を{1}遅延。" }
+    },
+    {
       "key": "strategic.contact-interception-withdrawn-format",
       "source": "Formation withdrawal ordered • returning craft: {0}.",
       "translations": { "en": "Formation withdrawal ordered • returning craft: {0}.", "fr": "Retrait de la formation ordonné • appareils en retour : {0}.", "de": "Formationsrückzug befohlen • zurückkehrende Fluggeräte: {0}.", "es": "Retirada de la formación ordenada • naves en regreso: {0}.", "ja": "編隊の離脱を命令 • 帰投中の航空機：{0}機。" }
