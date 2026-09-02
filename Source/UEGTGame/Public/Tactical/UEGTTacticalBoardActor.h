@@ -80,6 +80,7 @@ public:
 	int32 GetRenderedLastKnownAdversaryCount() const;
 	int32 GetRenderedObjectiveCount() const;
 	int32 GetRenderedSelectionCount() const;
+	int32 GetRenderedConnectorCount() const;
 	/** Returns whether the board has loaded the semantic primitive profile for tactical markers. */
 	bool UsesSemanticMarkerGeometry() const;
 	/** Deterministic height encoding for a currently visible unit's stance and health. */
@@ -118,6 +119,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
 	TObjectPtr<UInstancedStaticMeshComponent> DoorInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> ConnectorInstances;
 
 	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
 	TObjectPtr<UInstancedStaticMeshComponent> PlayerUnitInstances;

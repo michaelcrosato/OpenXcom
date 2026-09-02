@@ -29,6 +29,7 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 	FogMemoryInstances = MakeInstances(TEXT("FogMemoryInstances"));
 	BlockerInstances = MakeInstances(TEXT("BlockerInstances"));
 	DoorInstances = MakeInstances(TEXT("DoorInstances"));
+	ConnectorInstances = MakeInstances(TEXT("ConnectorInstances"));
 	PlayerUnitInstances = MakeInstances(TEXT("PlayerUnitInstances"));
 	AdversaryUnitInstances = MakeInstances(TEXT("AdversaryUnitInstances"));
 	LastKnownAdversaryInstances = MakeInstances(TEXT("LastKnownAdversaryInstances"));
@@ -58,6 +59,7 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 	{
 		PlayerUnitInstances->SetStaticMesh(CylinderMesh.Object);
 		ObjectiveInstances->SetStaticMesh(CylinderMesh.Object);
+		ConnectorInstances->SetStaticMesh(CylinderMesh.Object);
 	}
 	if (ConeMesh.Succeeded())
 	{
@@ -94,6 +96,7 @@ void AUEGTTacticalBoardActor::BeginPlay()
 	ConfigureMeshComponent(FogMemoryInstances, true);
 	ConfigureMeshComponent(BlockerInstances, true);
 	ConfigureMeshComponent(DoorInstances, true);
+	ConfigureMeshComponent(ConnectorInstances, false);
 	ConfigureMeshComponent(PlayerUnitInstances, true);
 	ConfigureMeshComponent(AdversaryUnitInstances, true);
 	ConfigureMeshComponent(LastKnownAdversaryInstances, false);
@@ -193,6 +196,7 @@ void AUEGTTacticalBoardActor::ApplyPalette()
 		{ FogMemoryInstances, TEXT("FogMemoryMaterial"), FLinearColor(0.012f, 0.022f, 0.034f) },
 		{ BlockerInstances, TEXT("BlockerMaterial"), FLinearColor(0.22f, 0.19f, 0.31f) },
 		{ DoorInstances, TEXT("DoorMaterial"), FLinearColor(0.08f, 0.55f, 0.62f) },
+		{ ConnectorInstances, TEXT("ConnectorMaterial"), FLinearColor(0.12f, 0.88f, 0.82f) },
 		{ PlayerUnitInstances, TEXT("PlayerMaterial"), Tone(PlayerColor) },
 		{ AdversaryUnitInstances, TEXT("AdversaryMaterial"), Tone(AdversaryColor) },
 		{ LastKnownAdversaryInstances, TEXT("LastKnownAdversaryMaterial"), Tone(FLinearColor(AdversaryColor.R * 0.38f, AdversaryColor.G * 0.38f, AdversaryColor.B * 0.38f)) },
@@ -454,7 +458,7 @@ void AUEGTTacticalBoardActor::AddUnitMarker(
 void AUEGTTacticalBoardActor::ClearBoard()
 {
 	for (UInstancedStaticMeshComponent* Component : {
-		GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), PlayerUnitInstances.Get(),
+		GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), ConnectorInstances.Get(), PlayerUnitInstances.Get(),
 		AdversaryUnitInstances.Get(), LastKnownAdversaryInstances.Get(), ObjectiveInstances.Get(), PathInstances.Get(), HoverInstances.Get(),
 		SelectionInstances.Get(), SmokeInstances.Get(), FireInstances.Get() })
 	{
@@ -500,6 +504,10 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 		}
 		GroundCells.Add(GridCell);
 		AddCellMarker(GroundInstances, GridCell, 0.0f, 0.94f, 0.035f);
+		if (Cell.bIsVerticalConnector)
+		{
+			AddCellMarker(ConnectorInstances, GridCell, 9.0f, 0.28f, 0.22f);
+		}
 		if (Cell.bIsDoor && Cell.CurrentIntegrity > 0)
 		{
 			DoorCells.Add(GridCell);
@@ -697,6 +705,11 @@ int32 AUEGTTacticalBoardActor::GetRenderedSelectionCount() const
 	return SelectionInstances != nullptr ? SelectionInstances->GetInstanceCount() : 0;
 }
 
+int32 AUEGTTacticalBoardActor::GetRenderedConnectorCount() const
+{
+	return ConnectorInstances != nullptr ? ConnectorInstances->GetInstanceCount() : 0;
+}
+
 bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const
 {
 	const UStaticMesh* GroundMesh = GroundInstances != nullptr ? GroundInstances->GetStaticMesh() : nullptr;
@@ -705,12 +718,16 @@ bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const
 	const UStaticMesh* LastKnownMesh = LastKnownAdversaryInstances != nullptr
 		? LastKnownAdversaryInstances->GetStaticMesh()
 		: nullptr;
+	const UStaticMesh* ConnectorMesh = ConnectorInstances != nullptr
+		? ConnectorInstances->GetStaticMesh()
+		: nullptr;
 	const UStaticMesh* SmokeMesh = SmokeInstances != nullptr ? SmokeInstances->GetStaticMesh() : nullptr;
 	const UStaticMesh* FireMesh = FireInstances != nullptr ? FireInstances->GetStaticMesh() : nullptr;
 	return GroundMesh != nullptr
 		&& PlayerMesh != nullptr
 		&& AdversaryMesh != nullptr
 		&& LastKnownMesh != nullptr
+		&& ConnectorMesh != nullptr
 		&& SmokeMesh != nullptr
 		&& FireMesh != nullptr
 		&& GroundMesh != PlayerMesh

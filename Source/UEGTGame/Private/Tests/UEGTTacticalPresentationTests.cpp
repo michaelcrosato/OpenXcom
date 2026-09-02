@@ -132,6 +132,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 		Cell.bCurrentlyVisible = true;
 		Cell.CurrentIntegrity = X == 1 ? 40 : 0;
 		Cell.bBlocksMovement = X == 1;
+		Cell.bIsVerticalConnector = X == 2;
 		Snapshot.KnownCells.Add(Cell);
 	}
 	FTacticalHudCellView& HistoricalCell = Snapshot.KnownCells.AddDefaulted_GetRef();
@@ -212,6 +213,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Last-known adversary presentation uses a separate subdued instance set"), Board->GetRenderedLastKnownAdversaryCount(), 1);
 	TestEqual(TEXT("Active objective receives a board marker"), Board->GetRenderedObjectiveCount(), 1);
 	TestEqual(TEXT("Selected units receive a dedicated emphasis marker"), Board->GetRenderedSelectionCount(), 1);
+	TestEqual(TEXT("Vertical connector cells receive a dedicated traversal marker"), Board->GetRenderedConnectorCount(), 1);
 	UUEGTTacticalHudWidget* Hud = CreateWidget<UUEGTTacticalHudWidget>(
 		World, UUEGTTacticalHudWidget::StaticClass());
 	TestNotNull(TEXT("Native tactical HUD constructs without a widget blueprint"), Hud);
