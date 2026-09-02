@@ -17299,6 +17299,53 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 		&& !MigratedV26.Envelope.State.TacticalBattles[0].Units.ContainsByPredicate(
 			[](const FTacticalUnitState& Unit) { return !Unit.EjectedMagazines.IsEmpty(); }));
 
+	FCampaignSaveEnvelope LegacyExtractionFailed = MagazineWrite.Envelope;
+	LegacyExtractionFailed.Header.FormatVersion = FCampaignSaveCodec::CurrentFormatVersion - 1;
+	LegacyExtractionFailed.State.TacticalBattles[0].Objectives[0].Status = ETacticalObjectiveStatus::Failed;
+	LegacyExtractionFailed.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(LegacyExtractionFailed);
+	FString LegacyExtractionFailedJson = MagazineWrite.Json.Replace(
+		*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
+		*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion - 1));
+	LegacyExtractionFailedJson = LegacyExtractionFailedJson.Replace(
+		TEXT("\"status\":\"active\""), TEXT("\"status\":\"failed\""));
+	LegacyExtractionFailedJson = LegacyExtractionFailedJson.Replace(
+		*MagazineWrite.Envelope.Header.SaveChecksum, *LegacyExtractionFailed.Header.SaveChecksum);
+	const FCampaignSaveReadResult MigratedExtractionFailed = FCampaignSaveCodec::Deserialize(
+		LegacyExtractionFailedJson, MakePackages());
+	TestTrue(TEXT("Legacy failed extraction objective migrates successfully"), MigratedExtractionFailed.bSucceeded
+		&& MigratedExtractionFailed.bMigrated
+		&& MigratedExtractionFailed.Envelope.State.TacticalBattles.Num() == 1
+		&& MigratedExtractionFailed.Envelope.State.TacticalBattles[0].Phase == ETacticalBattlePhase::Resolved
+		&& MigratedExtractionFailed.Envelope.State.TacticalBattles[0].Objectives[0].Status == ETacticalObjectiveStatus::Failed);
+	TestTrue(TEXT("Migrated failed extraction objective validates in the current format"),
+		MigratedExtractionFailed.bSucceeded
+		&& FCampaignSaveCodec::Validate(MigratedExtractionFailed.Envelope, MakePackages()).bSucceeded);
+
+	FCampaignSaveEnvelope LegacyResolvedActiveExtraction = MagazineWrite.Envelope;
+	LegacyResolvedActiveExtraction.Header.FormatVersion = FCampaignSaveCodec::CurrentFormatVersion - 1;
+	LegacyResolvedActiveExtraction.State.TacticalBattles[0].Phase = ETacticalBattlePhase::Resolved;
+	LegacyResolvedActiveExtraction.State.TacticalBattles[0].Objectives[0].Status = ETacticalObjectiveStatus::Active;
+	LegacyResolvedActiveExtraction.State.TacticalBattles[0].Objectives[0].CompletedInteractions = 0;
+	LegacyResolvedActiveExtraction.State.TacticalBattles[0].Objectives[0].AdversaryInteractions = 0;
+	LegacyResolvedActiveExtraction.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(LegacyResolvedActiveExtraction);
+	FString LegacyResolvedActiveExtractionJson = MagazineWrite.Json.Replace(
+		*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
+		*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion - 1));
+	LegacyResolvedActiveExtractionJson = LegacyResolvedActiveExtractionJson.Replace(
+		TEXT("\"phase\":\"player-turn\""), TEXT("\"phase\":\"resolved\""));
+	LegacyResolvedActiveExtractionJson = LegacyResolvedActiveExtractionJson.Replace(
+		*MagazineWrite.Envelope.Header.SaveChecksum, *LegacyResolvedActiveExtraction.Header.SaveChecksum);
+	const FCampaignSaveReadResult MigratedResolvedActiveExtraction = FCampaignSaveCodec::Deserialize(
+		LegacyResolvedActiveExtractionJson, MakePackages());
+	TestTrue(TEXT("Legacy resolved active extraction migrates successfully"), MigratedResolvedActiveExtraction.bSucceeded
+		&& MigratedResolvedActiveExtraction.bMigrated
+		&& MigratedResolvedActiveExtraction.Envelope.State.TacticalBattles.Num() == 1
+		&& MigratedResolvedActiveExtraction.Envelope.State.TacticalBattles[0].Phase == ETacticalBattlePhase::Resolved
+		&& MigratedResolvedActiveExtraction.Envelope.State.TacticalBattles[0].Objectives[0].Status == ETacticalObjectiveStatus::Failed);
+	TestTrue(TEXT("Migrated resolved active extraction validates in the current format"),
+		MigratedResolvedActiveExtraction.bSucceeded
+		&& FCampaignSaveCodec::Validate(MigratedResolvedActiveExtraction.Envelope, MakePackages()).bSucceeded);
+
 	for (FCampaignState* Campaign : { &First, &Replay })
 	{
 		FTacticalUnitState* ReloadUser = Campaign->TacticalBattles[0].Units.FindByPredicate(

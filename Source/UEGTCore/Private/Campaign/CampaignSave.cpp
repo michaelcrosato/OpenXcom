@@ -451,7 +451,13 @@ namespace CampaignSavePrivate
 	{
 		for (FTacticalBattleState& Battle : State.TacticalBattles)
 		{
-			if (Battle.bRequiresExtraction)
+			const bool bHasFailedObjective = Battle.Objectives.ContainsByPredicate(
+				[](const FTacticalObjectiveState& Objective)
+				{
+					return Objective.Status == ETacticalObjectiveStatus::Failed;
+				});
+			if (Battle.bRequiresExtraction && !bHasFailedObjective
+				&& Battle.Phase != ETacticalBattlePhase::Resolved)
 			{
 				continue;
 			}
