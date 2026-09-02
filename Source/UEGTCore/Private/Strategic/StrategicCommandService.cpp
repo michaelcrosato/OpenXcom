@@ -40,6 +40,14 @@ namespace StrategicCommandServicePrivate
 		Diagnostic.Message = MoveTemp(Message);
 	}
 
+	int32 SaturatingInt32Difference(const int32 Left, const int32 Right)
+	{
+		return static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(Left) - static_cast<int64>(Right),
+			MIN_int32,
+			MAX_int32));
+	}
+
 	struct FBaseSpecializationCandidate
 	{
 		FName SpecializationId;
@@ -6361,10 +6369,12 @@ FReciprocalAidEvaluation FStrategicCommandService::EvaluateReciprocalAid(
 		return Reject();
 	}
 
-	Evaluation.PressureTransfer = FMath::Min3(
-		Config.ReciprocalAidPressureTransfer,
-		TargetPressure->Pressure,
-		100 - DonorPressure->Pressure);
+	const int64 DonorPressureCapacity = 100LL
+		- static_cast<int64>(DonorPressure->Pressure);
+	Evaluation.PressureTransfer = static_cast<int32>(FMath::Min3<int64>(
+		static_cast<int64>(Config.ReciprocalAidPressureTransfer),
+		static_cast<int64>(TargetPressure->Pressure),
+		DonorPressureCapacity));
 	if (Evaluation.PressureTransfer <= 0)
 	{
 		AddError(Validation, TEXT("coalition_aid_no_capacity"),
@@ -6381,8 +6391,11 @@ FReciprocalAidEvaluation FStrategicCommandService::EvaluateReciprocalAid(
 
 	FRegionalMandateState ProjectedTarget = *TargetMandate;
 	FRegionalMandateState ProjectedDonor = *DonorMandate;
-	ProjectedTarget.Support = FMath::Min(100,
-		ProjectedTarget.Support + Config.ReciprocalAidSupportTransfer);
+	ProjectedTarget.Support = static_cast<int32>(FMath::Clamp<int64>(
+		static_cast<int64>(ProjectedTarget.Support)
+			+ Config.ReciprocalAidSupportTransfer,
+		0,
+		100));
 	ProjectedDonor.Support -= Evaluation.DonorSupportCost;
 	Evaluation.bDonorWouldWithdraw =
 		ProjectedDonor.Support < Config.HorizonCompactWithdrawalSupportThreshold;
@@ -6390,7 +6403,9 @@ FReciprocalAidEvaluation FStrategicCommandService::EvaluateReciprocalAid(
 	{
 		ProjectedDonor.bHorizonCompactMemberWithdrawn = true;
 	}
-	Evaluation.TargetSupportGain = ProjectedTarget.Support - TargetMandate->Support;
+	Evaluation.TargetSupportGain = SaturatingInt32Difference(
+		ProjectedTarget.Support,
+		TargetMandate->Support);
 	Evaluation.TargetProjectedSupport = ProjectedTarget.Support;
 	Evaluation.DonorProjectedSupport = ProjectedDonor.Support;
 	Evaluation.TargetProjectedPressure -= Evaluation.PressureTransfer;
@@ -6594,15 +6609,17 @@ FHorizonCompactEmergencyVoteEvaluation FStrategicCommandService::EvaluateHorizon
 		static_cast<int64>(TargetMandate->Support)
 			+ Config.HorizonCompactEmergencyTargetSupportGain,
 		0, 100));
-	Evaluation.TargetSupportGain =
-		Evaluation.TargetProjectedSupport - Evaluation.TargetCurrentSupport;
+	Evaluation.TargetSupportGain = SaturatingInt32Difference(
+		Evaluation.TargetProjectedSupport,
+		Evaluation.TargetCurrentSupport);
 	Evaluation.TargetCurrentPressure = TargetPressure->Pressure;
 	Evaluation.TargetProjectedPressure = static_cast<int32>(FMath::Clamp<int64>(
 		static_cast<int64>(TargetPressure->Pressure)
 			- Config.HorizonCompactEmergencyTargetPressureReduction,
 		0, 100));
-	Evaluation.TargetPressureReduction =
-		Evaluation.TargetCurrentPressure - Evaluation.TargetProjectedPressure;
+	Evaluation.TargetPressureReduction = SaturatingInt32Difference(
+		Evaluation.TargetCurrentPressure,
+		Evaluation.TargetProjectedPressure);
 
 	for (const FRegionalMandateState& Mandate : State.RegionalMandates)
 	{

@@ -21012,6 +21012,18 @@ bool FStrategicReciprocalAidTest::RunTest(const FString& Parameters)
 		&& Preview.CurrentMonthlyFunding == 285000
 		&& Preview.ProjectedMonthlyFunding == 285000
 		&& Preview.MonthlyFundingDelta == 0);
+	FCampaignState ExtremeAid = Initial;
+	ExtremeAid.RegionalMandates[0].Support = MAX_int32;
+	ExtremeAid.RegionalPressure[1].Pressure = MIN_int32;
+	const FReciprocalAidEvaluation ExtremeAidPreview =
+		FStrategicCommandService::EvaluateReciprocalAid(ExtremeAid, Config, Aid);
+	TestTrue(TEXT("Reciprocal Aid widens malformed support and donor capacity arithmetic before projection"),
+		ExtremeAidPreview.bAllowed
+		&& ExtremeAidPreview.PressureTransfer == 20
+		&& ExtremeAidPreview.DonorCurrentPressure == MIN_int32
+		&& ExtremeAidPreview.DonorProjectedPressure == MIN_int32 + 20
+		&& ExtremeAidPreview.TargetProjectedSupport == 100
+		&& ExtremeAidPreview.TargetSupportGain == 100 - MAX_int32);
 
 	FCampaignState Unratified = Initial;
 	Unratified.bHorizonCompactRatified = false;
@@ -21756,6 +21768,17 @@ bool FStrategicHorizonCompactEmergencyVoteTest::RunTest(const FString& Parameter
 		&& Preview.CurrentMonthlyFunding == 257500
 		&& Preview.ProjectedMonthlyFunding == 280000
 		&& Preview.MonthlyFundingDelta == 22500);
+	FCampaignState ExtremeVote = Initial;
+	ExtremeVote.RegionalMandates[0].Support = MIN_int32;
+	const FHorizonCompactEmergencyVoteEvaluation ExtremeVotePreview =
+		FStrategicCommandService::EvaluateHorizonCompactEmergencyVote(
+			ExtremeVote, Config, Vote);
+	TestTrue(TEXT("Emergency-vote support and pressure deltas remain representable for malformed target values"),
+		ExtremeVotePreview.bAllowed
+		&& ExtremeVotePreview.TargetCurrentSupport == MIN_int32
+		&& ExtremeVotePreview.TargetProjectedSupport == 0
+		&& ExtremeVotePreview.TargetSupportGain == MAX_int32
+		&& ExtremeVotePreview.TargetPressureReduction == 15);
 
 	FCampaignState Opposed = Initial;
 	Opposed.RegionalPressure[2].Pressure = 71;
