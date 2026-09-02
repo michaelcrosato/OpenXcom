@@ -42,6 +42,14 @@ namespace TacticalCombatPrivate
 		Diagnostic.Message = MoveTemp(Message);
 	}
 
+	int32 SaturatingInt32Add(const int32 Left, const int32 Right)
+	{
+		return static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(Left) + static_cast<int64>(Right),
+			MIN_int32,
+			MAX_int32));
+	}
+
 	const FTacticalUnitState* FindUnit(const FTacticalBattleState& Battle, const FGuid UnitId)
 	{
 		return Battle.Units.FindByPredicate(
@@ -151,7 +159,8 @@ namespace TacticalCombatPrivate
 					AddDiagnostic(Result, TEXT("tactical_fire_mode_incompatible"), TEXT("Ground-target blast weapons cannot use burst fire."));
 					return false;
 				}
-				OutProfile.AccuracyModifier += Weapon->TacticalBurstAccuracyModifier;
+				OutProfile.AccuracyModifier = SaturatingInt32Add(
+					OutProfile.AccuracyModifier, Weapon->TacticalBurstAccuracyModifier);
 				OutProfile.ActionPointCost = Weapon->TacticalBurstActionPointCost;
 				OutProfile.ProjectileCount = Weapon->TacticalBurstShotCount;
 			}
@@ -731,7 +740,14 @@ int32 FTacticalCombatService::ComputeBlastTransmissionPercent(
 		}
 		if (Cell.CurrentIntegrity > 0 && !Cell.bDoorOpen && Terrain->BlastResistancePercent > 0)
 		{
-			TransmissionPercent = TransmissionPercent * (100 - Terrain->BlastResistancePercent) / 100;
+			const int64 ResistancePercent = FMath::Clamp<int64>(
+				static_cast<int64>(Terrain->BlastResistancePercent),
+				0,
+				100);
+			TransmissionPercent = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(TransmissionPercent) * (100 - ResistancePercent) / 100,
+				0,
+				100));
 		}
 	};
 

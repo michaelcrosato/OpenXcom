@@ -18779,6 +18779,31 @@ bool FTacticalFireModesAndBlastTest::RunTest(const FString& Parameters)
 			ExtremeAccuracyPreview.bSucceeded && ExtremeAccuracyPreview.HitChance == 95);
 	}
 
+	FResolvedRuleSet ExtremeBurstRules = Rules;
+	FItemRule* ExtremeBurstRifle = ExtremeBurstRules.Items.Find(TEXT("item.service-rifle"));
+	if (ExtremeBurstRifle != nullptr)
+	{
+		ExtremeBurstRifle->TacticalAmmunitionItemId = FName();
+		ExtremeBurstRifle->TacticalAccuracyModifier = MAX_int32;
+		ExtremeBurstRifle->TacticalBurstAccuracyModifier = MAX_int32;
+		const FTacticalAttackPreview ExtremeBurstPreview = FTacticalCombatService::PreviewUnitAttack(
+			First.TacticalBattles[0], First, ExtremeBurstRules, AttackerUnitId, BurstTargetId,
+			TEXT("item.service-rifle"), ETacticalFireMode::Burst);
+		TestTrue(TEXT("Extreme burst accuracy modifiers saturate without wrapping"),
+			ExtremeBurstPreview.bSucceeded && ExtremeBurstPreview.HitChance == 95);
+	}
+
+	FResolvedRuleSet ExtremeTransmissionRules = Rules;
+	FTacticalTerrainRule* ExtremeBulkhead = ExtremeTransmissionRules.TacticalTerrains.Find(TEXT("terrain.test-bulkhead"));
+	if (ExtremeBulkhead != nullptr)
+	{
+		ExtremeBulkhead->BlastResistancePercent = MAX_int32;
+		TestEqual(TEXT("Extreme blast resistance blocks transmission without overflowing"),
+			FTacticalCombatService::ComputeBlastTransmissionPercent(
+				BeforeBlast, ExtremeTransmissionRules, 6, 5, 8, 5),
+			0);
+	}
+
 	const FCampaignSaveWriteResult BlastWrite = FCampaignSaveCodec::Serialize(FCampaignSaveCodec::CreateNew(
 		First, MakePackages(), TEXT("0.17.0-fire-mode-blast-test"), FDateTime(2026, 8, 30, 6, 0, 0), FGuid(777, 778, 779, 780)));
 	TestTrue(TEXT("Burst and blast mutations serialize through save v18"), BlastWrite.bSucceeded);
