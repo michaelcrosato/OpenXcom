@@ -15551,6 +15551,34 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 		&& ExtremeDoorDecision.DestinationY == BoundaryDoorDecision.DestinationY
 		&& ExtremeDoorDecision.DestinationZ == BoundaryDoorDecision.DestinationZ);
 
+	FTacticalBattleState BoundaryCoverProbe = MakeProbeBattle(9, 5, 1);
+	const FGuid CoverAiId(645, 646, 647, 648);
+	const FGuid CoverTargetId(649, 650, 651, 652);
+	FTacticalUnitState& BoundaryCoverAi = AddProbeUnit(
+		BoundaryCoverProbe, CoverAiId, ETacticalTeam::Adversary, 4, 2, 0);
+	BoundaryCoverAi.CurrentHealth = 5;
+	AddProbeUnit(BoundaryCoverProbe, CoverTargetId, ETacticalTeam::Player, 5, 2, 0);
+	FTacticalCellState& CoverWall = BoundaryCoverProbe.Cells[BoundaryCoverProbe.GetCellIndex(4, 0, 0)];
+	CoverWall.TerrainRuleId = TEXT("terrain.test-bulkhead");
+	CoverWall.CurrentIntegrity = 100;
+	FResolvedRuleSet BoundaryCoverRules = Rules;
+	FResolvedRuleSet ExtremeCoverRules = Rules;
+	BoundaryCoverRules.TacticalTerrains.FindChecked(TEXT("terrain.test-bulkhead")).CoverPercent = 100;
+	ExtremeCoverRules.TacticalTerrains.FindChecked(TEXT("terrain.test-bulkhead")).CoverPercent = MAX_int32;
+	const FTacticalAiDecision BoundaryCoverDecision = FTacticalAiService::ChooseAction(
+		BoundaryCoverProbe, ProbeCampaign, BoundaryCoverRules, CoverAiId);
+	const FTacticalAiDecision ExtremeCoverDecision = FTacticalAiService::ChooseAction(
+		BoundaryCoverProbe, ProbeCampaign, ExtremeCoverRules, CoverAiId);
+	TestTrue(TEXT("Extreme terrain cover preserves the bounded retreat decision"),
+		BoundaryCoverDecision.bSucceeded && ExtremeCoverDecision.bSucceeded
+		&& BoundaryCoverDecision.Goal == ETacticalAiGoal::Withdraw
+		&& BoundaryCoverDecision.ActionType == ETacticalAiActionType::Move
+		&& ExtremeCoverDecision.Goal == BoundaryCoverDecision.Goal
+		&& ExtremeCoverDecision.ActionType == BoundaryCoverDecision.ActionType
+		&& ExtremeCoverDecision.DestinationX == BoundaryCoverDecision.DestinationX
+		&& ExtremeCoverDecision.DestinationY == BoundaryCoverDecision.DestinationY
+		&& ExtremeCoverDecision.DestinationZ == BoundaryCoverDecision.DestinationZ);
+
 	FTacticalBattleState RetreatProbe = MakeProbeBattle(9, 5, 1);
 	const FGuid RetreatAiId(645, 646, 647, 648);
 	const FGuid RetreatTargetId(649, 650, 651, 652);

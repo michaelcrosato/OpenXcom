@@ -628,13 +628,20 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 	if (ExtremeDoor != nullptr)
 	{
 		ExtremeDoor->DoorActionPointCost = MAX_int32;
+		ExtremeDoor->MoveCost = MAX_int32;
+		ExtremeDoor->CoverPercent = MAX_int32;
 		const FTacticalHudSnapshot ExtremeDoorSnapshot = FTacticalPresentationService::BuildHudSnapshot(
 			Battle, Fixture.Campaign, ExtremeDoorRules, DoorQuery);
 		const FTacticalHudActionAvailability* ExtremeDoorAction = ExtremeDoorSnapshot.FindAction(
 			ETacticalHudActionType::OperateDoor);
+		const FTacticalHudCellView* ExtremeDoorCell = ExtremeDoorSnapshot.VisibleCells.FindByPredicate(
+			[](const FTacticalHudCellView& Cell) { return Cell.X == 1 && Cell.Y == 1 && Cell.Z == 0; });
 		TestTrue(TEXT("HUD clamps extreme door action cost to the supported boundary"),
 			ExtremeDoorSnapshot.bSucceeded && ExtremeDoorAction != nullptr
 			&& ExtremeDoorAction->bAvailable && ExtremeDoorAction->ActionPointCost == 4);
+		TestTrue(TEXT("HUD clamps extreme terrain movement and cover values to their supported boundaries"),
+			ExtremeDoorCell != nullptr && ExtremeDoorCell->MoveCost == 20
+			&& ExtremeDoorCell->CoverPercent == 100);
 	}
 
 	FTacticalHudQuery MoveQuery = Query;

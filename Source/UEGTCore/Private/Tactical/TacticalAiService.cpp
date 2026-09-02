@@ -173,7 +173,7 @@ namespace TacticalAiPrivate
 			const FTacticalTerrainRule* Terrain = Rules.TacticalTerrains.Find(Cell.TerrainRuleId);
 			if (Terrain != nullptr && Cell.CurrentIntegrity > 0 && !Cell.bDoorOpen)
 			{
-				Cover = FMath::Max(Cover, Terrain->CoverPercent);
+				Cover = FMath::Max(Cover, FMath::Clamp(Terrain->CoverPercent, 0, 100));
 			}
 		}
 		return Cover;

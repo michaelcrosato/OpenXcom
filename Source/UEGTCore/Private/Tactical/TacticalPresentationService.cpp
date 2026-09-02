@@ -667,8 +667,10 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 		View.TerrainDisplayName = Terrain->DisplayName;
 		View.CurrentIntegrity = Cell.CurrentIntegrity;
 		View.MaxIntegrity = Terrain->MaxIntegrity;
-		View.MoveCost = Terrain->MoveCost;
-		View.CoverPercent = Cell.CurrentIntegrity > 0 && !Cell.bDoorOpen ? Terrain->CoverPercent : 0;
+		View.MoveCost = FMath::Clamp(Terrain->MoveCost, 1, 20);
+		View.CoverPercent = Cell.CurrentIntegrity > 0 && !Cell.bDoorOpen
+			? FMath::Clamp(Terrain->CoverPercent, 0, 100)
+			: 0;
 		View.Smoke = Cell.Smoke;
 		View.Fire = Cell.Fire;
 		View.bBlocksMovement = Cell.CurrentIntegrity > 0 && !Cell.bDoorOpen && Terrain->bBlocksMovement;
