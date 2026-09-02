@@ -21172,13 +21172,13 @@ bool FStrategicInterceptionBalanceCorpusTest::RunTest(const FString& Parameters)
 	ContactRule.AttackIntervalSeconds = 5;
 	ContactRule.ScoreValue = 25;
 	FItemRule& Weapon = Rules.Items.FindChecked(TEXT("item.sky-lance"));
-	Weapon.MagazineCapacity = 24;
+	Weapon.MagazineCapacity = 96;
 	Weapon.InterceptionAccuracy = 72;
 	Weapon.InterceptionDamage = 16;
 	Weapon.SalvoSize = 3;
 
 	constexpr int32 ScenarioCount = 1024;
-	constexpr int32 MaximumRoundsPerScenario = 16;
+	constexpr int32 MaximumRoundsPerScenario = 24;
 	bool bFixturesValid = true;
 	bool bEveryRoundAccepted = true;
 	bool bEveryManeuverTelemetryExact = true;
@@ -21252,7 +21252,7 @@ bool FStrategicInterceptionBalanceCorpusTest::RunTest(const FString& Parameters)
 			Craft.EquipmentItems.Add(TEXT("item.sky-lance"));
 			FCraftWeaponState& WeaponState = Craft.WeaponStates.AddDefaulted_GetRef();
 			WeaponState.WeaponItemId = TEXT("item.sky-lance");
-			WeaponState.Ammunition = 48;
+			WeaponState.Ammunition = 192;
 		}
 		return State;
 	};
