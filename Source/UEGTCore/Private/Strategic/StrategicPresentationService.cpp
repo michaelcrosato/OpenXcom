@@ -411,6 +411,12 @@ namespace StrategicPresentationPrivate
 			: Left * Right;
 	}
 
+	int32 SaturatingNonNegativeAdd(const int32 Current, const int32 Contribution)
+	{
+		const int64 Sum = static_cast<int64>(Current) + static_cast<int64>(Contribution);
+		return static_cast<int32>(FMath::Clamp<int64>(Sum, 0, MAX_int32));
+	}
+
 	int64 NonNegativeDifference(const int64 Left, const int64 Right)
 	{
 		if (Left <= Right)
@@ -1330,12 +1336,16 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.AssignedScientists = FMath::Max(0, Base.SignalWatchScientists);
 		for (const FResearchProjectState& Project : Campaign.ResearchProjects)
 		{
-			View.AssignedScientists += Project.BaseId == Base.BaseId ? Project.AssignedScientists : 0;
+			View.AssignedScientists = SaturatingNonNegativeAdd(
+				View.AssignedScientists,
+				Project.BaseId == Base.BaseId ? Project.AssignedScientists : 0);
 		}
 		View.AssignedEngineers = FMath::Max(0, Base.WorksCadreEngineers);
 		for (const FManufacturingProjectState& Project : Campaign.ManufacturingProjects)
 		{
-			View.AssignedEngineers += Project.BaseId == Base.BaseId ? Project.AssignedEngineers : 0;
+			View.AssignedEngineers = SaturatingNonNegativeAdd(
+				View.AssignedEngineers,
+				Project.BaseId == Base.BaseId ? Project.AssignedEngineers : 0);
 		}
 		View.ScientistPersonnel = PersonnelCountForCategory(
 			Campaign, Rules, Base.BaseId, EPersonnelRoleCategory::Scientist);

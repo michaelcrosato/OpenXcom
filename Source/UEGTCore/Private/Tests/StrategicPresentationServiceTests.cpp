@@ -842,6 +842,29 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		ExtremeNetSnapshot.bSucceeded
 		&& ExtremeNetSnapshot.MonthlyOutgoings > 0
 		&& ExtremeNetSnapshot.NetMonthlyFunding == MIN_int64);
+	FCampaignState ExtremeAssignmentCampaign = Campaign;
+	ExtremeAssignmentCampaign.Bases[0].SignalWatchScientists = 1;
+	ExtremeAssignmentCampaign.ResearchProjects[0].AssignedScientists = MAX_int32;
+	ExtremeAssignmentCampaign.Bases[0].WorksCadreEngineers = 1;
+	ExtremeAssignmentCampaign.ManufacturingProjects[0].AssignedEngineers = MAX_int32;
+	const FStrategicDashboardSnapshot ExtremeAssignmentSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			ExtremeAssignmentCampaign, Rules, Config);
+	const FStrategicBaseView* ExtremeAssignmentBase =
+		ExtremeAssignmentSnapshot.Bases.FindByPredicate(
+			[BaseId](const FStrategicBaseView& BaseView)
+			{
+				return BaseView.BaseId == BaseId;
+			});
+	TestTrue(TEXT("Dashboard staffing totals saturate malformed project assignments"),
+		ExtremeAssignmentSnapshot.bSucceeded
+		&& ExtremeAssignmentBase != nullptr
+		&& ExtremeAssignmentBase->AssignedScientists == MAX_int32
+		&& ExtremeAssignmentBase->AssignedEngineers == MAX_int32
+		&& ExtremeAssignmentBase->ScientistOverCapacity
+			== MAX_int32 - ExtremeAssignmentBase->ScientistCapacity
+		&& ExtremeAssignmentBase->EngineerOverCapacity
+			== MAX_int32 - ExtremeAssignmentBase->EngineerCapacity);
 	TestTrue(TEXT("Dashboard exposes the global compact gate before enough charters are signed"),
 		!Snapshot.HorizonCompact.bRatified
 		&& !Snapshot.HorizonCompact.bEnabled
