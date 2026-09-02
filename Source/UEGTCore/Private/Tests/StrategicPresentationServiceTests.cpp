@@ -303,6 +303,9 @@ bool FStrategicBaseSpecializationProjectionTest::RunTest(const FString& Paramete
 		&& Flight.Score == 100
 		&& Flight.BenefitMetricId == FName(TEXT("base.specialization.craft-berths"))
 		&& Flight.BenefitValue == 2
+		&& Flight.OperationalBenefitMetricId
+			== FName(TEXT("base.specialization.service-lanes"))
+		&& Flight.OperationalBenefitValue == 1
 		&& Logistics.bSpecialized
 		&& Logistics.SpecializationId == FName(TEXT("base.specialization.logistics-depot"))
 		&& Logistics.Score == 100
@@ -1800,7 +1803,7 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& ServicingSnapshot.Craft[0].ServiceQueue.bValid
 		&& ServicingSnapshot.Craft[0].ServiceQueue.PolicyId
 			== FName(TEXT("craft.service-rapid-turnaround"))
-		&& ServicingSnapshot.Craft[0].ServiceQueue.ServiceLaneCount == 1
+		&& ServicingSnapshot.Craft[0].ServiceQueue.ServiceLaneCount == 2
 		&& ServicingSnapshot.Craft[0].ServiceQueue.QueuePosition == 1
 		&& ServicingSnapshot.Craft[0].ServiceQueue.ServiceLaneNumber == 1
 		&& ServicingSnapshot.Craft[0].ServiceQueue.bInServiceLane
@@ -1829,15 +1832,17 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		{
 			return View.CraftId == ShortServiceCraft.CraftId;
 		});
-	TestTrue(TEXT("Presentation distinguishes the active shortest turnaround from an exact queued wait"),
+	TestTrue(TEXT("Presentation distinguishes two active Flight Operations lanes from a queued wait"),
 		QueuedCraftView != nullptr && ActiveCraftView != nullptr
-		&& !QueuedCraftView->ServiceQueue.bInServiceLane
+		&& QueuedCraftView->ServiceQueue.bInServiceLane
 		&& QueuedCraftView->ServiceQueue.QueuePosition == 2
-		&& QueuedCraftView->ServiceQueue.WaitingPosition == 1
-		&& QueuedCraftView->ServiceQueue.EstimatedWaitSeconds == 3600
-		&& QueuedCraftView->ServiceQueue.EstimatedReadySeconds == 3 * 3600
+		&& QueuedCraftView->ServiceQueue.WaitingPosition == 0
+		&& QueuedCraftView->ServiceQueue.ServiceLaneNumber == 2
+		&& QueuedCraftView->ServiceQueue.EstimatedWaitSeconds == 0
+		&& QueuedCraftView->ServiceQueue.EstimatedReadySeconds == 2 * 3600
 		&& ActiveCraftView->ServiceQueue.bInServiceLane
 		&& ActiveCraftView->ServiceQueue.QueuePosition == 1
+		&& ActiveCraftView->ServiceQueue.ServiceLaneNumber == 1
 		&& ActiveCraftView->ServiceQueue.EstimatedReadySeconds == 3600);
 	TestTrue(TEXT("Active research exposes staffing and its operational facility contract"),
 		Snapshot.Projects[0].AssignedStaff == 5

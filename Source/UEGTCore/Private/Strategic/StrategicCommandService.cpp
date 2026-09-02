@@ -94,7 +94,9 @@ namespace StrategicCommandServicePrivate
 				TEXT("base.specialization.flight-operations"),
 				TEXT("base.specialization.craft-berths"),
 				NormalizeBaseSpecializationCapacity(CraftCapacity, 50),
-				FMath::Max<int64>(0, CraftCapacity)
+				FMath::Max<int64>(0, CraftCapacity),
+				TEXT("base.specialization.service-lanes"),
+				1
 			},
 			{
 				TEXT("base.specialization.logistics-depot"),
@@ -6812,6 +6814,23 @@ int32 FStrategicCommandService::EvaluateBaseManufacturingRatePercent(
 	}
 	return static_cast<int32>(FMath::Clamp<int64>(
 		100 + Specialization.OperationalBenefitValue, 100, 300));
+}
+
+int32 FStrategicCommandService::EvaluateBaseServiceLaneBonus(
+	const FStrategicBaseState& Base,
+	const FResolvedRuleSet& Rules)
+{
+	const FStrategicBaseSpecializationView Specialization =
+		EvaluateBaseSpecialization(Base, Rules);
+	if (!Specialization.bSpecialized
+		|| Specialization.OperationalBenefitMetricId
+			!= FName(TEXT("base.specialization.service-lanes"))
+		|| Specialization.OperationalBenefitValue <= 0)
+	{
+		return 0;
+	}
+	return static_cast<int32>(FMath::Clamp<int64>(
+		Specialization.OperationalBenefitValue, 0, MAX_int32));
 }
 
 FBaseStorageEvaluation FStrategicCommandService::EvaluateBaseStorage(

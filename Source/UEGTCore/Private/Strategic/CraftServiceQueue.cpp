@@ -2,6 +2,8 @@
 
 #include "Strategic/CraftServiceQueue.h"
 
+#include "Strategic/StrategicCommandService.h"
+
 namespace CraftServiceQueuePrivate
 {
 	bool GuidLess(const FGuid& Left, const FGuid& Right)
@@ -39,18 +41,24 @@ namespace CraftServiceQueuePrivate
 					++LaneCount;
 				}
 			}
-			return LaneCount;
 		}
-
-		for (const FName FacilityId : Base.BuiltFacilities)
+		else
 		{
-			const FFacilityRule* Rule = Rules.Facilities.Find(FacilityId);
-			if (Rule != nullptr && Rule->CraftCapacity > 0 && LaneCount < MAX_int32)
+			for (const FName FacilityId : Base.BuiltFacilities)
 			{
-				++LaneCount;
+				const FFacilityRule* Rule = Rules.Facilities.Find(FacilityId);
+				if (Rule != nullptr && Rule->CraftCapacity > 0 && LaneCount < MAX_int32)
+				{
+					++LaneCount;
+				}
 			}
 		}
-		return LaneCount;
+
+		const int32 SpecializationBonus =
+			FStrategicCommandService::EvaluateBaseServiceLaneBonus(Base, Rules);
+		return SpecializationBonus > MAX_int32 - LaneCount
+			? MAX_int32
+			: LaneCount + SpecializationBonus;
 	}
 
 	int64 SaturatingAdd(const int64 Left, const int64 Right)

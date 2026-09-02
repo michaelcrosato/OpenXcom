@@ -4034,6 +4034,11 @@ public:
 		const FStrategicBaseState& Base,
 		const FResolvedRuleSet& Rules);
 
+	/** Derived maintenance-lane bonus supplied by a specialized Flight Operations base. */
+	static int32 EvaluateBaseServiceLaneBonus(
+		const FStrategicBaseState& Base,
+		const FResolvedRuleSet& Rules);
+
 	static FBaseStorageEvaluation EvaluateBaseStorage(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,

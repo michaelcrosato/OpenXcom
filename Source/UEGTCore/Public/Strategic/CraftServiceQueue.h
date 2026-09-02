@@ -26,7 +26,7 @@ struct UEGTCORE_API FCraftServiceQueueView
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Craft")
 	FGuid CraftId;
 
-	/** One lane is supplied by each operational facility with positive craft capacity. */
+	/** One lane is supplied by each operational facility with positive craft capacity, plus derived profile bonuses. */
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Craft")
 	int32 ServiceLaneCount = 0;
 

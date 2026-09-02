@@ -8400,6 +8400,9 @@ bool FStrategicCraftServiceAndUpkeepTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Serviced craft has full fuel"), State.Craft[0].CurrentFuel, 500);
 
 	FCampaignState RotationState = MakeStateWithBase();
+	// Remove the establishment fixture's maxed detection hub so the added flight deck
+	// is the deterministic primary specialization under test.
+	RotationState.Bases[0].Facilities.Reset();
 	AddTestFlightDeck(RotationState);
 	RotationState.Funds = 1000;
 	const FGuid LongServiceId(273, 1, 1, 1);
@@ -8423,10 +8426,10 @@ bool FStrategicCraftServiceAndUpkeepTest::RunTest(const FString& Parameters)
 			return Event.Type == EStrategicEventType::CraftServiceRotationScheduled
 				&& Event.CraftId == LongServiceId;
 		});
-	TestTrue(TEXT("The first service job occupies the sole Flight Deck maintenance lane"),
+	TestTrue(TEXT("The first service job occupies a Flight Operations maintenance lane"),
 		LongServiceStarted.bAccepted && LongInitialSchedule != nullptr
 		&& LongInitialSchedule->PolicyId == FName(TEXT("craft.service-rapid-turnaround"))
-		&& LongInitialSchedule->ServiceLaneCount == 1
+		&& LongInitialSchedule->ServiceLaneCount == 2
 		&& LongInitialSchedule->ServiceQueuePosition == 1
 		&& LongInitialSchedule->ServiceLaneNumber == 1
 		&& LongInitialSchedule->bServiceLaneActive
@@ -8466,26 +8469,25 @@ bool FStrategicCraftServiceAndUpkeepTest::RunTest(const FString& Parameters)
 			return Event.Type == EStrategicEventType::CraftServiceRotationScheduled
 				&& Event.CraftId == LongServiceId;
 		});
-	TestTrue(TEXT("Only the active craft progresses and completion promotes the exact queued job"),
+	TestTrue(TEXT("Two derived maintenance lanes progress both active jobs without queue promotion"),
 		ShortServiceCompleted.bAccepted && ShortServiceCompleted.ExecutedSlices == 720
 		&& CompletedShortCraft != nullptr && CompletedShortCraft->Status == ECraftStatus::Grounded
 		&& CompletedShortCraft->CurrentHull == 100
 		&& PromotedLongCraft != nullptr && PromotedLongCraft->Status == ECraftStatus::Servicing
-		&& PromotedLongCraft->RemainingRepairSeconds == 2 * 3600
-		&& Promotion != nullptr && Promotion->bServiceLaneActive
-		&& Promotion->ServiceQueuePosition == 1
-		&& Promotion->ServiceQueueWaitSeconds == 0
-		&& Promotion->ServiceReadySeconds == 2 * 3600);
+		&& PromotedLongCraft->RemainingRepairSeconds == 3600
+		&& Promotion == nullptr);
 
 	AdvanceRotation.ExpectedSequence = RotationState.CommandSequence;
 	const FStrategicCommandResult LongServiceAdvanced =
 		FStrategicCommandService::Execute(RotationState, Rules, MakeConfig(), AdvanceRotation);
 	PromotedLongCraft = RotationState.Craft.FindByPredicate(
 		[&LongServiceId](const FCraftState& Candidate) { return Candidate.CraftId == LongServiceId; });
-	TestTrue(TEXT("The promoted job begins progressing on the following time command"),
+	TestTrue(TEXT("The remaining active service job completes on the following time command"),
 		LongServiceAdvanced.bAccepted && LongServiceAdvanced.ExecutedSlices == 720
 		&& PromotedLongCraft != nullptr
-		&& PromotedLongCraft->RemainingRepairSeconds == 3600);
+		&& PromotedLongCraft->Status == ECraftStatus::Grounded
+		&& PromotedLongCraft->CurrentHull == 100
+		&& PromotedLongCraft->RemainingRepairSeconds == 0);
 
 	State.StrategicTime = FStrategicTimestamp(FDateTime(2035, 1, 31, 23, 59, 55));
 	State.Funds = 100;

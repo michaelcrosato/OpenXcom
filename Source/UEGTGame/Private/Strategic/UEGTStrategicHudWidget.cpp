@@ -331,6 +331,11 @@ namespace UEGTStrategicHudPrivate
 			return Localized(
 				TEXT("strategic.base-specialization-metric-manufacturing-rate"), TEXT("FABRICATION RATE"));
 		}
+		if (BenefitMetricId == FName(TEXT("base.specialization.service-lanes")))
+		{
+			return Localized(
+				TEXT("strategic.base-specialization-metric-service-lane"), TEXT("SERVICE LANE"));
+		}
 		return BaseSpecializationMetric(BenefitMetricId);
 	}
 
@@ -2553,7 +2558,7 @@ void UUEGTStrategicHudWidget::AppendBaseSpecialization(
 	}
 	const FString Guidance = Localized(
 		TEXT("strategic.base-specialization-guidance"),
-		TEXT("Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel, a Research Enclave profile increases research throughput by 20%, and a Fabrication Works profile increases fabrication throughput by 20%; other profiles add no separate effect."));
+		TEXT("Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel, a Research Enclave profile increases research throughput by 20%, a Flight Operations profile supplies one additional service lane, and a Fabrication Works profile increases fabrication throughput by 20%; other profiles add no separate effect."));
 	RenderedDynamicLabels.Add(Summary);
 	LeftBox->AddSlot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
 	[

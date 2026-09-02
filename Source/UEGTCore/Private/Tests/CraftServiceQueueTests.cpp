@@ -54,19 +54,20 @@ bool FCraftServiceQueueEvaluationTest::RunTest(const FString& Parameters)
 	const FCraftServiceQueueView* TieWinner = OneLane.FindCraft(TieWinnerId);
 	const FCraftServiceQueueView* TieLoser = OneLane.FindCraft(TieLoserId);
 	const FCraftServiceQueueView* LongJob = OneLane.FindCraft(LongJobId);
-	TestTrue(TEXT("One Flight Deck supplies one active maintenance lane and stable shortest-job ordering"),
+	TestTrue(TEXT("Flight Operations adds a derived maintenance lane to stable shortest-job ordering"),
 		OneLane.PolicyId == FName(TEXT("craft.service-rapid-turnaround"))
 		&& OneLane.Craft.Num() == 3
 		&& TieWinner != nullptr && TieWinner->bValid && TieWinner->bInServiceLane
-		&& TieWinner->ServiceLaneCount == 1 && TieWinner->QueuePosition == 1
+		&& TieWinner->ServiceLaneCount == 2 && TieWinner->QueuePosition == 1
 		&& TieWinner->ServiceLaneNumber == 1 && TieWinner->EstimatedWaitSeconds == 0
 		&& TieWinner->EstimatedReadySeconds == 3600
-		&& TieLoser != nullptr && !TieLoser->bInServiceLane
-		&& TieLoser->QueuePosition == 2 && TieLoser->WaitingPosition == 1
-		&& TieLoser->EstimatedWaitSeconds == 3600 && TieLoser->EstimatedReadySeconds == 7200
+		&& TieLoser != nullptr && TieLoser->bInServiceLane
+		&& TieLoser->QueuePosition == 2 && TieLoser->WaitingPosition == 0
+		&& TieLoser->ServiceLaneNumber == 2
+		&& TieLoser->EstimatedWaitSeconds == 0 && TieLoser->EstimatedReadySeconds == 3600
 		&& LongJob != nullptr && !LongJob->bInServiceLane
-		&& LongJob->QueuePosition == 3 && LongJob->WaitingPosition == 2
-		&& LongJob->EstimatedWaitSeconds == 7200 && LongJob->EstimatedReadySeconds == 21600
+		&& LongJob->QueuePosition == 3 && LongJob->WaitingPosition == 1
+		&& LongJob->EstimatedWaitSeconds == 3600 && LongJob->EstimatedReadySeconds == 18000
 		&& OneLane.FindCraft(Grounded.CraftId) == nullptr);
 
 	Algo::Reverse(Campaign.Craft);
@@ -86,21 +87,21 @@ bool FCraftServiceQueueEvaluationTest::RunTest(const FString& Parameters)
 	const FCraftServiceQueueView* TwoLaneWinner = TwoLanes.FindCraft(TieWinnerId);
 	const FCraftServiceQueueView* TwoLaneLoser = TwoLanes.FindCraft(TieLoserId);
 	const FCraftServiceQueueView* TwoLaneLongJob = TwoLanes.FindCraft(LongJobId);
-	TestTrue(TEXT("A second operational deck adds a lane and exact earliest-lane estimates"),
+	TestTrue(TEXT("A second operational deck combines with the derived lane for exact earliest-lane estimates"),
 		TwoLaneWinner != nullptr && TwoLaneWinner->bInServiceLane
-		&& TwoLaneWinner->ServiceLaneCount == 2 && TwoLaneWinner->ServiceLaneNumber == 1
+		&& TwoLaneWinner->ServiceLaneCount == 3 && TwoLaneWinner->ServiceLaneNumber == 1
 		&& TwoLaneLoser != nullptr && TwoLaneLoser->bInServiceLane
 		&& TwoLaneLoser->ServiceLaneNumber == 2
-		&& TwoLaneLongJob != nullptr && !TwoLaneLongJob->bInServiceLane
-		&& TwoLaneLongJob->WaitingPosition == 1 && TwoLaneLongJob->ServiceLaneNumber == 1
-		&& TwoLaneLongJob->EstimatedWaitSeconds == 3600
-		&& TwoLaneLongJob->EstimatedReadySeconds == 18000);
+		&& TwoLaneLongJob != nullptr && TwoLaneLongJob->bInServiceLane
+		&& TwoLaneLongJob->WaitingPosition == 0 && TwoLaneLongJob->ServiceLaneNumber == 3
+		&& TwoLaneLongJob->EstimatedWaitSeconds == 0
+		&& TwoLaneLongJob->EstimatedReadySeconds == 14400);
 
 	SecondDeck.Damage = FlightDeck.MaxIntegrity;
 	const FCraftServiceQueueSnapshot DamagedDeck = FCraftServiceQueue::Evaluate(Campaign, Rules);
 	TestTrue(TEXT("A fully damaged deck stops supplying a service lane"),
 		DamagedDeck.FindCraft(TieWinnerId) != nullptr
-		&& DamagedDeck.FindCraft(TieWinnerId)->ServiceLaneCount == 1);
+		&& DamagedDeck.FindCraft(TieWinnerId)->ServiceLaneCount == 2);
 
 	FCampaignState LegacyCampaign = Campaign;
 	LegacyCampaign.Bases[0].Facilities.Reset();
@@ -108,9 +109,9 @@ bool FCraftServiceQueueEvaluationTest::RunTest(const FString& Parameters)
 		FlightDeck.Identity.RuleId, FlightDeck.Identity.RuleId
 	};
 	const FCraftServiceQueueSnapshot Legacy = FCraftServiceQueue::Evaluate(LegacyCampaign, Rules);
-	TestTrue(TEXT("Legacy built-facility saves retain one lane per craft-capacity facility entry"),
+	TestTrue(TEXT("Legacy built-facility saves retain physical lanes plus the derived Flight Operations lane"),
 		Legacy.FindCraft(TieWinnerId) != nullptr
-		&& Legacy.FindCraft(TieWinnerId)->ServiceLaneCount == 2);
+		&& Legacy.FindCraft(TieWinnerId)->ServiceLaneCount == 3);
 	return true;
 }
 
