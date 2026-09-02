@@ -5295,6 +5295,91 @@
       "translations": { "en": "Position legacy facilities before starting new construction.", "fr": "Positionnez les installations héritées avant de commencer une nouvelle construction.", "de": "Positionieren Sie die alten Anlagen, bevor Sie einen neuen Bau beginnen.", "es": "Coloca las instalaciones heredadas antes de iniciar una nueva construcción.", "ja": "新しい建設を始める前に、旧式施設を配置してください。" }
     },
     {
+      "key": "diagnostic.invalid-campaign-sequence",
+      "source": "The campaign command sequence cannot accept another command.",
+      "translations": { "en": "The campaign command sequence cannot accept another command.", "fr": "La séquence de commandes de la campagne ne peut pas accepter une nouvelle commande.", "de": "Die Befehlssequenz der Kampagne kann keinen weiteren Befehl aufnehmen.", "es": "La secuencia de comandos de la campaña no puede aceptar otro comando.", "ja": "キャンペーンのコマンド連番はこれ以上のコマンドを受け付けられません。" }
+    },
+    {
+      "key": "diagnostic.invalid-base-defense-rule",
+      "source": "The base-defense facility or supply profile is invalid.",
+      "translations": { "en": "The base-defense facility or supply profile is invalid.", "fr": "Le profil d'installation ou de ravitaillement de la défense de base est invalide.", "de": "Das Anlagen- oder Versorgungsprofil der Basisverteidigung ist ungültig.", "es": "El perfil de instalación o suministro de la defensa de base no es válido.", "ja": "基地防衛の施設または補給プロファイルが無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-sensor-facility",
+      "source": "The base contains a facility with invalid sensor durability or detection data.",
+      "translations": { "en": "The base contains a facility with invalid sensor durability or detection data.", "fr": "La base contient une installation dont les données de durabilité ou de détection des capteurs sont invalides.", "de": "Die Basis enthält eine Anlage mit ungültigen Sensordauerhaftigkeits- oder Erkennungsdaten.", "es": "La base contiene una instalación con datos de integridad o detección de sensores no válidos.", "ja": "基地に、センサーの耐久度または探知データが無効な施設があります。" }
+    },
+    {
+      "key": "diagnostic.invalid-strategic-contact",
+      "source": "The strategic contact has invalid saved identity, route, condition, or engagement state.",
+      "translations": { "en": "The strategic contact has invalid saved identity, route, condition, or engagement state.", "fr": "Le contact stratégique possède une identité, une route, une condition ou un état d'engagement sauvegardé invalide.", "de": "Der strategische Kontakt weist einen ungültigen gespeicherten Identitäts-, Routen-, Zustands- oder Gefechtsstatus auf.", "es": "El contacto estratégico tiene una identidad, ruta, condición o estado de enfrentamiento guardado no válido.", "ja": "戦略コンタクトの保存された識別情報、経路、状態、または交戦状態が無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-strategic-site",
+      "source": "The strategic site has invalid saved identity, source, type, coordinates, threat, or lifetime.",
+      "translations": { "en": "The strategic site has invalid saved identity, source, type, coordinates, threat, or lifetime.", "fr": "Le site stratégique possède une identité, une source, un type, des coordonnées, une menace ou une durée de vie sauvegardés invalides.", "de": "Der strategische Ort weist eine ungültige gespeicherte Identität, Quelle, Art, Koordinaten, Bedrohung oder Lebensdauer auf.", "es": "El sitio estratégico tiene una identidad, origen, tipo, coordenadas, amenaza o duración guardados no válidos.", "ja": "戦略サイトの保存された識別情報、発生源、種類、座標、脅威、または存続時間が無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-adversary-state",
+      "source": "Campaign adversary cadence, escalation, counters, or outcome metadata is invalid.",
+      "translations": { "en": "Campaign adversary cadence, escalation, counters, or outcome metadata is invalid.", "fr": "La cadence, l'escalade, les compteurs ou les métadonnées de résultat de l'adversaire de campagne sont invalides.", "de": "Taktung, Eskalation, Zähler oder Ergebnis-Metadaten des Kampagnengegners sind ungültig.", "es": "La cadencia, escalada, contadores o metadatos de resultado del adversario de campaña no son válidos.", "ja": "キャンペーン敵対勢力の間隔、エスカレーション、カウンター、または結果メタデータが無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-adversary-mission-count",
+      "source": "Adversary mission counters are inconsistent.",
+      "translations": { "en": "Adversary mission counters are inconsistent.", "fr": "Les compteurs de missions adverses sont incohérents.", "de": "Die Zähler für gegnerische Missionen sind inkonsistent.", "es": "Los contadores de misiones del adversario son incoherentes.", "ja": "敵対勢力のミッションカウンターに整合性がありません。" }
+    },
+    {
+      "key": "diagnostic.invalid-regional-pressure",
+      "source": "Regional pressure state is invalid or duplicated.",
+      "translations": { "en": "Regional pressure state is invalid or duplicated.", "fr": "L'état de pression régionale est invalide ou dupliqué.", "de": "Der regionale Druckstatus ist ungültig oder doppelt vorhanden.", "es": "El estado de presión regional no es válido o está duplicado.", "ja": "地域圧力の状態が無効か、重複しています。" }
+    },
+    {
+      "key": "diagnostic.invalid-adversary-mission",
+      "source": "The adversary mission has invalid saved identity, rule, contact, or start time.",
+      "translations": { "en": "The adversary mission has invalid saved identity, rule, contact, or start time.", "fr": "La mission adverse possède une identité, une règle, un contact ou une heure de début sauvegardés invalides.", "de": "Die gegnerische Mission weist eine ungültige gespeicherte Identität, Regel, Kontaktzuordnung oder Startzeit auf.", "es": "La misión del adversario tiene una identidad, regla, contacto u hora de inicio guardados no válidos.", "ja": "敵対勢力ミッションの保存された識別情報、ルール、コンタクト、または開始時刻が無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-campaign-outcome",
+      "source": "Campaign outcome metadata does not match the campaign state.",
+      "translations": { "en": "Campaign outcome metadata does not match the campaign state.", "fr": "Les métadonnées du résultat de campagne ne correspondent pas à l'état de la campagne.", "de": "Die Metadaten des Kampagnenergebnisses stimmen nicht mit dem Kampagnenstatus überein.", "es": "Los metadatos del resultado de campaña no coinciden con el estado de la campaña.", "ja": "キャンペーン結果のメタデータがキャンペーン状態と一致しません。" }
+    },
+    {
+      "key": "diagnostic.invalid-base-id",
+      "source": "Base ID must be valid and unique.",
+      "translations": { "en": "Base ID must be valid and unique.", "fr": "L'identifiant de base doit être valide et unique.", "de": "Die Basis-ID muss gültig und eindeutig sein.", "es": "El identificador de la base debe ser válido y único.", "ja": "基地IDは有効かつ一意でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-base-name",
+      "source": "Base name must contain 1-64 non-whitespace characters.",
+      "translations": { "en": "Base name must contain 1-64 non-whitespace characters.", "fr": "Le nom de la base doit contenir entre 1 et 64 caractères autres que des espaces.", "de": "Der Basisname muss aus 1 bis 64 Zeichen bestehen, die keine Leerzeichen sind.", "es": "El nombre de la base debe contener entre 1 y 64 caracteres que no sean espacios.", "ja": "基地名は空白以外の1～64文字でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-region-id",
+      "source": "Base region must be a valid namespaced ID.",
+      "translations": { "en": "Base region must be a valid namespaced ID.", "fr": "La région de la base doit être un identifiant d'espace de noms valide.", "de": "Die Basisregion muss eine gültige ID mit Namensraum sein.", "es": "La región de la base debe ser un identificador con espacio de nombres válido.", "ja": "基地の地域は有効な名前空間付きIDでなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-coordinates",
+      "source": "Base coordinates are outside longitude/latitude bounds.",
+      "translations": { "en": "Base coordinates are outside longitude/latitude bounds.", "fr": "Les coordonnées de la base sont hors des limites de longitude et de latitude.", "de": "Die Basiskoordinaten liegen außerhalb der Längen- und Breitengrenzen.", "es": "Las coordenadas de la base están fuera de los límites de longitud y latitud.", "ja": "基地の座標が経度または緯度の範囲外です。" }
+    },
+    {
+      "key": "diagnostic.invalid-deployment-rules",
+      "source": "Craft or home-base data required for site deployment is missing.",
+      "translations": { "en": "Craft or home-base data required for site deployment is missing.", "fr": "Les données de l'appareil ou de la base d'attache requises pour le déploiement sur le site sont manquantes.", "de": "Für den Einsatz am Ort fehlen erforderliche Fluggerät- oder Heimatbasisdaten.", "es": "Faltan datos de la nave o de la base de origen necesarios para desplegarse en el sitio.", "ja": "サイト展開に必要な航空機または所属基地のデータがありません。" }
+    },
+    {
+      "key": "diagnostic.invalid-base-defense-operation",
+      "source": "Resolved base defense has inconsistent battle, assault, mission, contact, or base links.",
+      "translations": { "en": "Resolved base defense has inconsistent battle, assault, mission, contact, or base links.", "fr": "La défense de base résolue contient des liens incohérents vers la bataille, l'assaut, la mission, le contact ou la base.", "de": "Die abgeschlossene Basisverteidigung enthält inkonsistente Verknüpfungen zu Schlacht, Angriff, Mission, Kontakt oder Basis.", "es": "La defensa de base resuelta tiene vínculos incoherentes con la batalla, el asalto, la misión, el contacto o la base.", "ja": "解決済みの基地防衛に、戦闘、襲撃、ミッション、コンタクト、または基地への不整合なリンクがあります。" }
+    },
+    {
+      "key": "diagnostic.invalid-contact-id",
+      "source": "Strategic contact ID must be valid and unique across active contacts and sites.",
+      "translations": { "en": "Strategic contact ID must be valid and unique across active contacts and sites.", "fr": "L'identifiant du contact stratégique doit être valide et unique parmi les contacts et sites actifs.", "de": "Die ID des strategischen Kontakts muss gültig und über aktive Kontakte und Orte hinweg eindeutig sein.", "es": "El identificador del contacto estratégico debe ser válido y único entre contactos y sitios activos.", "ja": "戦略コンタクトIDは有効で、アクティブなコンタクトとサイト全体で一意でなければなりません。" }
+    },
+    {
       "key": "diagnostic.storage-capacity-exceeded",
       "source": "Free storage capacity before completing this order.",
       "translations": { "en": "Free storage capacity before completing this order.", "fr": "Libérez de la capacité de stockage avant de terminer cette commande.", "de": "Schaffen Sie Lagerkapazität, bevor Sie diesen Auftrag abschließen.", "es": "Libera capacidad de almacenamiento antes de completar esta orden.", "ja": "この命令を完了する前に保管容量を空けてください。" }

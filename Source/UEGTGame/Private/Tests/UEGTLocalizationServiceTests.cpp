@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, and identity safeguards expose one thousand five hundred forty localized keys"),
-		Loaded.Catalog.Entries.Num(), 1540);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, and strategic-object safeguards expose one thousand five hundred fifty-seven localized keys"),
+		Loaded.Catalog.Entries.Num(), 1557);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1540);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1557);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1457,6 +1457,74 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("legacy_layout_upgrade_required"), TEXT("Raw legacy-layout diagnostic"), TEXT("fr-FR")),
 		FString(TEXT("Positionnez les installations héritées avant de commencer une nouvelle construction.")));
+	TestEqual(TEXT("Exact French campaign-sequence diagnostics preserve command ordering"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_campaign_sequence"), TEXT("Raw campaign-sequence diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La séquence de commandes de la campagne ne peut pas accepter une nouvelle commande.")));
+	TestEqual(TEXT("Exact German base-defense-rule diagnostics preserve supply validation"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_base_defense_rule"), TEXT("Raw base-defense-rule diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Das Anlagen- oder Versorgungsprofil der Basisverteidigung ist ungültig.")));
+	TestEqual(TEXT("Exact Spanish sensor-facility diagnostics preserve detection state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_sensor_facility"), TEXT("Raw sensor-facility diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La base contiene una instalación con datos de integridad o detección de sensores no válidos.")));
+	TestEqual(TEXT("Exact Japanese strategic-contact diagnostics preserve saved state identity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_strategic_contact"), TEXT("Raw strategic-contact diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("戦略コンタクトの保存された識別情報、経路、状態、または交戦状態が無効です。")));
+	TestEqual(TEXT("Exact French strategic-site diagnostics preserve saved site state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_strategic_site"), TEXT("Raw strategic-site diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Le site stratégique possède une identité, une source, un type, des coordonnées, une menace ou une durée de vie sauvegardés invalides.")));
+	TestEqual(TEXT("Exact German adversary-state diagnostics preserve campaign metadata"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_adversary_state"), TEXT("Raw adversary-state diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Taktung, Eskalation, Zähler oder Ergebnis-Metadaten des Kampagnengegners sind ungültig.")));
+	TestEqual(TEXT("Exact Spanish adversary-count diagnostics preserve counter consistency"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_adversary_mission_count"), TEXT("Raw adversary-count diagnostic"), TEXT("es-ES")),
+		FString(TEXT("Los contadores de misiones del adversario son incoherentes.")));
+	TestEqual(TEXT("Exact Japanese regional-pressure diagnostics preserve duplicate-state identity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_regional_pressure"), TEXT("Raw regional-pressure diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("地域圧力の状態が無効か、重複しています。")));
+	TestEqual(TEXT("Exact French adversary-mission diagnostics preserve saved mission state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_adversary_mission"), TEXT("Raw adversary-mission diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La mission adverse possède une identité, une règle, un contact ou une heure de début sauvegardés invalides.")));
+	TestEqual(TEXT("Exact German campaign-outcome diagnostics preserve terminal-state consistency"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_campaign_outcome"), TEXT("Raw campaign-outcome diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Metadaten des Kampagnenergebnisses stimmen nicht mit dem Kampagnenstatus überein.")));
+	TestEqual(TEXT("Exact Spanish base-id diagnostics preserve uniqueness"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_base_id"), TEXT("Raw base-id diagnostic"), TEXT("es-ES")),
+		FString(TEXT("El identificador de la base debe ser válido y único.")));
+	TestEqual(TEXT("Exact Japanese base-name diagnostics preserve length validation"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_base_name"), TEXT("Raw base-name diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("基地名は空白以外の1～64文字でなければなりません。")));
+	TestEqual(TEXT("Exact French region-id diagnostics preserve namespaced identity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_region_id"), TEXT("Raw region-id diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La région de la base doit être un identifiant d'espace de noms valide.")));
+	TestEqual(TEXT("Exact German coordinate diagnostics preserve geographic bounds"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_coordinates"), TEXT("Raw coordinate diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Basiskoordinaten liegen außerhalb der Längen- und Breitengrenzen.")));
+	TestEqual(TEXT("Exact Spanish deployment-rule diagnostics preserve site prerequisites"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_deployment_rules"), TEXT("Raw deployment-rule diagnostic"), TEXT("es-ES")),
+		FString(TEXT("Faltan datos de la nave o de la base de origen necesarios para desplegarse en el sitio.")));
+	TestEqual(TEXT("Exact Japanese base-defense-operation diagnostics preserve resolved links"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_base_defense_operation"), TEXT("Raw base-defense-operation diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("解決済みの基地防衛に、戦闘、襲撃、ミッション、コンタクト、または基地への不整合なリンクがあります。")));
+	TestEqual(TEXT("Exact French contact-id diagnostics preserve cross-object uniqueness"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_contact_id"), TEXT("Raw contact-id diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("L'identifiant du contact stratégique doit être valide et unique parmi les contacts et sites actifs.")));
 	TestEqual(TEXT("Exact French economy diagnostics preserve the numeric boundary"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("economy_overflow"), TEXT("Raw economy-overflow diagnostic"), TEXT("fr-FR")),
