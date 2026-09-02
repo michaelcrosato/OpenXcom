@@ -247,7 +247,8 @@ bool FMutualAidRelayQueueBalanceCorpusTest::RunTest(const FString& Parameters)
 	AddFacilityRule(TEXT("facility.corpus-relay-array"), 50, 200);
 	AddFacilityRule(TEXT("facility.corpus-relay-lattice"), 100, 300);
 
-	constexpr int32 ScenarioCount = 256;
+	constexpr int32 ScenarioCount = 1024;
+	constexpr int32 MaximumConvoysPerScenario = 16;
 	int32 ScenariosWithPressure = 0;
 	int32 ScenariosWithoutCapacity = 0;
 	int32 ScenariosWithMultipleChannels = 0;
@@ -288,7 +289,7 @@ bool FMutualAidRelayQueueBalanceCorpusTest::RunTest(const FString& Parameters)
 				: ((Seed + 3) * (FacilityIndex + 5) * 17) % (Rule.MaxIntegrity + 1);
 		}
 
-		const int32 ConvoyCount = 1 + (Seed % 7);
+		const int32 ConvoyCount = 1 + (Seed % MaximumConvoysPerScenario);
 		for (int32 ConvoyIndex = 0; ConvoyIndex < ConvoyCount; ++ConvoyIndex)
 		{
 			FMutualAidConvoyState& Convoy = Campaign.MutualAidConvoys.AddDefaulted_GetRef();
@@ -299,11 +300,11 @@ bool FMutualAidRelayQueueBalanceCorpusTest::RunTest(const FString& Parameters)
 			Convoy.DestinationBaseId = FGuid(0x6c900000, 0x6c900001, 0x6c900002, 0x6c900003);
 			Convoy.DispatchSequence = 100 + ConvoyIndex;
 			Convoy.TotalTransitSeconds = static_cast<int64>(
-				12 + ((Seed * 11 + ConvoyIndex * 19) % 85)) * 3600;
+				12 + ((Seed * 11 + ConvoyIndex * 19) % 325)) * 3600;
 			Convoy.RemainingTransitSeconds = Convoy.TotalTransitSeconds;
 			Convoy.bInterdictionResolved = (Seed + ConvoyIndex) % 3 != 0;
 			Convoy.ForecastInterdictionDelaySeconds = static_cast<int64>(
-				6 + ((Seed + ConvoyIndex * 5) % 19)) * 3600;
+				6 + ((Seed + ConvoyIndex * 5) % 57)) * 3600;
 		}
 		Algo::Reverse(Campaign.MutualAidConvoys);
 
@@ -506,7 +507,7 @@ bool FMutualAidRelayQueueBalanceCorpusTest::RunTest(const FString& Parameters)
 		bCorpusValid &= bScenarioValid;
 	}
 
-	TestTrue(TEXT("256 seeded Relay Weave schedules preserve exact lanes, pressure, and prospective readiness"),
+	TestTrue(TEXT("1024 seeded long-horizon Relay Weave schedules preserve exact lanes, pressure, and prospective readiness"),
 		bCorpusValid
 		&& ScenariosWithPressure > 0
 		&& ScenariosWithoutCapacity > 0
