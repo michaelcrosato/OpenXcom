@@ -116,6 +116,21 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 		FMath::IsNearlyEqual(
 			AUEGTTacticalBoardActor::CalculatePathMarkerScale(MarkerPathStep),
 			0.76f));
+	FTacticalHudUnitView MarkerSuppressedUnit;
+	MarkerSuppressedUnit.Suppression = 0;
+	TestTrue(TEXT("Suppression halos retain a bounded base footprint"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateSuppressionMarkerScale(MarkerSuppressedUnit),
+			0.42f));
+	MarkerSuppressedUnit.Suppression = 50;
+	TestTrue(TEXT("Suppression halo footprint reflects current suppression"),
+		AUEGTTacticalBoardActor::CalculateSuppressionMarkerScale(MarkerSuppressedUnit) > 0.42f
+		&& AUEGTTacticalBoardActor::CalculateSuppressionMarkerScale(MarkerSuppressedUnit) < 0.76f);
+	MarkerSuppressedUnit.Suppression = MAX_int32;
+	TestTrue(TEXT("Suppression halo footprint clamps at full suppression"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateSuppressionMarkerScale(MarkerSuppressedUnit),
+			0.76f));
 	TestTrue(TEXT("Intact terrain markers retain their full silhouette"),
 		FMath::IsNearlyEqual(
 			AUEGTTacticalBoardActor::CalculateTerrainMarkerHeightScale(MarkerTerrain),
@@ -176,6 +191,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	Player.Team = ETacticalTeam::Player;
 	Player.X = 0;
 	Player.Y = 1;
+	Player.Suppression = 25;
 	Player.bSelected = true;
 	Player.DisplayName = TEXT("Ari Venn");
 	FTacticalHudWeaponView& Weapon = Player.Weapons.AddDefaulted_GetRef();
@@ -246,6 +262,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Selected units receive a dedicated emphasis marker"), Board->GetRenderedSelectionCount(), 1);
 	TestEqual(TEXT("Vertical connector cells receive a dedicated traversal marker"), Board->GetRenderedConnectorCount(), 1);
 	TestEqual(TEXT("Covered cells receive a dedicated cover marker"), Board->GetRenderedCoverCount(), 1);
+	TestEqual(TEXT("Visible suppressed units receive a dedicated suppression halo"), Board->GetRenderedSuppressionCount(), 1);
 	TestEqual(TEXT("Player deployment cells receive a dedicated zone marker"), Board->GetRenderedDeploymentCount(), 1);
 	TestEqual(TEXT("Extraction cells receive a dedicated zone marker"), Board->GetRenderedExtractionCount(), 1);
 	UUEGTTacticalHudWidget* Hud = CreateWidget<UUEGTTacticalHudWidget>(

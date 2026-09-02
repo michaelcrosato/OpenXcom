@@ -83,6 +83,7 @@ public:
 	int32 GetRenderedSelectionCount() const;
 	int32 GetRenderedConnectorCount() const;
 	int32 GetRenderedCoverCount() const;
+	int32 GetRenderedSuppressionCount() const;
 	int32 GetRenderedDeploymentCount() const;
 	int32 GetRenderedExtractionCount() const;
 	/** Returns whether the board has loaded the semantic primitive profile for tactical markers. */
@@ -97,6 +98,8 @@ public:
 	static float CalculateCoverMarkerScale(const FTacticalHudCellView& Cell);
 	/** Deterministic footprint encoding for one path step's action-point cost. */
 	static float CalculatePathMarkerScale(const FTacticalPathStep& Step);
+	/** Deterministic footprint encoding for a currently visible unit's suppression. */
+	static float CalculateSuppressionMarkerScale(const FTacticalHudUnitView& Unit);
 	EUEGTColorVisionMode GetColorVisionMode() const { return ColorVisionMode; }
 	bool IsHighContrastPaletteEnabled() const { return bUseHighContrast; }
 	bool IsReducedMotionEnabled() const { return bReduceMotion; }
@@ -133,6 +136,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
 	TObjectPtr<UInstancedStaticMeshComponent> CoverInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> SuppressionInstances;
 
 	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
 	TObjectPtr<UInstancedStaticMeshComponent> DeploymentInstances;

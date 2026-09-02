@@ -31,6 +31,7 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 	DoorInstances = MakeInstances(TEXT("DoorInstances"));
 	ConnectorInstances = MakeInstances(TEXT("ConnectorInstances"));
 	CoverInstances = MakeInstances(TEXT("CoverInstances"));
+	SuppressionInstances = MakeInstances(TEXT("SuppressionInstances"));
 	DeploymentInstances = MakeInstances(TEXT("DeploymentInstances"));
 	ExtractionInstances = MakeInstances(TEXT("ExtractionInstances"));
 	PlayerUnitInstances = MakeInstances(TEXT("PlayerUnitInstances"));
@@ -64,6 +65,7 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 		ObjectiveInstances->SetStaticMesh(CylinderMesh.Object);
 		ConnectorInstances->SetStaticMesh(CylinderMesh.Object);
 		CoverInstances->SetStaticMesh(CylinderMesh.Object);
+		SuppressionInstances->SetStaticMesh(CylinderMesh.Object);
 	}
 	if (ConeMesh.Succeeded())
 	{
@@ -102,6 +104,7 @@ void AUEGTTacticalBoardActor::BeginPlay()
 	ConfigureMeshComponent(DoorInstances, true);
 	ConfigureMeshComponent(ConnectorInstances, false);
 	ConfigureMeshComponent(CoverInstances, false);
+	ConfigureMeshComponent(SuppressionInstances, false);
 	ConfigureMeshComponent(DeploymentInstances, false);
 	ConfigureMeshComponent(ExtractionInstances, false);
 	ConfigureMeshComponent(PlayerUnitInstances, true);
@@ -205,6 +208,7 @@ void AUEGTTacticalBoardActor::ApplyPalette()
 		{ DoorInstances, TEXT("DoorMaterial"), FLinearColor(0.08f, 0.55f, 0.62f) },
 		{ ConnectorInstances, TEXT("ConnectorMaterial"), FLinearColor(0.12f, 0.88f, 0.82f) },
 		{ CoverInstances, TEXT("CoverMaterial"), FLinearColor(0.62f, 0.34f, 0.9f) },
+		{ SuppressionInstances, TEXT("SuppressionMaterial"), FLinearColor(0.98f, 0.34f, 0.16f) },
 		{ DeploymentInstances, TEXT("DeploymentMaterial"), FLinearColor(0.1f, 0.82f, 0.95f) },
 		{ ExtractionInstances, TEXT("ExtractionMaterial"), FLinearColor(1.0f, 0.64f, 0.08f) },
 		{ PlayerUnitInstances, TEXT("PlayerMaterial"), Tone(PlayerColor) },
@@ -473,6 +477,16 @@ float AUEGTTacticalBoardActor::CalculatePathMarkerScale(
 	return 0.2f + CostRatio * 0.56f;
 }
 
+float AUEGTTacticalBoardActor::CalculateSuppressionMarkerScale(
+	const FTacticalHudUnitView& Unit)
+{
+	const float SuppressionRatio = FMath::Clamp(
+		static_cast<float>(Unit.Suppression) / 100.0f,
+		0.0f,
+		1.0f);
+	return 0.42f + SuppressionRatio * 0.34f;
+}
+
 void AUEGTTacticalBoardActor::AddUnitMarker(
 	UInstancedStaticMeshComponent* Component,
 	const FTacticalHudUnitView& Unit)
@@ -488,7 +502,7 @@ void AUEGTTacticalBoardActor::AddUnitMarker(
 void AUEGTTacticalBoardActor::ClearBoard()
 {
 	for (UInstancedStaticMeshComponent* Component : {
-		GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), ConnectorInstances.Get(), CoverInstances.Get(), DeploymentInstances.Get(), ExtractionInstances.Get(), PlayerUnitInstances.Get(),
+		GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), ConnectorInstances.Get(), CoverInstances.Get(), SuppressionInstances.Get(), DeploymentInstances.Get(), ExtractionInstances.Get(), PlayerUnitInstances.Get(),
 		AdversaryUnitInstances.Get(), LastKnownAdversaryInstances.Get(), ObjectiveInstances.Get(), PathInstances.Get(), HoverInstances.Get(),
 		SelectionInstances.Get(), SmokeInstances.Get(), FireInstances.Get() })
 	{
@@ -632,6 +646,15 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 			AdversaryUnitCells.Add(Cell);
 			AddUnitMarker(AdversaryUnitInstances, Unit);
 		}
+		if (!Unit.bLastKnown && Unit.Suppression > 0)
+		{
+			AddCellMarker(
+				SuppressionInstances,
+				Cell,
+				3.0f,
+				CalculateSuppressionMarkerScale(Unit),
+				0.035f);
+		}
 		if (Unit.bSelected)
 		{
 			SelectionCells.Add(Cell);
@@ -772,6 +795,11 @@ int32 AUEGTTacticalBoardActor::GetRenderedCoverCount() const
 	return CoverInstances != nullptr ? CoverInstances->GetInstanceCount() : 0;
 }
 
+int32 AUEGTTacticalBoardActor::GetRenderedSuppressionCount() const
+{
+	return SuppressionInstances != nullptr ? SuppressionInstances->GetInstanceCount() : 0;
+}
+
 int32 AUEGTTacticalBoardActor::GetRenderedDeploymentCount() const
 {
 	return DeploymentInstances != nullptr ? DeploymentInstances->GetInstanceCount() : 0;
@@ -796,6 +824,9 @@ bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const
 	const UStaticMesh* CoverMesh = CoverInstances != nullptr
 		? CoverInstances->GetStaticMesh()
 		: nullptr;
+	const UStaticMesh* SuppressionMesh = SuppressionInstances != nullptr
+		? SuppressionInstances->GetStaticMesh()
+		: nullptr;
 	const UStaticMesh* DeploymentMesh = DeploymentInstances != nullptr
 		? DeploymentInstances->GetStaticMesh()
 		: nullptr;
@@ -810,6 +841,7 @@ bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const
 		&& LastKnownMesh != nullptr
 		&& ConnectorMesh != nullptr
 		&& CoverMesh != nullptr
+		&& SuppressionMesh != nullptr
 		&& DeploymentMesh != nullptr
 		&& ExtractionMesh != nullptr
 		&& SmokeMesh != nullptr
