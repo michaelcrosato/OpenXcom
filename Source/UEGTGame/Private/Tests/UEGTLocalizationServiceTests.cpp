@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, and strategic-object safeguards expose one thousand five hundred fifty-seven localized keys"),
-		Loaded.Catalog.Entries.Num(), 1557);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, and craft-state safeguards expose one thousand five hundred seventy-five localized keys"),
+		Loaded.Catalog.Entries.Num(), 1575);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1557);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1575);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1681,6 +1681,78 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("craft_not_airborne"), TEXT("Raw airborne-recovery diagnostic"), TEXT("de-DE")),
 		FString(TEXT("Nur ein fliegendes Fluggerät mit zugewiesenem Piloten kann geborgen werden.")));
+	TestEqual(TEXT("Exact French craft-cargo diagnostics preserve mass capacity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("craft_cargo_capacity_exceeded"), TEXT("Raw craft-cargo-capacity diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La cargaison de l'appareil dépasse sa capacité de masse prise en charge.")));
+	TestEqual(TEXT("Exact German craft-cargo diagnostics preserve stack count"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("craft_cargo_stack_limit"), TEXT("Raw craft-cargo-stack diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Fracht eines Fluggeräts kann höchstens 64 verschiedene Gegenstandsstapel enthalten.")));
+	TestEqual(TEXT("Exact Spanish craft-service diagnostics preserve the time boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("craft_service_time_overflow"), TEXT("Raw craft-service-time diagnostic"), TEXT("es-ES")),
+		FString(TEXT("El tiempo de servicio de la nave supera el rango numérico de la campaña.")));
+	TestEqual(TEXT("Exact Japanese craft-sortie diagnostics preserve the completed-mission bound"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("craft_sortie_overflow"), TEXT("Raw craft-sortie diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("航空機の出撃回数に完了したミッションをこれ以上記録できません。")));
+	TestEqual(TEXT("Exact French craft-acquisition diagnostics preserve saved order state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_acquisition"), TEXT("Raw craft-acquisition diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("L'ordre d'acquisition de l'appareil possède une identité, une règle, une base ou un temps de transit sauvegardés invalides.")));
+	TestEqual(TEXT("Exact German craft-agent diagnostics preserve roster assignment"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_agent"), TEXT("Raw craft-agent diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Feldagentenzuweisung des Fluggeräts ist ungültig oder steht im Konflikt.")));
+	TestEqual(TEXT("Exact Spanish craft-capacity diagnostics preserve facility data"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_capacity"), TEXT("Raw craft-capacity-state diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La base contiene datos de instalación de capacidad de naves no válidos.")));
+	TestEqual(TEXT("Exact Japanese craft-cargo diagnostics preserve stack validity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_cargo"), TEXT("Raw invalid-craft-cargo diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("航空機の貨物に、未知、重複、正でない、または数値的に無効なスタックがあります。")));
+	TestEqual(TEXT("Exact French craft-crew diagnostics preserve destroyed-roster state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_crew"), TEXT("Raw craft-crew diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("L'appareil détruit possède un équipage sauvegardé incomplet.")));
+	TestEqual(TEXT("Exact German craft-equipment diagnostics preserve equipment identity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_equipment"), TEXT("Raw invalid-craft-equipment diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Das Fluggerät verweist auf ungültige Ausrüstung.")));
+	TestEqual(TEXT("Exact Spanish craft-id diagnostics preserve unused identity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_id"), TEXT("Raw craft-id diagnostic"), TEXT("es-ES")),
+		FString(TEXT("El identificador de la nave debe ser válido y no estar en uso.")));
+	TestEqual(TEXT("Exact Japanese craft-name diagnostics preserve length validation"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_name"), TEXT("Raw craft-name diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("航空機名は空白以外の1～64文字でなければなりません。")));
+	TestEqual(TEXT("Exact French craft-order-id diagnostics preserve acquisition identity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_order_id"), TEXT("Raw craft-order-id diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("L'identifiant de l'ordre d'acquisition de l'appareil doit être valide et unique.")));
+	TestEqual(TEXT("Exact German craft-pilot diagnostics preserve assignment state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_pilot"), TEXT("Raw invalid-craft-pilot diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Pilotenzuweisung des Fluggeräts ist ungültig oder steht im Konflikt.")));
+	TestEqual(TEXT("Exact Spanish craft-rule diagnostics preserve authored rule validation"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_rule"), TEXT("Raw craft-rule diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La regla de la nave falta o no es válida.")));
+	TestEqual(TEXT("Exact Japanese craft-state diagnostics preserve saved capacity state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_state"), TEXT("Raw craft-state diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("航空機の保存された識別情報、状態、整備、または容量が無効です。")));
+	TestEqual(TEXT("Exact French craft-weapon-rule diagnostics preserve weapon validation"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_weapon_rule"), TEXT("Raw craft-weapon-rule diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La règle d'arme de l'appareil est manquante ou invalide.")));
+	TestEqual(TEXT("Exact German craft-weapon-state diagnostics preserve ammunition state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_weapon_state"), TEXT("Raw craft-weapon-state diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Das Fluggerät weist einen ungültigen gespeicherten Waffen- oder Munitionsstatus auf.")));
 	TestEqual(TEXT("Exact French interception rule diagnostics identify the missing formation data"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("invalid_interception_rules"), TEXT("Raw interception-rules diagnostic"), TEXT("fr-FR")),

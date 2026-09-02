@@ -5645,6 +5645,96 @@
       "translations": { "en": "Only an airborne craft with an assigned pilot can recover.", "fr": "Seul un appareil en vol avec un pilote affecté peut être récupéré.", "de": "Nur ein fliegendes Fluggerät mit zugewiesenem Piloten kann geborgen werden.", "es": "Solo se puede recuperar una nave en vuelo con un piloto asignado.", "ja": "操縦士が配属された飛行中の航空機だけを回収できます。" }
     },
     {
+      "key": "diagnostic.craft-cargo-capacity-exceeded",
+      "source": "Craft cargo exceeds the supported mass capacity.",
+      "translations": { "en": "Craft cargo exceeds the supported mass capacity.", "fr": "La cargaison de l'appareil dépasse sa capacité de masse prise en charge.", "de": "Die Fracht des Fluggeräts überschreitet die unterstützte Massenkapazität.", "es": "La carga de la nave supera su capacidad de masa admitida.", "ja": "航空機の貨物がサポートされる質量容量を超えています。" }
+    },
+    {
+      "key": "diagnostic.craft-cargo-stack-limit",
+      "source": "Craft cargo can contain at most 64 distinct item stacks.",
+      "translations": { "en": "Craft cargo can contain at most 64 distinct item stacks.", "fr": "La cargaison de l'appareil peut contenir au maximum 64 piles d'objets distinctes.", "de": "Die Fracht eines Fluggeräts kann höchstens 64 verschiedene Gegenstandsstapel enthalten.", "es": "La carga de la nave puede contener como máximo 64 pilas de objetos distintas.", "ja": "航空機の貨物には最大64種類のアイテムスタックを搭載できます。" }
+    },
+    {
+      "key": "diagnostic.craft-service-time-overflow",
+      "source": "Craft service time exceeds the campaign numeric range.",
+      "translations": { "en": "Craft service time exceeds the campaign numeric range.", "fr": "Le temps d'entretien de l'appareil dépasse la plage numérique de la campagne.", "de": "Die Wartungszeit des Fluggeräts überschreitet den numerischen Bereich der Kampagne.", "es": "El tiempo de servicio de la nave supera el rango numérico de la campaña.", "ja": "航空機の整備時間がキャンペーンの数値範囲を超えています。" }
+    },
+    {
+      "key": "diagnostic.craft-sortie-overflow",
+      "source": "Craft sortie count cannot accept another completed mission.",
+      "translations": { "en": "Craft sortie count cannot accept another completed mission.", "fr": "Le compteur de sorties de l'appareil ne peut pas enregistrer une mission terminée supplémentaire.", "de": "Der Einsatz-Zähler des Fluggeräts kann keine weitere abgeschlossene Mission aufnehmen.", "es": "El contador de salidas de la nave no puede aceptar otra misión completada.", "ja": "航空機の出撃回数に完了したミッションをこれ以上記録できません。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-acquisition",
+      "source": "The craft acquisition order has invalid saved identity, rule, base, or transit time.",
+      "translations": { "en": "The craft acquisition order has invalid saved identity, rule, base, or transit time.", "fr": "L'ordre d'acquisition de l'appareil possède une identité, une règle, une base ou un temps de transit sauvegardés invalides.", "de": "Der Beschaffungsauftrag des Fluggeräts weist eine ungültige gespeicherte Identität, Regel, Basis oder Transitzeit auf.", "es": "La orden de adquisición de la nave tiene una identidad, regla, base o tiempo de tránsito guardados no válidos.", "ja": "航空機調達命令の保存された識別情報、ルール、基地、または移動時間が無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-agent",
+      "source": "The craft has an invalid or conflicting field-agent assignment.",
+      "translations": { "en": "The craft has an invalid or conflicting field-agent assignment.", "fr": "L'affectation d'agent de terrain de l'appareil est invalide ou en conflit.", "de": "Die Feldagentenzuweisung des Fluggeräts ist ungültig oder steht im Konflikt.", "es": "La asignación de agentes de campo de la nave no es válida o entra en conflicto.", "ja": "航空機のフィールドエージェント配属が無効か、競合しています。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-capacity",
+      "source": "The base contains invalid craft-capacity facility data.",
+      "translations": { "en": "The base contains invalid craft-capacity facility data.", "fr": "La base contient des données d'installation de capacité d'appareils invalides.", "de": "Die Basis enthält ungültige Anlagendaten für die Fluggerätkapazität.", "es": "La base contiene datos de instalación de capacidad de naves no válidos.", "ja": "基地の航空機容量施設データが無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-cargo",
+      "source": "Craft cargo contains an unknown, duplicate, non-positive, or numerically invalid stack.",
+      "translations": { "en": "Craft cargo contains an unknown, duplicate, non-positive, or numerically invalid stack.", "fr": "La cargaison de l'appareil contient une pile inconnue, dupliquée, non positive ou numériquement invalide.", "de": "Die Fracht des Fluggeräts enthält einen unbekannten, doppelten, nicht positiven oder numerisch ungültigen Stapel.", "es": "La carga de la nave contiene una pila desconocida, duplicada, no positiva o numéricamente no válida.", "ja": "航空機の貨物に、未知、重複、正でない、または数値的に無効なスタックがあります。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-crew",
+      "source": "The destroyed craft has an incomplete saved crew roster.",
+      "translations": { "en": "The destroyed craft has an incomplete saved crew roster.", "fr": "L'appareil détruit possède un équipage sauvegardé incomplet.", "de": "Das zerstörte Fluggerät hat eine unvollständige gespeicherte Besatzungsliste.", "es": "La nave destruida tiene una lista de tripulación guardada incompleta.", "ja": "破壊された航空機の保存された搭乗員名簿が不完全です。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-equipment",
+      "source": "The craft references invalid equipment.",
+      "translations": { "en": "The craft references invalid equipment.", "fr": "L'appareil fait référence à un équipement invalide.", "de": "Das Fluggerät verweist auf ungültige Ausrüstung.", "es": "La nave hace referencia a equipo no válido.", "ja": "航空機が無効な装備を参照しています。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-id",
+      "source": "Craft ID must be valid and unused.",
+      "translations": { "en": "Craft ID must be valid and unused.", "fr": "L'identifiant de l'appareil doit être valide et inutilisé.", "de": "Die Fluggerät-ID muss gültig und unbenutzt sein.", "es": "El identificador de la nave debe ser válido y no estar en uso.", "ja": "航空機IDは有効かつ未使用でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-name",
+      "source": "Craft names must contain 1-64 non-whitespace characters.",
+      "translations": { "en": "Craft names must contain 1-64 non-whitespace characters.", "fr": "Le nom de l'appareil doit contenir entre 1 et 64 caractères autres que des espaces.", "de": "Fluggerät-Namen müssen aus 1 bis 64 Zeichen bestehen, die keine Leerzeichen sind.", "es": "Los nombres de las naves deben contener entre 1 y 64 caracteres que no sean espacios.", "ja": "航空機名は空白以外の1～64文字でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-order-id",
+      "source": "Craft acquisition order ID must be valid and unique.",
+      "translations": { "en": "Craft acquisition order ID must be valid and unique.", "fr": "L'identifiant de l'ordre d'acquisition de l'appareil doit être valide et unique.", "de": "Die ID des Fluggerät-Beschaffungsauftrags muss gültig und eindeutig sein.", "es": "El identificador de la orden de adquisición de la nave debe ser válido y único.", "ja": "航空機調達命令IDは有効かつ一意でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-pilot",
+      "source": "The craft has an invalid or conflicting pilot assignment.",
+      "translations": { "en": "The craft has an invalid or conflicting pilot assignment.", "fr": "L'affectation du pilote de l'appareil est invalide ou en conflit.", "de": "Die Pilotenzuweisung des Fluggeräts ist ungültig oder steht im Konflikt.", "es": "La asignación del piloto de la nave no es válida o entra en conflicto.", "ja": "航空機の操縦士配属が無効か、競合しています。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-rule",
+      "source": "The craft rule is missing or invalid.",
+      "translations": { "en": "The craft rule is missing or invalid.", "fr": "La règle de l'appareil est manquante ou invalide.", "de": "Die Fluggerätregel fehlt oder ist ungültig.", "es": "La regla de la nave falta o no es válida.", "ja": "航空機ルールがないか、無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-state",
+      "source": "The craft has invalid saved identity, condition, service, or capacity state.",
+      "translations": { "en": "The craft has invalid saved identity, condition, service, or capacity state.", "fr": "L'appareil possède une identité, un état, un entretien ou une capacité sauvegardés invalides.", "de": "Das Fluggerät weist einen ungültigen gespeicherten Identitäts-, Zustands-, Wartungs- oder Kapazitätsstatus auf.", "es": "La nave tiene una identidad, condición, servicio o capacidad guardados no válidos.", "ja": "航空機の保存された識別情報、状態、整備、または容量が無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-weapon-rule",
+      "source": "The craft weapon rule is missing or invalid.",
+      "translations": { "en": "The craft weapon rule is missing or invalid.", "fr": "La règle d'arme de l'appareil est manquante ou invalide.", "de": "Die Waffenregel des Fluggeräts fehlt oder ist ungültig.", "es": "La regla de armamento de la nave falta o no es válida.", "ja": "航空機の武装ルールがないか、無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-weapon-state",
+      "source": "The craft has invalid saved weapon or ammunition state.",
+      "translations": { "en": "The craft has invalid saved weapon or ammunition state.", "fr": "L'appareil possède un état d'arme ou de munitions sauvegardé invalide.", "de": "Das Fluggerät weist einen ungültigen gespeicherten Waffen- oder Munitionsstatus auf.", "es": "La nave tiene un estado de armamento o munición guardado no válido.", "ja": "航空機の保存された武装または弾薬状態が無効です。" }
+    },
+    {
       "key": "diagnostic.personnel-already-at-base",
       "source": "This personnel member is already stationed at the destination base.",
       "translations": { "en": "This personnel member is already stationed at the destination base.", "fr": "Ce membre du personnel est déjà stationné dans la base de destination.", "de": "Dieses Personalmitglied ist bereits an der Zielbasis stationiert.", "es": "Este miembro del personal ya está destinado en la base de destino.", "ja": "この人員はすでに移動先の基地に配属されています。" }
