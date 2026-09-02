@@ -5285,6 +5285,56 @@
       "translations": { "en": "Storage reservations or commitments exceed the supported numeric range.", "fr": "Les réservations ou engagements de stockage dépassent la plage numérique prise en charge.", "de": "Lagerreservierungen oder -bindungen überschreiten den unterstützten numerischen Bereich.", "es": "Las reservas o compromisos de almacenamiento superan el rango numérico admitido.", "ja": "保管予約または保管確保量がサポートされる数値範囲を超えています。" }
     },
     {
+      "key": "diagnostic.economy-overflow",
+      "source": "An economy calculation exceeded the supported numeric range.",
+      "translations": { "en": "An economy calculation exceeded the supported numeric range.", "fr": "Un calcul économique a dépassé la plage numérique prise en charge.", "de": "Eine Wirtschaftsberechnung hat den unterstützten numerischen Bereich überschritten.", "es": "Un cálculo económico superó el rango numérico admitido.", "ja": "経済計算がサポートされる数値範囲を超えました。" }
+    },
+    {
+      "key": "diagnostic.financial-overflow",
+      "source": "A campaign funding or cost calculation exceeded the supported numeric range.",
+      "translations": { "en": "A campaign funding or cost calculation exceeded the supported numeric range.", "fr": "Un calcul de financement ou de coût de campagne a dépassé la plage numérique prise en charge.", "de": "Eine Berechnung der Kampagnenfinanzierung oder -kosten hat den unterstützten numerischen Bereich überschritten.", "es": "Un cálculo de financiación o costes de campaña superó el rango numérico admitido.", "ja": "キャンペーンの資金または費用の計算がサポートされる数値範囲を超えました。" }
+    },
+    {
+      "key": "diagnostic.simulation-overflow",
+      "source": "Strategic simulation exceeded a persisted numeric range.",
+      "translations": { "en": "Strategic simulation exceeded a persisted numeric range.", "fr": "La simulation stratégique a dépassé une plage numérique persistée.", "de": "Die strategische Simulation hat einen gespeicherten numerischen Bereich überschritten.", "es": "La simulación estratégica superó un rango numérico persistido.", "ja": "戦略シミュレーションが保存可能な数値範囲を超えました。" }
+    },
+    {
+      "key": "diagnostic.campaign-score-overflow",
+      "source": "Campaign score exceeded the supported numeric range.",
+      "translations": { "en": "Campaign score exceeded the supported numeric range.", "fr": "Le score de campagne a dépassé la plage numérique prise en charge.", "de": "Die Kampagnenwertung hat den unterstützten numerischen Bereich überschritten.", "es": "La puntuación de campaña superó el rango numérico admitido.", "ja": "キャンペーンスコアがサポートされる数値範囲を超えました。" }
+    },
+    {
+      "key": "diagnostic.adversary-state-overflow",
+      "source": "Adversary state exceeded the supported numeric range.",
+      "translations": { "en": "Adversary state exceeded the supported numeric range.", "fr": "L'état de l'adversaire a dépassé la plage numérique prise en charge.", "de": "Der Zustand des Gegners hat den unterstützten numerischen Bereich überschritten.", "es": "El estado del adversario superó el rango numérico admitido.", "ja": "敵対勢力の状態がサポートされる数値範囲を超えました。" }
+    },
+    {
+      "key": "diagnostic.research-progress-overflow",
+      "source": "Research progress exceeded the campaign numeric range.",
+      "translations": { "en": "Research progress exceeded the campaign numeric range.", "fr": "La progression de la recherche a dépassé la plage numérique de la campagne.", "de": "Der Forschungsfortschritt hat den numerischen Bereich der Kampagne überschritten.", "es": "El progreso de investigación superó el rango numérico de la campaña.", "ja": "研究の進行度がキャンペーンの数値範囲を超えました。" }
+    },
+    {
+      "key": "diagnostic.personnel-experience-overflow",
+      "source": "Personnel experience reward exceeded the supported numeric range.",
+      "translations": { "en": "Personnel experience reward exceeded the supported numeric range.", "fr": "La récompense d'expérience du personnel a dépassé la plage numérique prise en charge.", "de": "Die Erfahrungsgutschrift für Personal hat den unterstützten numerischen Bereich überschritten.", "es": "La recompensa de experiencia del personal superó el rango numérico admitido.", "ja": "人員の経験値報酬がサポートされる数値範囲を超えました。" }
+    },
+    {
+      "key": "diagnostic.personnel-recovery-overflow",
+      "source": "Personnel recovery duration exceeded the supported range.",
+      "translations": { "en": "Personnel recovery duration exceeded the supported range.", "fr": "La durée de récupération du personnel a dépassé la plage prise en charge.", "de": "Die Erholungsdauer des Personals hat den unterstützten Bereich überschritten.", "es": "La duración de recuperación del personal superó el rango admitido.", "ja": "人員の回復期間がサポート範囲を超えました。" }
+    },
+    {
+      "key": "diagnostic.recovery-time-overflow",
+      "source": "Personnel recovery time exceeded the campaign numeric range.",
+      "translations": { "en": "Personnel recovery time exceeded the campaign numeric range.", "fr": "Le temps de récupération du personnel a dépassé la plage numérique de la campagne.", "de": "Die Erholungszeit des Personals hat den numerischen Bereich der Kampagne überschritten.", "es": "El tiempo de recuperación del personal superó el rango numérico de la campaña.", "ja": "人員の回復時間がキャンペーンの数値範囲を超えました。" }
+    },
+    {
+      "key": "diagnostic.random-draw-overflow",
+      "source": "The deterministic random-stream draw count exceeded the supported range.",
+      "translations": { "en": "The deterministic random-stream draw count exceeded the supported range.", "fr": "Le nombre de tirages du flux aléatoire déterministe a dépassé la plage prise en charge.", "de": "Die Anzahl der Ziehungen aus dem deterministischen Zufallsstrom hat den unterstützten Bereich überschritten.", "es": "El número de tiradas del flujo aleatorio determinista superó el rango admitido.", "ja": "決定論的ランダムストリームの抽選回数がサポート範囲を超えました。" }
+    },
+    {
       "key": "diagnostic.salvage-disposition-required",
       "source": "Retain or sell recovered salvage before this craft can continue operations.",
       "translations": { "en": "Retain or sell recovered salvage before this craft can continue operations.", "fr": "Conservez ou vendez le matériel récupéré avant que cet appareil puisse poursuivre ses opérations.", "de": "Behalte oder verkaufe die Bergung, bevor dieses Fluggerät den Betrieb fortsetzen kann.", "es": "Conserva o vende la recuperación antes de que esta nave pueda continuar sus operaciones.", "ja": "この航空機が運用を続ける前に、回収物を保持または売却してください。" }

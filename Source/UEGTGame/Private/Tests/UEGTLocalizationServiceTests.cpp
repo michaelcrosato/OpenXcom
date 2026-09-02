@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, and economy safeguards expose one thousand five hundred twenty-one localized keys"),
-		Loaded.Catalog.Entries.Num(), 1521);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, and numeric-boundary safeguards expose one thousand five hundred thirty-one localized keys"),
+		Loaded.Catalog.Entries.Num(), 1531);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1521);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1531);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1421,6 +1421,46 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("unknown_manufacturing_project"), TEXT("Raw unknown-manufacturing-project diagnostic"), TEXT("ja-JP")),
 		FString(TEXT("製造プロジェクトはすでに有効ではありません。")));
+	TestEqual(TEXT("Exact French economy diagnostics preserve the numeric boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("economy_overflow"), TEXT("Raw economy-overflow diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Un calcul économique a dépassé la plage numérique prise en charge.")));
+	TestEqual(TEXT("Exact German financial diagnostics identify campaign cost overflow"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("financial_overflow"), TEXT("Raw financial-overflow diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Eine Berechnung der Kampagnenfinanzierung oder -kosten hat den unterstützten numerischen Bereich überschritten.")));
+	TestEqual(TEXT("Exact Spanish simulation diagnostics preserve persisted range identity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("simulation_overflow"), TEXT("Raw simulation-overflow diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La simulación estratégica superó un rango numérico persistido.")));
+	TestEqual(TEXT("Exact Japanese campaign-score diagnostics preserve the score boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("campaign_score_overflow"), TEXT("Raw campaign-score diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("キャンペーンスコアがサポートされる数値範囲を超えました。")));
+	TestEqual(TEXT("Exact French adversary-state diagnostics preserve the strategic boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("adversary_state_overflow"), TEXT("Raw adversary-state diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("L'état de l'adversaire a dépassé la plage numérique prise en charge.")));
+	TestEqual(TEXT("Exact German research-progress diagnostics preserve the campaign boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("research_progress_overflow"), TEXT("Raw research-progress diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Der Forschungsfortschritt hat den numerischen Bereich der Kampagne überschritten.")));
+	TestEqual(TEXT("Exact Spanish personnel-experience diagnostics preserve the reward boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("personnel_experience_overflow"), TEXT("Raw personnel-experience diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La recompensa de experiencia del personal superó el rango numérico admitido.")));
+	TestEqual(TEXT("Exact Japanese personnel-recovery diagnostics preserve the duration boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("personnel_recovery_overflow"), TEXT("Raw personnel-recovery diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("人員の回復期間がサポート範囲を超えました。")));
+	TestEqual(TEXT("Exact French recovery-time diagnostics preserve the campaign boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("recovery_time_overflow"), TEXT("Raw recovery-time diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Le temps de récupération du personnel a dépassé la plage numérique de la campagne.")));
+	TestEqual(TEXT("Exact German random-draw diagnostics preserve deterministic accounting"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("random_draw_overflow"), TEXT("Raw random-draw diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Anzahl der Ziehungen aus dem deterministischen Zufallsstrom hat den unterstützten Bereich überschritten.")));
 	TestEqual(TEXT("Exact French storage scaling diagnostics preserve the numeric guard"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("storage_capacity_overflow"), TEXT("Raw storage-overflow diagnostic"), TEXT("fr-FR")),
