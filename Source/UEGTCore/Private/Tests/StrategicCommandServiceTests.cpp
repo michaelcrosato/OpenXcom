@@ -13892,6 +13892,29 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Generated battlefield passes reachability and structural invariants"),
 			FTacticalMissionGenerator::ValidateBattle(FirstBattle, First, Rules, GenerationDiagnostics));
 		TestTrue(TEXT("Valid battlefield produces no generator diagnostics"), GenerationDiagnostics.IsEmpty());
+
+		FResolvedRuleSet RulesWithAlternateAdversary = Rules;
+		FTacticalUnitRule AlternateAdversary = Rules.TacticalUnits.FindChecked(
+			FirstBattle.Units.FindByPredicate(
+				[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Adversary; })->SourceRuleId);
+		AlternateAdversary.Identity.RuleId = TEXT("unit.test-alternate-adversary");
+		RulesWithAlternateAdversary.TacticalUnits.Add(AlternateAdversary.Identity.RuleId, AlternateAdversary);
+		FTacticalBattleState InvalidAdversary = FirstBattle;
+		FTacticalUnitState* InvalidAdversaryUnit = InvalidAdversary.Units.FindByPredicate(
+			[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Adversary; });
+		if (InvalidAdversaryUnit != nullptr)
+		{
+			InvalidAdversaryUnit->SourceRuleId = AlternateAdversary.Identity.RuleId;
+			TArray<FTacticalGenerationDiagnostic> InvalidAdversaryDiagnostics;
+			TestFalse(TEXT("Adversary units cannot switch away from the mission archetype"),
+				FTacticalMissionGenerator::ValidateBattle(
+					InvalidAdversary, First, RulesWithAlternateAdversary, InvalidAdversaryDiagnostics));
+			TestTrue(TEXT("Adversary archetype substitution has a stable diagnostic"), InvalidAdversaryDiagnostics.ContainsByPredicate(
+				[](const FTacticalGenerationDiagnostic& Diagnostic)
+				{
+					return Diagnostic.Code == FName(TEXT("invalid_tactical_adversary_unit"));
+				}));
+		}
 	}
 
 	GenerateBattle.ExpectedSequence = First.CommandSequence;

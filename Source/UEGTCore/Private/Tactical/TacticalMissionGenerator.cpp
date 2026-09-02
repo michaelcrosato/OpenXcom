@@ -915,6 +915,8 @@ bool FTacticalMissionGenerator::ValidateBattle(
 		{
 			const FTacticalUnitRule* UnitRule = Rules.TacticalUnits.Find(Unit.SourceRuleId);
 			if (Unit.PersonnelId.IsValid() || Unit.bExtracted || UnitRule == nullptr
+				|| Unit.SourceRuleId != Mission->AdversaryUnitRuleId
+				|| Unit.DisplayName != UnitRule->DisplayName
 				|| !Unit.WeaponStates.IsEmpty() || !Unit.CarriedItems.IsEmpty() || !Unit.EjectedMagazines.IsEmpty()
 				|| (UnitRule != nullptr && (Unit.KineticArmor != UnitRule->KineticArmor
 					|| Unit.ThermalArmor != UnitRule->ThermalArmor || Unit.ArcArmor != UnitRule->ArcArmor)))
