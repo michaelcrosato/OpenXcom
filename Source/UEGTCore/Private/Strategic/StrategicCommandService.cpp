@@ -18173,6 +18173,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	if (bCompleted)
 	{
 		Objective->Status = ETacticalObjectiveStatus::Completed;
+		if (!Battle->bRequiresExtraction)
+		{
+			Battle->Phase = ETacticalBattlePhase::Resolved;
+		}
 	}
 	else if (bFailed)
 	{
@@ -18255,6 +18259,16 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		Completed.ToZ = ObjectiveZ;
 		Completed.Quantity = RequiredInteractions;
 		Completed.bSuccessful = true;
+	}
+	if (bCompleted && !Battle->bRequiresExtraction)
+	{
+		FStrategicEvent& Resolved = AddEvent(Result, EStrategicEventType::TacticalBattleResolved, Transaction.CommandSequence, Transaction.StrategicTime.Utc);
+		Resolved.BattleId = BattleId;
+		Resolved.OperationId = OperationId;
+		Resolved.SiteId = SiteId;
+		Resolved.RuleId = ObjectiveId;
+		Resolved.Quantity = 1;
+		Resolved.bSuccessful = true;
 	}
 	if (bFailed)
 	{

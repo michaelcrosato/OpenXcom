@@ -12915,6 +12915,71 @@ bool FStrategicTacticalBaseDefenseTest::RunTest(const FString& Parameters)
 		GeneratedBattle.Units.FilterByPredicate(
 			[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Adversary; }).Num(), 5);
 
+	FCampaignState ObjectiveCompletion = State;
+	FCampaignState ObjectiveCompletionReplay = State;
+	for (FCampaignState* Campaign : { &ObjectiveCompletion, &ObjectiveCompletionReplay })
+	{
+		FConfirmTacticalDeploymentCommand ConfirmObjectiveDeployment;
+		ConfirmObjectiveDeployment.ExpectedSequence = Campaign->CommandSequence;
+		ConfirmObjectiveDeployment.BattleId = Campaign->TacticalBattles[0].BattleId;
+		const FStrategicCommandResult ConfirmedObjectiveDeployment =
+			FStrategicCommandService::Execute(*Campaign, Rules, ConfirmObjectiveDeployment);
+		TestTrue(TEXT("Base-defense objective fixture confirms deployment"), ConfirmedObjectiveDeployment.bAccepted);
+		if (!ConfirmedObjectiveDeployment.bAccepted)
+		{
+			return false;
+		}
+		FTacticalBattleState& ObjectiveBattle = Campaign->TacticalBattles[0];
+		FTacticalUnitState* ObjectivePlayer = ObjectiveBattle.Units.FindByPredicate(
+			[](const FTacticalUnitState& Unit)
+			{
+				return Unit.Team == ETacticalTeam::Player;
+			});
+		if (ObjectivePlayer == nullptr || ObjectiveBattle.Objectives.IsEmpty())
+		{
+			return false;
+		}
+		const FTacticalObjectiveState& Objective = ObjectiveBattle.Objectives[0];
+		const FGuid ObjectiveBattleId = ObjectiveBattle.BattleId;
+		const FGuid ObjectiveUnitId = ObjectivePlayer->UnitId;
+		const FName ObjectiveId = Objective.ObjectiveId;
+		const int32 RequiredInteractions = Objective.RequiredInteractions;
+		ObjectivePlayer->X = Objective.X;
+		ObjectivePlayer->Y = Objective.Y;
+		ObjectivePlayer->Z = Objective.Z;
+		ObjectivePlayer->RemainingActionPoints = ObjectivePlayer->MaxActionPoints;
+		FInteractTacticalObjectiveCommand Interact;
+		Interact.BattleId = ObjectiveBattleId;
+		Interact.UnitId = ObjectiveUnitId;
+		Interact.ObjectiveId = ObjectiveId;
+		FStrategicCommandResult LastInteraction;
+		for (int32 InteractionIndex = 0; InteractionIndex < RequiredInteractions; ++InteractionIndex)
+		{
+			Interact.ExpectedSequence = Campaign->CommandSequence;
+			LastInteraction = FStrategicCommandService::Execute(*Campaign, Rules, Interact);
+			if (!LastInteraction.bAccepted)
+			{
+				break;
+			}
+		}
+		const FTacticalBattleState& ResolvedObjectiveBattle = Campaign->TacticalBattles[0];
+		const FTacticalObjectiveState* ResolvedObjective = ResolvedObjectiveBattle.Objectives.FindByPredicate(
+			[&ObjectiveId](const FTacticalObjectiveState& Entry)
+			{
+				return Entry.ObjectiveId == ObjectiveId;
+			});
+		const bool bObjectiveResolved = LastInteraction.bAccepted
+			&& LastInteraction.HasEvent(EStrategicEventType::TacticalObjectiveCompleted)
+			&& LastInteraction.HasEvent(EStrategicEventType::TacticalBattleResolved)
+			&& ResolvedObjectiveBattle.Phase == ETacticalBattlePhase::Resolved
+			&& ResolvedObjective != nullptr
+			&& ResolvedObjective->Status == ETacticalObjectiveStatus::Completed;
+		TestTrue(TEXT("Completing a base-defense relay resolves its battle immediately"), bObjectiveResolved);
+	}
+	TestEqual(TEXT("Base-defense objective completion replays exactly"),
+		MakeTacticalBattleFingerprint(ObjectiveCompletionReplay.TacticalBattles[0]),
+		MakeTacticalBattleFingerprint(ObjectiveCompletion.TacticalBattles[0]));
+
 	const FDateTime SaveTime(2026, 8, 30, 18, 30, 0);
 	const FCampaignSaveWriteResult ActiveWrite = FCampaignSaveCodec::Serialize(FCampaignSaveCodec::CreateNew(
 		State, MakePackages(), TEXT("0.21.0-test"), SaveTime, FGuid(0x91000001, 2, 3, 4)));
