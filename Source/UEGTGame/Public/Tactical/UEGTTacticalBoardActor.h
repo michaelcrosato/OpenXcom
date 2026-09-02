@@ -81,6 +81,8 @@ public:
 	int32 GetRenderedObjectiveCount() const;
 	/** Returns whether the board has loaded the semantic primitive profile for tactical markers. */
 	bool UsesSemanticMarkerGeometry() const;
+	/** Deterministic height encoding for a currently visible unit's stance and health. */
+	static float CalculateUnitMarkerHeightScale(const FTacticalHudUnitView& Unit);
 	EUEGTColorVisionMode GetColorVisionMode() const { return ColorVisionMode; }
 	bool IsHighContrastPaletteEnabled() const { return bUseHighContrast; }
 	bool IsReducedMotionEnabled() const { return bReduceMotion; }
@@ -95,6 +97,7 @@ private:
 	void UpdateAnimatedEffects(bool bAnimate);
 	UMaterialInstanceDynamic* MakeColorMaterial(FName ObjectName, const FLinearColor& Color);
 	void AddCellMarker(UInstancedStaticMeshComponent* Component, const FIntVector& Cell, float Height, float XYScale, float ZScale);
+	void AddUnitMarker(UInstancedStaticMeshComponent* Component, const FTacticalHudUnitView& Unit);
 
 	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
 	TObjectPtr<USceneComponent> SceneRoot;

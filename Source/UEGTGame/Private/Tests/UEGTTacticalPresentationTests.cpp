@@ -56,6 +56,20 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	Board->SetReducedMotionEnabled(false);
 	TestFalse(TEXT("Tactical board enables presentation pulses when reduced motion is disabled"),
 		Board->IsReducedMotionEnabled());
+	FTacticalHudUnitView MarkerUnit;
+	MarkerUnit.MaxHealth = 100;
+	MarkerUnit.CurrentHealth = 100;
+	const float StandingHeight = AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MarkerUnit);
+	MarkerUnit.Stance = ETacticalStance::Crouched;
+	const float CrouchedHeight = AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MarkerUnit);
+	MarkerUnit.Stance = ETacticalStance::Standing;
+	MarkerUnit.CurrentHealth = 20;
+	const float DamagedHeight = AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MarkerUnit);
+	TestTrue(TEXT("Tactical marker silhouette shortens for crouched stance"), CrouchedHeight < StandingHeight);
+	TestTrue(TEXT("Tactical marker silhouette shortens for damaged health"), DamagedHeight < StandingHeight);
+	MarkerUnit.bIncapacitated = true;
+	TestEqual(TEXT("Incapacitated marker silhouette retains the low profile"),
+		AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(MarkerUnit), 0.18f);
 	Board->ApplyAccessibilityPalette(EUEGTColorVisionMode::Tritanopia, false);
 	TestEqual(TEXT("Tactical board accepts the selected color-vision palette"),
 		Board->GetColorVisionMode(), EUEGTColorVisionMode::Tritanopia);

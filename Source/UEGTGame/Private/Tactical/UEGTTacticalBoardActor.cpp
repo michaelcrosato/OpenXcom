@@ -337,6 +337,31 @@ void AUEGTTacticalBoardActor::AddCellMarker(
 		FVector(XYScale * CellSize / 100.0f, XYScale * CellSize / 100.0f, ZScale)));
 }
 
+float AUEGTTacticalBoardActor::CalculateUnitMarkerHeightScale(const FTacticalHudUnitView& Unit)
+{
+	if (Unit.bIncapacitated)
+	{
+		return 0.18f;
+	}
+	const float HealthRatio = Unit.MaxHealth > 0
+		? FMath::Clamp(static_cast<float>(Unit.CurrentHealth) / Unit.MaxHealth, 0.0f, 1.0f)
+		: 1.0f;
+	const float StanceScale = Unit.Stance == ETacticalStance::Crouched ? 0.52f : 0.74f;
+	return StanceScale * (0.62f + HealthRatio * 0.38f);
+}
+
+void AUEGTTacticalBoardActor::AddUnitMarker(
+	UInstancedStaticMeshComponent* Component,
+	const FTacticalHudUnitView& Unit)
+{
+	AddCellMarker(
+		Component,
+		FIntVector(Unit.X, Unit.Y, Unit.Z),
+		Unit.bLastKnown ? 24.0f : 42.0f,
+		Unit.bLastKnown ? 0.32f : (Unit.bIncapacitated ? 0.3f : 0.44f),
+		Unit.bLastKnown ? 0.28f : CalculateUnitMarkerHeightScale(Unit));
+}
+
 void AUEGTTacticalBoardActor::ClearBoard()
 {
 	for (UInstancedStaticMeshComponent* Component : {
@@ -439,17 +464,17 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 		{
 			PlayerUnitIds.Add(Unit.UnitId);
 			PlayerUnitCells.Add(Cell);
-			AddCellMarker(PlayerUnitInstances, Cell, 42.0f, Unit.bIncapacitated ? 0.3f : 0.44f, Unit.bIncapacitated ? 0.18f : 0.74f);
+			AddUnitMarker(PlayerUnitInstances, Unit);
 		}
 		else if (Unit.bLastKnown)
 		{
-			AddCellMarker(LastKnownAdversaryInstances, Cell, 24.0f, 0.32f, 0.28f);
+			AddUnitMarker(LastKnownAdversaryInstances, Unit);
 		}
 		else
 		{
 			AdversaryUnitIds.Add(Unit.UnitId);
 			AdversaryUnitCells.Add(Cell);
-			AddCellMarker(AdversaryUnitInstances, Cell, 42.0f, Unit.bIncapacitated ? 0.3f : 0.44f, Unit.bIncapacitated ? 0.18f : 0.74f);
+			AddUnitMarker(AdversaryUnitInstances, Unit);
 		}
 		if (Unit.bSelected)
 		{
