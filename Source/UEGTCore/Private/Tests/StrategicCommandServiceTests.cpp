@@ -17163,6 +17163,46 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 			|| ImpossibleDeploymentPositionValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
 	}
 
+	FCampaignSaveEnvelope ImpossiblePlayerHealthEnvelope = MagazineWrite.Envelope;
+	FTacticalUnitState* ImpossiblePlayerHealthUnit = ImpossiblePlayerHealthEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
+		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+	FPersonnelState* ImpossiblePlayerHealthPerson = ImpossiblePlayerHealthUnit != nullptr
+		? ImpossiblePlayerHealthEnvelope.State.Personnel.FindByPredicate(
+			[&ImpossiblePlayerHealthUnit](const FPersonnelState& Person)
+			{
+				return Person.PersonnelId == ImpossiblePlayerHealthUnit->PersonnelId;
+			})
+		: nullptr;
+	TestNotNull(TEXT("Magazine save fixture has a player health snapshot and personnel"), ImpossiblePlayerHealthUnit);
+	TestNotNull(TEXT("Magazine save fixture resolves the player health owner"), ImpossiblePlayerHealthPerson);
+	if (ImpossiblePlayerHealthUnit != nullptr && ImpossiblePlayerHealthPerson != nullptr)
+	{
+		ImpossiblePlayerHealthUnit->MaxHealth = ImpossiblePlayerHealthPerson->MaxHealth + 1;
+		const FCampaignSaveValidationResult ImpossiblePlayerHealthValidation = FCampaignSaveCodec::Validate(
+			ImpossiblePlayerHealthEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects tactical health above the strategic snapshot"),
+			ImpossiblePlayerHealthValidation.bSucceeded);
+		TestTrue(TEXT("Tactical max-health drift has a stable player diagnostic"),
+			ImpossiblePlayerHealthValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
+
+		FCampaignSaveEnvelope ImpossibleCurrentHealthEnvelope = MagazineWrite.Envelope;
+		FPersonnelState* ReducedHealthPerson = ImpossibleCurrentHealthEnvelope.State.Personnel.FindByPredicate(
+			[&ImpossiblePlayerHealthUnit](const FPersonnelState& Person)
+			{
+				return Person.PersonnelId == ImpossiblePlayerHealthUnit->PersonnelId;
+			});
+		if (ReducedHealthPerson != nullptr && ReducedHealthPerson->CurrentHealth > 1)
+		{
+			--ReducedHealthPerson->CurrentHealth;
+			const FCampaignSaveValidationResult ImpossibleCurrentHealthValidation = FCampaignSaveCodec::Validate(
+				ImpossibleCurrentHealthEnvelope, MakePackages());
+			TestFalse(TEXT("Save validation rejects tactical health above current personnel health"),
+				ImpossibleCurrentHealthValidation.bSucceeded);
+			TestTrue(TEXT("Tactical current-health drift has a stable player diagnostic"),
+				ImpossibleCurrentHealthValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
+		}
+	}
+
 	FCampaignSaveEnvelope LegacyV26 = MagazineWrite.Envelope;
 	LegacyV26.Header.FormatVersion = 26;
 	for (FTacticalBattleState& LegacyBattle : LegacyV26.State.TacticalBattles)

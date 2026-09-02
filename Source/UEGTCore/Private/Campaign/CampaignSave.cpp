@@ -3351,7 +3351,8 @@ namespace CampaignSavePrivate
 							[&Unit](const FPersonnelState& Entry) { return Entry.PersonnelId == Unit.PersonnelId; });
 						if (!Unit.PersonnelId.IsValid() || PlayerPersonnelIds.Contains(Unit.PersonnelId)
 							|| Operation == nullptr || !Operation->AgentIds.Contains(Unit.PersonnelId) || Person == nullptr
-							|| Unit.SourceRuleId != Person->RoleId || Unit.DisplayName != Person->DisplayName)
+							|| Unit.SourceRuleId != Person->RoleId || Unit.DisplayName != Person->DisplayName
+							|| Unit.MaxHealth != Person->MaxHealth || Unit.CurrentHealth > Person->CurrentHealth)
 						{
 							AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_tactical_player_unit"), FString::Printf(TEXT("Tactical battle '%s' contains a player unit outside its operation roster."), *Battle.BattleId.ToString()));
 						}
