@@ -104,6 +104,20 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	Adversary.Team = ETacticalTeam::Adversary;
 	Adversary.X = 2;
 	Adversary.Y = 1;
+	FTacticalHudUnitView& LastKnownAdversary = Snapshot.Units.AddDefaulted_GetRef();
+	LastKnownAdversary.UnitId = FGuid(9, 10, 11, 12);
+	LastKnownAdversary.Team = ETacticalTeam::Adversary;
+	LastKnownAdversary.X = 3;
+	LastKnownAdversary.Y = 2;
+	LastKnownAdversary.CurrentHealth = 21;
+	LastKnownAdversary.MaxHealth = 35;
+	LastKnownAdversary.CurrentMorale = 67;
+	LastKnownAdversary.MaxMorale = 100;
+	LastKnownAdversary.Suppression = 14;
+	LastKnownAdversary.LastSeenTurnNumber = 1;
+	LastKnownAdversary.bLastKnown = true;
+	LastKnownAdversary.bCurrentlyVisible = false;
+	Snapshot.LastKnownAdversaryUnitCount = 1;
 	FTacticalHudObjectiveView& Objective = Snapshot.Objectives.AddDefaulted_GetRef();
 	Objective.ObjectiveId = TEXT("objective.runtime-test");
 	Objective.X = 3;
@@ -122,6 +136,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Historical coordinates use a separate fog-memory instance"), Board->GetRenderedFogMemoryCount(), 1);
 	TestEqual(TEXT("Friendly presentation uses its own instance set"), Board->GetRenderedPlayerUnitCount(), 1);
 	TestEqual(TEXT("Visible adversary presentation uses its own instance set"), Board->GetRenderedAdversaryUnitCount(), 1);
+	TestEqual(TEXT("Last-known adversary presentation uses a separate subdued instance set"), Board->GetRenderedLastKnownAdversaryCount(), 1);
 	TestEqual(TEXT("Active objective receives a board marker"), Board->GetRenderedObjectiveCount(), 1);
 	UUEGTTacticalHudWidget* Hud = CreateWidget<UUEGTTacticalHudWidget>(
 		World, UUEGTTacticalHudWidget::StaticClass());
@@ -257,6 +272,13 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 				{
 					return Summary.Contains(
 						TEXT("Fusil de service  •  CHARGEUR 4/6  •  RÉSERVE 2 (9 MUN.)  •  PARTIELS 1  •  SUIVANT 6"));
+				}));
+		TestTrue(TEXT("French tactical HUD labels last-known contacts without live AP details"),
+			Hud->GetRenderedUnitSummaries().ContainsByPredicate(
+				[](const FString& Summary)
+				{
+					return Summary.Contains(TEXT("DERNIER CONTACT CONNU  •  TOUR 1"))
+						&& !Summary.Contains(TEXT("PA 0/0"));
 				}));
 		TestTrue(TEXT("French tactical HUD resolves stable unavailable-action codes into exact tooltips"),
 			Hud->GetRenderedActionTooltips().Contains(
@@ -397,6 +419,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	Board->ClearBoard();
 	TestEqual(TEXT("Board clears generated instances atomically"), Board->GetRenderedGroundCount(), 0);
 	TestEqual(TEXT("Board also clears fog-memory instances atomically"), Board->GetRenderedFogMemoryCount(), 0);
+	TestEqual(TEXT("Board also clears last-known adversary markers atomically"), Board->GetRenderedLastKnownAdversaryCount(), 0);
 	TestTrue(TEXT("Temporary game world shuts down cleanly"), TestWorld.DestroyTestWorld(false));
 	return true;
 }

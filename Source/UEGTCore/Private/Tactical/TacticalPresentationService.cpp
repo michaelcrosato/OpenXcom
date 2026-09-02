@@ -331,6 +331,7 @@ namespace TacticalPresentationPrivate
 		View.MaxMorale = Unit.MaxMorale;
 		View.Suppression = Unit.Suppression;
 		View.bSelected = Unit.UnitId == SelectedUnitId;
+		View.bCurrentlyVisible = true;
 		View.bControllable = Unit.Team == ETacticalTeam::Player
 			&& Unit.CurrentHealth > 0 && !Unit.bExtracted
 			&& Battle.Phase == ETacticalBattlePhase::PlayerTurn
@@ -387,6 +388,31 @@ namespace TacticalPresentationPrivate
 			WeaponView.NextReloadAmmunition = FindBestReserveAmmunition(Unit, WeaponId, *Weapon);
 			WeaponView.ReloadActionPointCost = Weapon->TacticalReloadActionPointCost;
 		}
+		return View;
+	}
+
+	FTacticalHudUnitView MakeLastKnownUnitView(const FTacticalUnitMemoryState& Memory)
+	{
+		FTacticalHudUnitView View;
+		View.UnitId = Memory.UnitId;
+		View.SourceRuleId = Memory.SourceRuleId;
+		View.DisplayName = Memory.DisplayName;
+		View.Team = ETacticalTeam::Adversary;
+		View.Stance = Memory.Stance;
+		View.X = Memory.X;
+		View.Y = Memory.Y;
+		View.Z = Memory.Z;
+		View.CurrentHealth = Memory.CurrentHealth;
+		View.MaxHealth = Memory.MaxHealth;
+		View.CurrentMorale = Memory.CurrentMorale;
+		View.MaxMorale = Memory.MaxMorale;
+		View.Suppression = Memory.Suppression;
+		View.bCurrentlyVisible = false;
+		View.bLastKnown = true;
+		View.LastSeenTurnNumber = Memory.LastSeenTurnNumber;
+		View.bControllable = false;
+		View.bIncapacitated = false;
+		View.bExtracted = false;
 		return View;
 	}
 
@@ -581,6 +607,36 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 		{
 			SelectedUnit = &Unit;
 		}
+	}
+	FGuid PreviousLastKnownUnitId;
+	bool bHasPreviousLastKnownUnitId = false;
+	for (const FTacticalUnitMemoryState& Memory : Battle.PlayerLastKnownAdversaries)
+	{
+		const FTacticalUnitState* Unit = FindUnit(Battle, Memory.UnitId);
+		const bool bKnownStance = Memory.Stance == ETacticalStance::Standing
+			|| Memory.Stance == ETacticalStance::Crouched;
+		const bool bSorted = !bHasPreviousLastKnownUnitId
+			|| GuidLess(PreviousLastKnownUnitId, Memory.UnitId);
+		if (!Memory.UnitId.IsValid() || !bSorted || Unit == nullptr || Unit->Team != ETacticalTeam::Adversary
+			|| Unit->CurrentHealth <= 0 || Unit->bExtracted
+			|| !Battle.IsWithinGrid(Memory.X, Memory.Y, Memory.Z)
+			|| Memory.SourceRuleId != Unit->SourceRuleId || Memory.DisplayName != Unit->DisplayName
+			|| !bKnownStance || Memory.MaxHealth <= 0 || Memory.MaxHealth > 200 || Memory.CurrentHealth <= 0 || Memory.CurrentHealth > Memory.MaxHealth
+			|| Memory.MaxMorale <= 0 || Memory.MaxMorale > 100 || Memory.CurrentMorale < 0 || Memory.CurrentMorale > Memory.MaxMorale
+			|| Memory.Suppression < 0 || Memory.Suppression > 100
+			|| Memory.LastSeenTurnNumber <= 0 || Memory.LastSeenTurnNumber > Battle.TurnNumber)
+		{
+			AddDiagnostic(Snapshot.Diagnostics, TEXT("invalid_tactical_memory"), TEXT("Tactical last-known adversary memory is invalid or exposes an unknown unit."));
+			return Snapshot;
+		}
+		PreviousLastKnownUnitId = Memory.UnitId;
+		bHasPreviousLastKnownUnitId = true;
+		if (Visibility.IsUnitVisible(Memory.UnitId))
+		{
+			continue;
+		}
+		Snapshot.Units.Add(MakeLastKnownUnitView(Memory));
+		++Snapshot.LastKnownAdversaryUnitCount;
 	}
 	Snapshot.Units.Sort(
 		[](const FTacticalHudUnitView& Left, const FTacticalHudUnitView& Right)

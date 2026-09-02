@@ -563,6 +563,8 @@ FTacticalVisibilityResult FTacticalNavigationService::RefreshPlayerDiscovery(
 	FTacticalBattleState& Battle,
 	const FResolvedRuleSet& Rules)
 {
+	using namespace TacticalNavigationPrivate;
+
 	FTacticalVisibilityResult Result = ComputePlayerVisibility(Battle, Rules);
 	if (!Result.bSucceeded)
 	{
@@ -584,6 +586,48 @@ FTacticalVisibilityResult FTacticalNavigationService::RefreshPlayerDiscovery(
 		PreviousCellIndex = CellIndex;
 	}
 
+	FGuid PreviousLastKnownUnitId;
+	bool bHasPreviousLastKnownUnitId = false;
+	for (const FTacticalUnitMemoryState& Memory : Battle.PlayerLastKnownAdversaries)
+	{
+		const FTacticalUnitState* Unit = FindUnit(Battle, Memory.UnitId);
+		const bool bKnownStance = Memory.Stance == ETacticalStance::Standing
+			|| Memory.Stance == ETacticalStance::Crouched;
+		const bool bSorted = !bHasPreviousLastKnownUnitId
+			|| PreviousLastKnownUnitId.ToString(EGuidFormats::Digits) < Memory.UnitId.ToString(EGuidFormats::Digits);
+		if (!Memory.UnitId.IsValid() || !bSorted || Unit == nullptr || Unit->Team != ETacticalTeam::Adversary)
+		{
+			AddDiagnostic(
+				Result.Diagnostics,
+				TEXT("invalid_tactical_memory"),
+				TEXT("Tactical last-known adversary memory is sorted, bounded, and tied to a living adversary."));
+			Result.bSucceeded = false;
+			return Result;
+		}
+		PreviousLastKnownUnitId = Memory.UnitId;
+		bHasPreviousLastKnownUnitId = true;
+		if (Unit->CurrentHealth <= 0 || Unit->bExtracted)
+		{
+			continue;
+		}
+		if (!Battle.IsWithinGrid(Memory.X, Memory.Y, Memory.Z)
+			|| Memory.SourceRuleId != Unit->SourceRuleId || Memory.DisplayName != Unit->DisplayName
+			|| !bKnownStance || Memory.MaxHealth <= 0 || Memory.MaxHealth > 200
+			|| Memory.CurrentHealth <= 0 || Memory.CurrentHealth > Memory.MaxHealth
+			|| Memory.MaxMorale <= 0 || Memory.MaxMorale > 100
+			|| Memory.CurrentMorale < 0 || Memory.CurrentMorale > Memory.MaxMorale
+			|| Memory.Suppression < 0 || Memory.Suppression > 100
+			|| Memory.LastSeenTurnNumber <= 0 || Memory.LastSeenTurnNumber > Battle.TurnNumber)
+		{
+			AddDiagnostic(
+				Result.Diagnostics,
+				TEXT("invalid_tactical_memory"),
+				TEXT("Tactical last-known adversary memory is sorted, bounded, and tied to a living adversary."));
+			Result.bSucceeded = false;
+			return Result;
+		}
+	}
+
 	TSet<int32> Discovered;
 	Discovered.Reserve(Battle.PlayerDiscoveredCellIndices.Num() + Result.VisibleCellIndices.Num());
 	for (const int32 CellIndex : Battle.PlayerDiscoveredCellIndices)
@@ -599,6 +643,46 @@ FTacticalVisibilityResult FTacticalNavigationService::RefreshPlayerDiscovery(
 	}
 	Battle.PlayerDiscoveredCellIndices = Discovered.Array();
 	Battle.PlayerDiscoveredCellIndices.Sort();
+
+	TArray<FTacticalUnitMemoryState> UpdatedMemory;
+	UpdatedMemory.Reserve(Battle.PlayerLastKnownAdversaries.Num());
+	for (const FTacticalUnitState& Unit : Battle.Units)
+	{
+		if (Unit.Team != ETacticalTeam::Adversary || Unit.CurrentHealth <= 0 || Unit.bExtracted)
+		{
+			continue;
+		}
+		if (Result.IsUnitVisible(Unit.UnitId))
+		{
+			FTacticalUnitMemoryState& Memory = UpdatedMemory.AddDefaulted_GetRef();
+			Memory.UnitId = Unit.UnitId;
+			Memory.SourceRuleId = Unit.SourceRuleId;
+			Memory.DisplayName = Unit.DisplayName;
+			Memory.Stance = Unit.Stance;
+			Memory.X = Unit.X;
+			Memory.Y = Unit.Y;
+			Memory.Z = Unit.Z;
+			Memory.MaxHealth = Unit.MaxHealth;
+			Memory.CurrentHealth = Unit.CurrentHealth;
+			Memory.MaxMorale = Unit.MaxMorale;
+			Memory.CurrentMorale = Unit.CurrentMorale;
+			Memory.Suppression = Unit.Suppression;
+			Memory.LastSeenTurnNumber = Battle.TurnNumber;
+			continue;
+		}
+		const FTacticalUnitMemoryState* ExistingMemory = Battle.PlayerLastKnownAdversaries.FindByPredicate(
+			[&Unit](const FTacticalUnitMemoryState& Entry) { return Entry.UnitId == Unit.UnitId; });
+		if (ExistingMemory != nullptr)
+		{
+			UpdatedMemory.Add(*ExistingMemory);
+		}
+	}
+	UpdatedMemory.Sort(
+		[](const FTacticalUnitMemoryState& Left, const FTacticalUnitMemoryState& Right)
+		{
+			return Left.UnitId.ToString(EGuidFormats::Digits) < Right.UnitId.ToString(EGuidFormats::Digits);
+		});
+	Battle.PlayerLastKnownAdversaries = MoveTemp(UpdatedMemory);
 	return Result;
 }
 

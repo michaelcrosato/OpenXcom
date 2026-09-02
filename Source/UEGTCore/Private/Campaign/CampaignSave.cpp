@@ -210,6 +210,11 @@ namespace CampaignSavePrivate
 					return Left.Y != Right.Y ? Left.Y < Right.Y : Left.X < Right.X;
 				});
 			Battle.PlayerDiscoveredCellIndices.Sort();
+			Battle.PlayerLastKnownAdversaries.Sort(
+				[](const FTacticalUnitMemoryState& Left, const FTacticalUnitMemoryState& Right)
+				{
+					return Left.UnitId.ToString(EGuidFormats::Digits) < Right.UnitId.ToString(EGuidFormats::Digits);
+				});
 			Battle.Units.Sort(
 				[](const FTacticalUnitState& Left, const FTacticalUnitState& Right)
 				{
@@ -1857,6 +1862,26 @@ namespace CampaignSavePrivate
 						AppendCanonicalField(Canonical, TEXT("battlePlayerDiscoveredCellIndex"), LexToString(CellIndex));
 					}
 				}
+				if (Envelope.Header.FormatVersion >= 44)
+				{
+					AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryCount"), LexToString(Battle.PlayerLastKnownAdversaries.Num()));
+					for (const FTacticalUnitMemoryState& Memory : Battle.PlayerLastKnownAdversaries)
+					{
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryId"), Memory.UnitId.ToString(EGuidFormats::DigitsWithHyphensLower));
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryRule"), Memory.SourceRuleId.ToString());
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryName"), Memory.DisplayName);
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryStance"), TacticalStanceToString(Memory.Stance));
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryX"), LexToString(Memory.X));
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryY"), LexToString(Memory.Y));
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryZ"), LexToString(Memory.Z));
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryMaxHealth"), LexToString(Memory.MaxHealth));
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryCurrentHealth"), LexToString(Memory.CurrentHealth));
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryMaxMorale"), LexToString(Memory.MaxMorale));
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryCurrentMorale"), LexToString(Memory.CurrentMorale));
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversarySuppression"), LexToString(Memory.Suppression));
+						AppendCanonicalField(Canonical, TEXT("battleLastKnownAdversaryLastSeenTurn"), LexToString(Memory.LastSeenTurnNumber));
+					}
+				}
 				AppendCanonicalField(Canonical, TEXT("battleUnitCount"), LexToString(Battle.Units.Num()));
 				for (const FTacticalUnitState& Unit : Battle.Units)
 				{
@@ -3186,6 +3211,36 @@ namespace CampaignSavePrivate
 							break;
 						}
 						PreviousDiscoveredCellIndex = CellIndex;
+					}
+				}
+				if (Header.FormatVersion >= 44)
+				{
+					FGuid PreviousLastKnownUnitId;
+					bool bHasPreviousLastKnownUnitId = false;
+					for (const FTacticalUnitMemoryState& Memory : Battle.PlayerLastKnownAdversaries)
+					{
+						const FTacticalUnitState* Unit = Battle.Units.FindByPredicate(
+							[&Memory](const FTacticalUnitState& Entry) { return Entry.UnitId == Memory.UnitId; });
+						const bool bKnownStance = Memory.Stance == ETacticalStance::Standing
+							|| Memory.Stance == ETacticalStance::Crouched;
+						const bool bSorted = !bHasPreviousLastKnownUnitId
+							|| PreviousLastKnownUnitId.ToString(EGuidFormats::Digits) < Memory.UnitId.ToString(EGuidFormats::Digits);
+						if (!Memory.UnitId.IsValid() || !bSorted || Unit == nullptr
+							|| Unit->Team != ETacticalTeam::Adversary || Unit->CurrentHealth <= 0 || Unit->bExtracted
+							|| !Battle.IsWithinGrid(Memory.X, Memory.Y, Memory.Z)
+							|| Memory.SourceRuleId != Unit->SourceRuleId || Memory.DisplayName != Unit->DisplayName
+							|| !bKnownStance || Memory.MaxHealth <= 0 || Memory.MaxHealth > 200
+							|| Memory.CurrentHealth <= 0 || Memory.CurrentHealth > Memory.MaxHealth
+							|| Memory.MaxMorale <= 0 || Memory.MaxMorale > 100
+							|| Memory.CurrentMorale < 0 || Memory.CurrentMorale > Memory.MaxMorale
+							|| Memory.Suppression < 0 || Memory.Suppression > 100
+							|| Memory.LastSeenTurnNumber <= 0 || Memory.LastSeenTurnNumber > Battle.TurnNumber)
+						{
+							AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_tactical_memory"),
+								FString::Printf(TEXT("Tactical battle '%s' contains invalid last-known adversary memory."), *Battle.BattleId.ToString()));
+						}
+						PreviousLastKnownUnitId = Memory.UnitId;
+						bHasPreviousLastKnownUnitId = true;
 					}
 				}
 
@@ -5255,6 +5310,77 @@ namespace CampaignSavePrivate
 		return bValid;
 	}
 
+	bool ReadTacticalUnitMemories(
+		const TSharedPtr<FJsonObject>& BattleObject,
+		TArray<FTacticalUnitMemoryState>& OutMemories,
+		const FString& BattleContext,
+		TArray<FCampaignSaveDiagnostic>& Diagnostics)
+	{
+		const TArray<TSharedPtr<FJsonValue>>* Values = nullptr;
+		if (!BattleObject->HasField(TEXT("playerLastKnownAdversaries")))
+		{
+			AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("missing_field"),
+				FString::Printf(TEXT("%s is missing required array 'playerLastKnownAdversaries'."), *BattleContext));
+			return false;
+		}
+		if (!BattleObject->TryGetArrayField(TEXT("playerLastKnownAdversaries"), Values) || Values == nullptr)
+		{
+			AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_field_type"),
+				FString::Printf(TEXT("%s.playerLastKnownAdversaries must be an array."), *BattleContext));
+			return false;
+		}
+
+		bool bValid = true;
+		for (int32 Index = 0; Index < Values->Num(); ++Index)
+		{
+			const TSharedPtr<FJsonObject>* MemoryObject = nullptr;
+			const FString Context = FString::Printf(TEXT("%s.playerLastKnownAdversaries[%d]"), *BattleContext, Index);
+			if (!(*Values)[Index].IsValid() || !(*Values)[Index]->TryGetObject(MemoryObject)
+				|| MemoryObject == nullptr || !MemoryObject->IsValid())
+			{
+				AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_field_type"),
+					Context + TEXT(" must be an object."));
+				bValid = false;
+				continue;
+			}
+			WarnUnknownFields(*MemoryObject,
+				{ TEXT("unitId"), TEXT("sourceRuleId"), TEXT("displayName"), TEXT("stance"), TEXT("x"), TEXT("y"), TEXT("z"),
+				  TEXT("maxHealth"), TEXT("currentHealth"), TEXT("maxMorale"), TEXT("currentMorale"), TEXT("suppression"), TEXT("lastSeenTurnNumber") },
+				Context, Diagnostics);
+			FTacticalUnitMemoryState Memory;
+			FString SourceRuleId;
+			FString Stance;
+			bool bMemoryValid = ReadGuidString(*MemoryObject, TEXT("unitId"), Memory.UnitId, Context, Diagnostics);
+			bMemoryValid &= ReadRequiredString(*MemoryObject, TEXT("sourceRuleId"), SourceRuleId, Context, Diagnostics);
+			Memory.SourceRuleId = FName(*SourceRuleId);
+			bMemoryValid &= ReadRequiredString(*MemoryObject, TEXT("displayName"), Memory.DisplayName, Context, Diagnostics);
+			bMemoryValid &= ReadRequiredString(*MemoryObject, TEXT("stance"), Stance, Context, Diagnostics);
+			if (!Stance.IsEmpty() && !TryParseTacticalStance(Stance, Memory.Stance))
+			{
+				AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_field_value"), Context + TEXT(".stance is unknown."));
+				bMemoryValid = false;
+			}
+			bMemoryValid &= ReadInt32(*MemoryObject, TEXT("x"), Memory.X, Context, Diagnostics);
+			bMemoryValid &= ReadInt32(*MemoryObject, TEXT("y"), Memory.Y, Context, Diagnostics);
+			bMemoryValid &= ReadInt32(*MemoryObject, TEXT("z"), Memory.Z, Context, Diagnostics);
+			bMemoryValid &= ReadInt32(*MemoryObject, TEXT("maxHealth"), Memory.MaxHealth, Context, Diagnostics);
+			bMemoryValid &= ReadInt32(*MemoryObject, TEXT("currentHealth"), Memory.CurrentHealth, Context, Diagnostics);
+			bMemoryValid &= ReadInt32(*MemoryObject, TEXT("maxMorale"), Memory.MaxMorale, Context, Diagnostics);
+			bMemoryValid &= ReadInt32(*MemoryObject, TEXT("currentMorale"), Memory.CurrentMorale, Context, Diagnostics);
+			bMemoryValid &= ReadInt32(*MemoryObject, TEXT("suppression"), Memory.Suppression, Context, Diagnostics);
+			bMemoryValid &= ReadInt32(*MemoryObject, TEXT("lastSeenTurnNumber"), Memory.LastSeenTurnNumber, Context, Diagnostics);
+			if (bMemoryValid)
+			{
+				OutMemories.Add(MoveTemp(Memory));
+			}
+			else
+			{
+				bValid = false;
+			}
+		}
+		return bValid;
+	}
+
 	bool ReadTacticalObjectives(
 		const TSharedPtr<FJsonObject>& BattleObject,
 		TArray<FTacticalObjectiveState>& OutObjectives,
@@ -5389,6 +5515,10 @@ namespace CampaignSavePrivate
 			{
 				AllowedBattleFields.Add(TEXT("playerDiscoveredCellIndices"));
 			}
+			if (FormatVersion >= 44)
+			{
+				AllowedBattleFields.Add(TEXT("playerLastKnownAdversaries"));
+			}
 			WarnUnknownFields(*BattleObject, AllowedBattleFields, Context, Diagnostics);
 			FTacticalBattleState Battle;
 			FString MissionRuleId;
@@ -5445,6 +5575,10 @@ namespace CampaignSavePrivate
 			if (FormatVersion >= 25)
 			{
 				bBattleValid &= ReadInt32Array(*BattleObject, TEXT("playerDiscoveredCellIndices"), Battle.PlayerDiscoveredCellIndices, Context, Diagnostics);
+			}
+			if (FormatVersion >= 44)
+			{
+				bBattleValid &= ReadTacticalUnitMemories(*BattleObject, Battle.PlayerLastKnownAdversaries, Context, Diagnostics);
 			}
 			bBattleValid &= ReadTacticalUnits(*BattleObject, Battle.Units, Context, FormatVersion, Diagnostics);
 			bBattleValid &= ReadTacticalObjectives(*BattleObject, Battle.Objectives, Context, FormatVersion, Diagnostics);
@@ -6209,6 +6343,26 @@ namespace CampaignSavePrivate
 				PlayerDiscoveredCellIndices.Add(MakeShared<FJsonValueNumber>(CellIndex));
 			}
 			BattleObject->SetArrayField(TEXT("playerDiscoveredCellIndices"), PlayerDiscoveredCellIndices);
+			TArray<TSharedPtr<FJsonValue>> PlayerLastKnownAdversaries;
+			for (const FTacticalUnitMemoryState& Memory : Battle.PlayerLastKnownAdversaries)
+			{
+				const TSharedRef<FJsonObject> MemoryObject = MakeShared<FJsonObject>();
+				MemoryObject->SetStringField(TEXT("unitId"), Memory.UnitId.ToString(EGuidFormats::DigitsWithHyphensLower));
+				MemoryObject->SetStringField(TEXT("sourceRuleId"), Memory.SourceRuleId.ToString());
+				MemoryObject->SetStringField(TEXT("displayName"), Memory.DisplayName);
+				MemoryObject->SetStringField(TEXT("stance"), TacticalStanceToString(Memory.Stance));
+				MemoryObject->SetNumberField(TEXT("x"), Memory.X);
+				MemoryObject->SetNumberField(TEXT("y"), Memory.Y);
+				MemoryObject->SetNumberField(TEXT("z"), Memory.Z);
+				MemoryObject->SetNumberField(TEXT("maxHealth"), Memory.MaxHealth);
+				MemoryObject->SetNumberField(TEXT("currentHealth"), Memory.CurrentHealth);
+				MemoryObject->SetNumberField(TEXT("maxMorale"), Memory.MaxMorale);
+				MemoryObject->SetNumberField(TEXT("currentMorale"), Memory.CurrentMorale);
+				MemoryObject->SetNumberField(TEXT("suppression"), Memory.Suppression);
+				MemoryObject->SetNumberField(TEXT("lastSeenTurnNumber"), Memory.LastSeenTurnNumber);
+				PlayerLastKnownAdversaries.Add(MakeShared<FJsonValueObject>(MemoryObject));
+			}
+			BattleObject->SetArrayField(TEXT("playerLastKnownAdversaries"), PlayerLastKnownAdversaries);
 			TArray<TSharedPtr<FJsonValue>> Units;
 			for (const FTacticalUnitState& Unit : Battle.Units)
 			{
@@ -6650,6 +6804,13 @@ namespace CampaignSavePrivate
 			if (Result.Envelope.Header.FormatVersion < 43)
 			{
 				MigrateWorksCadreCharters(Result.Envelope.State);
+			}
+			if (Result.Envelope.Header.FormatVersion < 44)
+			{
+				for (FTacticalBattleState& Battle : Result.Envelope.State.TacticalBattles)
+				{
+					Battle.PlayerLastKnownAdversaries.Reset();
+				}
 			}
 			NormalizeEnvelope(Result.Envelope);
 			Result.Envelope.Header.FormatVersion = FCampaignSaveCodec::CurrentFormatVersion;

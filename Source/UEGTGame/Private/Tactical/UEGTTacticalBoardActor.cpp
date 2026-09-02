@@ -30,6 +30,7 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 	DoorInstances = MakeInstances(TEXT("DoorInstances"));
 	PlayerUnitInstances = MakeInstances(TEXT("PlayerUnitInstances"));
 	AdversaryUnitInstances = MakeInstances(TEXT("AdversaryUnitInstances"));
+	LastKnownAdversaryInstances = MakeInstances(TEXT("LastKnownAdversaryInstances"));
 	ObjectiveInstances = MakeInstances(TEXT("ObjectiveInstances"));
 	PathInstances = MakeInstances(TEXT("PathInstances"));
 	HoverInstances = MakeInstances(TEXT("HoverInstances"));
@@ -45,7 +46,7 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 	{
 		for (UInstancedStaticMeshComponent* Component : {
 			GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), PlayerUnitInstances.Get(),
-			AdversaryUnitInstances.Get(), PathInstances.Get(), HoverInstances.Get(), SelectionInstances.Get(),
+			AdversaryUnitInstances.Get(), LastKnownAdversaryInstances.Get(), PathInstances.Get(), HoverInstances.Get(), SelectionInstances.Get(),
 			SmokeInstances.Get(), FireInstances.Get() })
 		{
 			Component->SetStaticMesh(CubeMesh.Object);
@@ -82,6 +83,7 @@ void AUEGTTacticalBoardActor::BeginPlay()
 	ConfigureMeshComponent(DoorInstances, true);
 	ConfigureMeshComponent(PlayerUnitInstances, true);
 	ConfigureMeshComponent(AdversaryUnitInstances, true);
+	ConfigureMeshComponent(LastKnownAdversaryInstances, false);
 	ConfigureMeshComponent(ObjectiveInstances, true);
 	ConfigureMeshComponent(PathInstances, false);
 	ConfigureMeshComponent(HoverInstances, false);
@@ -168,6 +170,7 @@ void AUEGTTacticalBoardActor::ApplyPalette()
 		{ DoorInstances, TEXT("DoorMaterial"), FLinearColor(0.08f, 0.55f, 0.62f) },
 		{ PlayerUnitInstances, TEXT("PlayerMaterial"), Tone(PlayerColor) },
 		{ AdversaryUnitInstances, TEXT("AdversaryMaterial"), Tone(AdversaryColor) },
+		{ LastKnownAdversaryInstances, TEXT("LastKnownAdversaryMaterial"), Tone(FLinearColor(AdversaryColor.R * 0.38f, AdversaryColor.G * 0.38f, AdversaryColor.B * 0.38f)) },
 		{ ObjectiveInstances, TEXT("ObjectiveMaterial"), Tone(ObjectiveColor) },
 		{ PathInstances, TEXT("PathMaterial"), FLinearColor(0.1f, 0.9f, 0.55f) },
 		{ HoverInstances, TEXT("HoverMaterial"), FLinearColor(0.85f, 0.95f, 1.0f) },
@@ -234,7 +237,7 @@ void AUEGTTacticalBoardActor::ClearBoard()
 {
 	for (UInstancedStaticMeshComponent* Component : {
 		GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), PlayerUnitInstances.Get(),
-		AdversaryUnitInstances.Get(), ObjectiveInstances.Get(), PathInstances.Get(), HoverInstances.Get(),
+		AdversaryUnitInstances.Get(), LastKnownAdversaryInstances.Get(), ObjectiveInstances.Get(), PathInstances.Get(), HoverInstances.Get(),
 		SelectionInstances.Get(), SmokeInstances.Get(), FireInstances.Get() })
 	{
 		if (Component != nullptr)
@@ -325,6 +328,10 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 			PlayerUnitIds.Add(Unit.UnitId);
 			PlayerUnitCells.Add(Cell);
 			AddCellMarker(PlayerUnitInstances, Cell, 42.0f, Unit.bIncapacitated ? 0.3f : 0.44f, Unit.bIncapacitated ? 0.18f : 0.74f);
+		}
+		else if (Unit.bLastKnown)
+		{
+			AddCellMarker(LastKnownAdversaryInstances, Cell, 24.0f, 0.32f, 0.28f);
 		}
 		else
 		{
@@ -433,6 +440,11 @@ int32 AUEGTTacticalBoardActor::GetRenderedPlayerUnitCount() const
 int32 AUEGTTacticalBoardActor::GetRenderedAdversaryUnitCount() const
 {
 	return AdversaryUnitInstances != nullptr ? AdversaryUnitInstances->GetInstanceCount() : 0;
+}
+
+int32 AUEGTTacticalBoardActor::GetRenderedLastKnownAdversaryCount() const
+{
+	return LastKnownAdversaryInstances != nullptr ? LastKnownAdversaryInstances->GetInstanceCount() : 0;
 }
 
 int32 AUEGTTacticalBoardActor::GetRenderedObjectiveCount() const

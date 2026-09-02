@@ -985,6 +985,52 @@ struct UEGTCORE_API FTacticalUnitState
 	TArray<FTacticalMagazineState> EjectedMagazines;
 };
 
+/** Player-safe last observation of an adversary; live hidden-unit state is never copied here. */
+USTRUCT(BlueprintType)
+struct UEGTCORE_API FTacticalUnitMemoryState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	FGuid UnitId;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	FName SourceRuleId;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	FString DisplayName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	ETacticalStance Stance = ETacticalStance::Standing;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	int32 X = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	int32 Y = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	int32 Z = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	int32 MaxHealth = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	int32 CurrentHealth = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	int32 MaxMorale = 100;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	int32 CurrentMorale = 100;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	int32 Suppression = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	int32 LastSeenTurnNumber = 0;
+};
+
 USTRUCT(BlueprintType)
 struct UEGTCORE_API FTacticalObjectiveState
 {
@@ -1082,6 +1128,10 @@ struct UEGTCORE_API FTacticalBattleState
 	/** Sorted cell indices observed by the player at least once. Historical views expose only coordinates. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
 	TArray<int32> PlayerDiscoveredCellIndices;
+
+	/** Sorted last-observed adversaries; hidden contacts expose only this stale snapshot to presentation. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
+	TArray<FTacticalUnitMemoryState> PlayerLastKnownAdversaries;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "UEGT|Campaign|Tactical")
 	TArray<FTacticalUnitState> Units;

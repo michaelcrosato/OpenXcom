@@ -950,6 +950,11 @@
       "translations": { "en": "{0} {1}\nHP {2}/{3}   AP {4}/{5}   MORALE {6}   SUP {7}   L{8}", "fr": "{0} {1}\nPV {2}/{3}   PA {4}/{5}   MORAL {6}   SUP {7}   N{8}", "de": "{0} {1}\nLP {2}/{3}   AP {4}/{5}   MORAL {6}   UNTERDR. {7}   E{8}", "es": "{0} {1}\nPV {2}/{3}   PA {4}/{5}   MORAL {6}   SUP {7}   N{8}", "ja": "{0} {1}\nHP {2}/{3}   AP {4}/{5}   士気 {6}   抑圧 {7}   L{8}" }
     },
     {
+      "key": "tactical.last-known-unit-format",
+      "source": "{0} {1}\nLAST KNOWN CONTACT  •  TURN {2}\nHP {3}/{4}   MORALE {5}   SUP {6}   L{7}",
+      "translations": { "en": "{0} {1}\nLAST KNOWN CONTACT  •  TURN {2}\nHP {3}/{4}   MORALE {5}   SUP {6}   L{7}", "fr": "{0} {1}\nDERNIER CONTACT CONNU  •  TOUR {2}\nPV {3}/{4}   MORAL {5}   SUP {6}   N{7}", "de": "{0} {1}\nLETZTER BEKANNTER KONTAKT  •  RUNDE {2}\nLP {3}/{4}   MORAL {5}   UNTERDR. {6}   E{7}", "es": "{0} {1}\nÚLTIMO CONTACTO CONOCIDO  •  TURNO {2}\nPV {3}/{4}   MORAL {5}   SUP {6}   N{7}", "ja": "{0} {1}\n最終確認済み接触  •  ターン {2}\nHP {3}/{4}   士気 {5}   抑圧 {6}   L{7}" }
+    },
+    {
       "key": "tactical.weapon-ammunition-format",
       "source": "{0}  •  MAG {1}/{2}  •  RESERVE {3} ({4} RDS)  •  PARTIAL {5}  •  NEXT {6}",
       "translations": { "en": "{0}  •  MAG {1}/{2}  •  RESERVE {3} ({4} RDS)  •  PARTIAL {5}  •  NEXT {6}", "fr": "{0}  •  CHARGEUR {1}/{2}  •  RÉSERVE {3} ({4} MUN.)  •  PARTIELS {5}  •  SUIVANT {6}", "de": "{0}  •  MAGAZIN {1}/{2}  •  RESERVE {3} ({4} SCHUSS)  •  TEILVOLL {5}  •  NÄCHSTES {6}", "es": "{0}  •  CARGADOR {1}/{2}  •  RESERVA {3} ({4} BALAS)  •  PARCIALES {5}  •  SIGUIENTE {6}", "ja": "{0}  •  マガジン {1}/{2}  •  予備 {3}（{4}発）  •  途中 {5}  •  次 {6}" }
@@ -4828,6 +4833,11 @@
       "key": "diagnostic.invalid-tactical-discovery",
       "source": "Battlefield discovery data is invalid.",
       "translations": { "en": "Battlefield discovery data is invalid.", "fr": "Les données de découverte du champ de bataille sont invalides.", "de": "Die Entdeckungsdaten des Gefechtsfelds sind ungültig.", "es": "Los datos de exploración del campo de batalla no son válidos.", "ja": "戦場の探索データが無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-tactical-memory",
+      "source": "Battlefield last-known adversary memory is invalid.",
+      "translations": { "en": "Battlefield last-known adversary memory is invalid.", "fr": "La mémoire des derniers contacts adverses du champ de bataille est invalide.", "de": "Der Speicher der zuletzt bekannten Gefechtsfeldgegner ist ungültig.", "es": "La memoria de los últimos adversarios conocidos del campo de batalla no es válida.", "ja": "戦場の敵の最終確認メモリが無効です。" }
     },
     {
       "key": "diagnostic.tactical-battle-resolved",

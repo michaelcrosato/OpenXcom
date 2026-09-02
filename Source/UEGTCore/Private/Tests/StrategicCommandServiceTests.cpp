@@ -613,6 +613,24 @@ namespace StrategicCommandServiceTests
 		{
 			Fingerprint += FString::Printf(TEXT("|d:%d"), CellIndex);
 		}
+		for (const FTacticalUnitMemoryState& Memory : Battle.PlayerLastKnownAdversaries)
+		{
+			Fingerprint += FString::Printf(
+				TEXT("|k:%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"),
+				*Memory.UnitId.ToString(EGuidFormats::Digits),
+				*Memory.SourceRuleId.ToString(),
+				*Memory.DisplayName,
+				static_cast<int32>(Memory.Stance),
+				Memory.X,
+				Memory.Y,
+				Memory.Z,
+				Memory.MaxHealth,
+				Memory.CurrentHealth,
+				Memory.MaxMorale,
+				Memory.CurrentMorale,
+				Memory.Suppression,
+				Memory.LastSeenTurnNumber);
+		}
 		for (const FTacticalUnitState& Unit : Battle.Units)
 		{
 			Fingerprint += FString::Printf(
@@ -13931,16 +13949,45 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 	};
 	FCampaignState LegacyBattleFixture = First;
 	RestorePreRelayFixture(LegacyBattleFixture);
+	if (LegacyBattleFixture.TacticalBattles.Num() == 1
+		&& LegacyBattleFixture.TacticalBattles[0].PlayerLastKnownAdversaries.IsEmpty())
+	{
+		FTacticalUnitState* Adversary = LegacyBattleFixture.TacticalBattles[0].Units.FindByPredicate(
+			[](const FTacticalUnitState& Unit)
+			{
+				return Unit.Team == ETacticalTeam::Adversary && Unit.CurrentHealth > 0 && !Unit.bExtracted;
+			});
+		if (Adversary != nullptr)
+		{
+			FTacticalUnitMemoryState& Memory = LegacyBattleFixture.TacticalBattles[0].PlayerLastKnownAdversaries.AddDefaulted_GetRef();
+			Memory.UnitId = Adversary->UnitId;
+			Memory.SourceRuleId = Adversary->SourceRuleId;
+			Memory.DisplayName = Adversary->DisplayName;
+			Memory.Stance = Adversary->Stance;
+			Memory.X = Adversary->X;
+			Memory.Y = Adversary->Y;
+			Memory.Z = Adversary->Z;
+			Memory.MaxHealth = Adversary->MaxHealth;
+			Memory.CurrentHealth = Adversary->CurrentHealth;
+			Memory.MaxMorale = Adversary->MaxMorale;
+			Memory.CurrentMorale = Adversary->CurrentMorale;
+			Memory.Suppression = Adversary->Suppression;
+			Memory.LastSeenTurnNumber = LegacyBattleFixture.TacticalBattles[0].TurnNumber;
+		}
+	}
 
 	const FCampaignSaveWriteResult BattleWrite = FCampaignSaveCodec::Serialize(FCampaignSaveCodec::CreateNew(
 		LegacyBattleFixture, MakePackages(), TEXT("0.12.0-test"), FDateTime(2026, 8, 30, 1, 32, 0), FGuid(565, 566, 567, 568)));
-	TestTrue(TEXT("Materialized tactical battlefield serializes in save v25"), BattleWrite.bSucceeded);
+	TestTrue(TEXT("Materialized tactical battlefield serializes in the current save format"), BattleWrite.bSucceeded);
 	TestEqual(TEXT("Tactical battlefield save uses the current format"), BattleWrite.Envelope.Header.FormatVersion, FCampaignSaveCodec::CurrentFormatVersion);
 	TestTrue(TEXT("Save JSON contains tactical battlefield state"), BattleWrite.Json.Contains(TEXT("\"tacticalBattles\"")));
 	TestTrue(TEXT("Save JSON contains explicit tactical weather state"),
 		BattleWrite.Json.Contains(TEXT("\"windDirection\"")) && BattleWrite.Json.Contains(TEXT("\"windStrength\"")));
 	TestTrue(TEXT("Save JSON contains durable tactical discovery state"),
 		BattleWrite.Json.Contains(TEXT("\"playerDiscoveredCellIndices\"")));
+	TestTrue(TEXT("Save JSON contains durable last-known adversary state"),
+		BattleWrite.Json.Contains(TEXT("\"playerLastKnownAdversaries\""))
+		&& !LegacyBattleFixture.TacticalBattles[0].PlayerLastKnownAdversaries.IsEmpty());
 	FCampaignSaveEnvelope InvalidDiscoveryEnvelope = BattleWrite.Envelope;
 	const int32 DuplicateDiscoveredCellIndex =
 		InvalidDiscoveryEnvelope.State.TacticalBattles[0].PlayerDiscoveredCellIndices.Last();
@@ -13952,6 +13999,14 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Save validation rejects duplicate tactical discovery indices"), InvalidDiscoveryValidation.bSucceeded);
 	TestTrue(TEXT("Invalid tactical discovery has a stable diagnostic"),
 		InvalidDiscoveryValidation.HasDiagnostic(TEXT("invalid_tactical_discovery")));
+	FCampaignSaveEnvelope InvalidMemoryEnvelope = BattleWrite.Envelope;
+	InvalidMemoryEnvelope.State.TacticalBattles[0].PlayerLastKnownAdversaries[0].CurrentHealth = 0;
+	InvalidMemoryEnvelope.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(InvalidMemoryEnvelope);
+	const FCampaignSaveValidationResult InvalidMemoryValidation = FCampaignSaveCodec::Validate(
+		InvalidMemoryEnvelope, MakePackages());
+	TestFalse(TEXT("Save validation rejects an invalid last-known adversary snapshot"), InvalidMemoryValidation.bSucceeded);
+	TestTrue(TEXT("Invalid tactical memory has a stable diagnostic"),
+		InvalidMemoryValidation.HasDiagnostic(TEXT("invalid_tactical_memory")));
 	FCampaignSaveEnvelope InvalidWeatherEnvelope = BattleWrite.Envelope;
 	InvalidWeatherEnvelope.State.TacticalBattles[0].WindDirection = ETacticalWindDirection::Calm;
 	InvalidWeatherEnvelope.State.TacticalBattles[0].WindStrength = 2;
@@ -13981,6 +14036,28 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Persisted tactical discovery round-trips exactly"),
 			PersistedBattle.PlayerDiscoveredCellIndices
 				== First.TacticalBattles[0].PlayerDiscoveredCellIndices);
+		const TArray<FTacticalUnitMemoryState>& ExpectedMemory =
+			BattleWrite.Envelope.State.TacticalBattles[0].PlayerLastKnownAdversaries;
+		bool bMemoryMatches = PersistedBattle.PlayerLastKnownAdversaries.Num() == ExpectedMemory.Num();
+		for (int32 MemoryIndex = 0; bMemoryMatches && MemoryIndex < ExpectedMemory.Num(); ++MemoryIndex)
+		{
+			const FTacticalUnitMemoryState& PersistedMemory = PersistedBattle.PlayerLastKnownAdversaries[MemoryIndex];
+			const FTacticalUnitMemoryState& ExpectedMemoryEntry = ExpectedMemory[MemoryIndex];
+			bMemoryMatches = PersistedMemory.UnitId == ExpectedMemoryEntry.UnitId
+				&& PersistedMemory.SourceRuleId == ExpectedMemoryEntry.SourceRuleId
+				&& PersistedMemory.DisplayName == ExpectedMemoryEntry.DisplayName
+				&& PersistedMemory.Stance == ExpectedMemoryEntry.Stance
+				&& PersistedMemory.X == ExpectedMemoryEntry.X
+				&& PersistedMemory.Y == ExpectedMemoryEntry.Y
+				&& PersistedMemory.Z == ExpectedMemoryEntry.Z
+				&& PersistedMemory.MaxHealth == ExpectedMemoryEntry.MaxHealth
+				&& PersistedMemory.CurrentHealth == ExpectedMemoryEntry.CurrentHealth
+				&& PersistedMemory.MaxMorale == ExpectedMemoryEntry.MaxMorale
+				&& PersistedMemory.CurrentMorale == ExpectedMemoryEntry.CurrentMorale
+				&& PersistedMemory.Suppression == ExpectedMemoryEntry.Suppression
+				&& PersistedMemory.LastSeenTurnNumber == ExpectedMemoryEntry.LastSeenTurnNumber;
+		}
+		TestTrue(TEXT("Persisted last-known adversary memory round-trips exactly"), bMemoryMatches);
 		TArray<FTacticalGenerationDiagnostic> PersistedDiagnostics;
 		TestTrue(TEXT("Persisted battlefield retains generator invariants"), FTacticalMissionGenerator::ValidateBattle(
 			PersistedBattle, BattleRead.Envelope.State, Rules, PersistedDiagnostics));
@@ -13998,10 +14075,39 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 		}
 		return Json;
 	};
+	auto RemovePlayerLastKnownField = [](FString Json)
+	{
+		const int32 Start = Json.Find(TEXT(",\"playerLastKnownAdversaries\":"), ESearchCase::CaseSensitive);
+		const int32 End = Start == INDEX_NONE
+			? INDEX_NONE
+			: Json.Find(TEXT("]"), ESearchCase::CaseSensitive, ESearchDir::FromStart, Start);
+		if (Start != INDEX_NONE && End != INDEX_NONE)
+		{
+			Json.RemoveAt(Start, End - Start + 1, EAllowShrinking::No);
+		}
+		return Json;
+	};
+	FCampaignSaveEnvelope LegacyV43Envelope = BattleWrite.Envelope;
+	LegacyV43Envelope.Header.FormatVersion = 43;
+	LegacyV43Envelope.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(LegacyV43Envelope);
+	FString LegacyV43Json = RemovePlayerLastKnownField(BattleWrite.Json).Replace(
+		*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
+		TEXT("\"formatVersion\":43"));
+	LegacyV43Json = LegacyV43Json.Replace(
+		*BattleWrite.Envelope.Header.SaveChecksum,
+		*LegacyV43Envelope.Header.SaveChecksum);
+	TestFalse(TEXT("v43 active-battle fixture omits v44 last-known memory state"),
+		LegacyV43Json.Contains(TEXT("\"playerLastKnownAdversaries\"")));
+	const FCampaignSaveReadResult MigratedV43 = FCampaignSaveCodec::Deserialize(LegacyV43Json, MakePackages());
+	TestTrue(TEXT("Verified v43 active battle migrates to the current format"),
+		MigratedV43.bSucceeded && MigratedV43.bMigrated
+		&& MigratedV43.Envelope.Header.FormatVersion == FCampaignSaveCodec::CurrentFormatVersion
+		&& MigratedV43.Envelope.State.TacticalBattles.Num() == 1
+		&& MigratedV43.Envelope.State.TacticalBattles[0].PlayerLastKnownAdversaries.IsEmpty());
 	FCampaignSaveEnvelope LegacyV24Envelope = BattleWrite.Envelope;
 	LegacyV24Envelope.Header.FormatVersion = 24;
 	LegacyV24Envelope.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(LegacyV24Envelope);
-	FString LegacyV24Json = RemovePlayerDiscoveryField(BattleWrite.Json).Replace(
+	FString LegacyV24Json = RemovePlayerLastKnownField(RemovePlayerDiscoveryField(BattleWrite.Json)).Replace(
 		*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
 		TEXT("\"formatVersion\":24"));
 	LegacyV24Json = LegacyV24Json.Replace(
@@ -14018,12 +14124,14 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(TEXT("v24 tactical discovery defaults safely until the next accepted command"),
 			MigratedV24.Envelope.State.TacticalBattles[0].PlayerDiscoveredCellIndices.IsEmpty());
+		TestTrue(TEXT("v24 tactical last-known memory defaults safely until the next accepted command"),
+			MigratedV24.Envelope.State.TacticalBattles[0].PlayerLastKnownAdversaries.IsEmpty());
 	}
 
 	FCampaignSaveEnvelope LegacyV20Envelope = BattleWrite.Envelope;
 	LegacyV20Envelope.Header.FormatVersion = 20;
 	LegacyV20Envelope.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(LegacyV20Envelope);
-	FString LegacyV20Json = RemovePlayerDiscoveryField(BattleWrite.Json).Replace(
+	FString LegacyV20Json = RemovePlayerLastKnownField(RemovePlayerDiscoveryField(BattleWrite.Json)).Replace(
 		*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
 		TEXT("\"formatVersion\":20"));
 	LegacyV20Json = LegacyV20Json.Replace(

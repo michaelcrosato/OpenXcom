@@ -2757,6 +2757,11 @@ namespace StrategicCommandServicePrivate
 					return Left.Y != Right.Y ? Left.Y < Right.Y : Left.X < Right.X;
 				});
 			Battle.PlayerDiscoveredCellIndices.Sort();
+			Battle.PlayerLastKnownAdversaries.Sort(
+				[](const FTacticalUnitMemoryState& Left, const FTacticalUnitMemoryState& Right)
+				{
+					return Left.UnitId.ToString(EGuidFormats::Digits) < Right.UnitId.ToString(EGuidFormats::Digits);
+				});
 			Battle.Units.Sort(
 				[](const FTacticalUnitState& Left, const FTacticalUnitState& Right)
 				{

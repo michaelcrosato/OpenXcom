@@ -840,17 +840,34 @@ void UUEGTTacticalHudWidget::RefreshSlate()
 	for (const FTacticalHudUnitView& Unit : CurrentSnapshot.Units)
 	{
 		const bool bPlayer = Unit.Team == ETacticalTeam::Player;
-		const FString Prefix = bPlayer ? (Unit.bSelected ? TEXT("▶") : TEXT(" ")) : TEXT("◆");
-		FString Line = LocalizedFormat(
-			TEXT("tactical.unit-summary-format"),
-			TEXT("{0} {1}\nHP {2}/{3}   AP {4}/{5}   MORALE {6}   SUP {7}   L{8}"),
-			{
-				Prefix, Unit.DisplayName,
-				FString::FromInt(Unit.CurrentHealth), FString::FromInt(Unit.MaxHealth),
-				FString::FromInt(Unit.RemainingActionPoints), FString::FromInt(Unit.MaxActionPoints),
-				FString::FromInt(Unit.CurrentMorale), FString::FromInt(Unit.Suppression),
-				FString::FromInt(Unit.Z + 1)
-			});
+		const FString Prefix = Unit.bLastKnown ? TEXT("◇") : (bPlayer ? (Unit.bSelected ? TEXT("▶") : TEXT(" ")) : TEXT("◆"));
+		FString Line;
+		if (Unit.bLastKnown)
+		{
+			Line = LocalizedFormat(
+				TEXT("tactical.last-known-unit-format"),
+				TEXT("{0} {1}\nLAST KNOWN CONTACT  •  TURN {2}\nHP {3}/{4}   MORALE {5}   SUP {6}   L{7}"),
+				{
+					Prefix, Unit.DisplayName,
+					FString::FromInt(Unit.LastSeenTurnNumber),
+					FString::FromInt(Unit.CurrentHealth), FString::FromInt(Unit.MaxHealth),
+					FString::FromInt(Unit.CurrentMorale), FString::FromInt(Unit.Suppression),
+					FString::FromInt(Unit.Z + 1)
+				});
+		}
+		else
+		{
+			Line = LocalizedFormat(
+				TEXT("tactical.unit-summary-format"),
+				TEXT("{0} {1}\nHP {2}/{3}   AP {4}/{5}   MORALE {6}   SUP {7}   L{8}"),
+				{
+					Prefix, Unit.DisplayName,
+					FString::FromInt(Unit.CurrentHealth), FString::FromInt(Unit.MaxHealth),
+					FString::FromInt(Unit.RemainingActionPoints), FString::FromInt(Unit.MaxActionPoints),
+					FString::FromInt(Unit.CurrentMorale), FString::FromInt(Unit.Suppression),
+					FString::FromInt(Unit.Z + 1)
+				});
+		}
 		if (Unit.bSelected && bPlayer)
 		{
 			const FTacticalHudWeaponView* Weapon = Unit.Weapons.FindByPredicate(
@@ -875,17 +892,27 @@ void UUEGTTacticalHudWidget::RefreshSlate()
 			}
 		}
 		RenderedUnitSummaries.Add(Line);
-		RosterBox->AddSlot().AutoHeight().Padding(0.0f, 3.0f)
-		[
-			SNew(SButton)
-			.IsFocusable(true)
-			.ButtonColorAndOpacity(Unit.bSelected ? FLinearColor(0.0f, 0.36f, 0.48f, 1.0f)
-				: (bPlayer ? FLinearColor(0.03f, 0.12f, 0.22f, 1.0f) : FLinearColor(0.28f, 0.035f, 0.06f, 1.0f)))
-			.OnClicked_UObject(this, &UUEGTTacticalHudWidget::HandleUnitClicked, Unit.UnitId)
+		if (Unit.bLastKnown)
+		{
+			RosterBox->AddSlot().AutoHeight().Padding(0.0f, 3.0f)
 			[
-				MakeText(Line, 13, bPlayer ? PrimaryText : FLinearColor(1.0f, 0.55f, 0.58f))
-			]
-		];
+				MakeText(Line, 13, FLinearColor(0.72f, 0.38f, 0.42f))
+			];
+		}
+		else
+		{
+			RosterBox->AddSlot().AutoHeight().Padding(0.0f, 3.0f)
+			[
+				SNew(SButton)
+				.IsFocusable(true)
+				.ButtonColorAndOpacity(Unit.bSelected ? FLinearColor(0.0f, 0.36f, 0.48f, 1.0f)
+					: (bPlayer ? FLinearColor(0.03f, 0.12f, 0.22f, 1.0f) : FLinearColor(0.28f, 0.035f, 0.06f, 1.0f)))
+				.OnClicked_UObject(this, &UUEGTTacticalHudWidget::HandleUnitClicked, Unit.UnitId)
+				[
+					MakeText(Line, 13, bPlayer ? PrimaryText : FLinearColor(1.0f, 0.55f, 0.58f))
+				]
+			];
+		}
 	}
 
 	const FString ObjectiveLabel = Localized(

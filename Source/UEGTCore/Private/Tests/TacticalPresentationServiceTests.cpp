@@ -263,6 +263,48 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Exactly one hostile is currently visible"), Snapshot.VisibleAdversaryUnitCount, 1);
 	TestFalse(TEXT("Hidden hostile identity never reaches the HUD"), Snapshot.Units.ContainsByPredicate(
 		[&Fixture](const FTacticalHudUnitView& Unit) { return Unit.UnitId == Fixture.HiddenAdversaryId; }));
+
+	FCampaignState MemoryCampaign = Fixture.Campaign;
+	FTacticalBattleState& MemoryBattle = MemoryCampaign.TacticalBattles[0];
+	FTacticalUnitState* HiddenUnit = MemoryBattle.Units.FindByPredicate(
+		[&Fixture](const FTacticalUnitState& Unit) { return Unit.UnitId == Fixture.HiddenAdversaryId; });
+	TestNotNull(TEXT("Last-known fixture has a hidden adversary"), HiddenUnit);
+	if (HiddenUnit != nullptr)
+	{
+		HiddenUnit->CurrentHealth = 11;
+	}
+	FTacticalUnitMemoryState& LastKnown = MemoryBattle.PlayerLastKnownAdversaries.AddDefaulted_GetRef();
+	LastKnown.UnitId = Fixture.HiddenAdversaryId;
+	LastKnown.SourceRuleId = FName(TEXT("unit.presentation-adversary"));
+	LastKnown.DisplayName = TEXT("Lattice Warden");
+	LastKnown.X = 8;
+	LastKnown.Y = 2;
+	LastKnown.Z = 0;
+	LastKnown.MaxHealth = 35;
+	LastKnown.CurrentHealth = 29;
+	LastKnown.MaxMorale = 100;
+	LastKnown.CurrentMorale = 73;
+	LastKnown.Suppression = 18;
+	LastKnown.LastSeenTurnNumber = 3;
+	FTacticalHudQuery MemoryQuery = Query;
+	MemoryQuery.HoveredUnitId = Fixture.HiddenAdversaryId;
+	const FTacticalHudSnapshot MemorySnapshot = FTacticalPresentationService::BuildHudSnapshot(
+		MemoryBattle, MemoryCampaign, Fixture.Rules, MemoryQuery);
+	TestTrue(TEXT("HUD preserves a validated last-known contact without exposing live state"), MemorySnapshot.bSucceeded);
+	TestEqual(TEXT("Last-known contact is added beside the current roster"), MemorySnapshot.Units.Num(), 3);
+	TestEqual(TEXT("Last-known count excludes the currently visible contact"), MemorySnapshot.LastKnownAdversaryUnitCount, 1);
+	const FTacticalHudUnitView* LastKnownView = MemorySnapshot.Units.FindByPredicate(
+		[&Fixture](const FTacticalHudUnitView& Unit) { return Unit.UnitId == Fixture.HiddenAdversaryId; });
+	TestTrue(TEXT("Last-known contact exposes its stale location and observation turn"), LastKnownView != nullptr
+		&& LastKnownView->bLastKnown && !LastKnownView->bCurrentlyVisible
+		&& LastKnownView->X == 8 && LastKnownView->Y == 2
+		&& LastKnownView->CurrentHealth == 29 && LastKnownView->LastSeenTurnNumber == 3);
+	TestTrue(TEXT("Last-known contact withholds live action and loadout details"), LastKnownView != nullptr
+		&& !LastKnownView->bControllable && LastKnownView->RemainingActionPoints == 0
+		&& LastKnownView->MaxActionPoints == 0 && LastKnownView->Weapons.IsEmpty()
+		&& LastKnownView->CarriedItems.IsEmpty());
+	TestFalse(TEXT("Last-known contact cannot produce a targeting preview"), MemorySnapshot.Hover.bHasUnitAttackPreview
+		|| MemorySnapshot.Hover.bHasSignalPreview);
 	TestEqual(TEXT("First equipped weapon becomes the deterministic default"), Snapshot.EffectiveWeaponItemId, FName(TEXT("item.presentation-rifle")));
 	TestEqual(TEXT("First carried device becomes the deterministic default"), Snapshot.EffectiveDeviceItemId, FName(TEXT("item.presentation-smoke")));
 	TestEqual(TEXT("First carried projector becomes the deterministic signal default"),
@@ -496,6 +538,10 @@ bool FTacticalHistoricalFogDiscoveryTest::RunTest(const FString& Parameters)
 	const FTacticalVisibilityResult Returned = FTacticalNavigationService::RefreshPlayerDiscovery(Battle, Fixture.Rules);
 	TestTrue(TEXT("Returning the observer preserves the remote footprint"),
 		Returned.bSucceeded && Battle.PlayerDiscoveredCellIndices.Num() > Returned.VisibleCellIndices.Num());
+	const FTacticalUnitMemoryState* HiddenMemory = Battle.PlayerLastKnownAdversaries.FindByPredicate(
+		[&Fixture](const FTacticalUnitMemoryState& Memory) { return Memory.UnitId == Fixture.HiddenAdversaryId; });
+	TestTrue(TEXT("A hostile observed during the excursion leaves a last-known contact"), HiddenMemory != nullptr
+		&& HiddenMemory->X == 9 && HiddenMemory->Y == 2 && HiddenMemory->LastSeenTurnNumber == Battle.TurnNumber);
 	TestEqual(TEXT("Historical discovery consumes no tactical random draws"),
 		Battle.TacticalRandom.DrawCount,
 		DrawCountBeforeDiscovery);
@@ -530,9 +576,10 @@ bool FTacticalHistoricalFogDiscoveryTest::RunTest(const FString& Parameters)
 			&& !HistoricalCell->bBlocksVision
 			&& !HistoricalCell->bIsDoor);
 	}
-	TestFalse(TEXT("Previously observed space never leaks a currently hidden hostile"),
-		Snapshot.Units.ContainsByPredicate(
-			[&Fixture](const FTacticalHudUnitView& Unit) { return Unit.UnitId == Fixture.HiddenAdversaryId; }));
+	const FTacticalHudUnitView* HiddenView = Snapshot.Units.FindByPredicate(
+		[&Fixture](const FTacticalHudUnitView& Unit) { return Unit.UnitId == Fixture.HiddenAdversaryId; });
+	TestTrue(TEXT("Previously observed hostile remains visible only as last-known memory"), HiddenView != nullptr
+		&& HiddenView->bLastKnown && !HiddenView->bCurrentlyVisible && HiddenView->X == 9 && HiddenView->Y == 2);
 
 	FTacticalBattleState InvalidDiscovery = Battle;
 	const int32 DuplicateCellIndex = InvalidDiscovery.PlayerDiscoveredCellIndices.Last();
@@ -542,6 +589,15 @@ bool FTacticalHistoricalFogDiscoveryTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Malformed discovery cannot be normalized silently"), Rejected.bSucceeded);
 	TestTrue(TEXT("Malformed discovery has a stable diagnostic"),
 		Rejected.HasDiagnostic(TEXT("invalid_tactical_discovery")));
+
+	FTacticalBattleState InvalidMemory = Battle;
+	InvalidMemory.PlayerLastKnownAdversaries.Reset();
+	InvalidMemory.PlayerLastKnownAdversaries.AddDefaulted_GetRef().UnitId = FGuid(1801, 1802, 1803, 1804);
+	const FTacticalVisibilityResult RejectedMemory = FTacticalNavigationService::RefreshPlayerDiscovery(
+		InvalidMemory, Fixture.Rules);
+	TestFalse(TEXT("Unknown last-known contacts cannot be normalized silently"), RejectedMemory.bSucceeded);
+	TestTrue(TEXT("Malformed last-known memory has a stable diagnostic"),
+		RejectedMemory.HasDiagnostic(TEXT("invalid_tactical_memory")));
 	return true;
 }
 

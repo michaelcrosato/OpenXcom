@@ -230,6 +230,17 @@ struct UEGTCORE_API FTacticalHudUnitView
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Presentation")
 	bool bExtracted = false;
 
+	/** True when this row reflects current line-of-sight rather than a persisted contact memory. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Presentation")
+	bool bCurrentlyVisible = false;
+
+	/** True only for a stale adversary snapshot; these rows are informative and never actionable. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Presentation")
+	bool bLastKnown = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Presentation")
+	int32 LastSeenTurnNumber = 0;
+
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Presentation")
 	TArray<FTacticalHudWeaponView> Weapons;
 
@@ -539,6 +550,9 @@ struct UEGTCORE_API FTacticalHudSnapshot
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Presentation")
 	int32 VisibleAdversaryUnitCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Presentation")
+	int32 LastKnownAdversaryUnitCount = 0;
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Presentation")
 	int64 CargoMass = 0;

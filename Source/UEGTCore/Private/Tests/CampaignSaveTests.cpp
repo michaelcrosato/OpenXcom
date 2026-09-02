@@ -951,7 +951,7 @@ bool FCampaignSaveWorksCadreCharterRoundTripTest::RunTest(const FString& Paramet
 	const FCampaignSaveWriteResult Write = FCampaignSaveCodec::Serialize(Envelope);
 	TestTrue(TEXT("Current Works Charter serializes as a stable string"),
 		Write.bSucceeded
-		&& Write.Envelope.Header.FormatVersion == 43
+		&& Write.Envelope.Header.FormatVersion == FCampaignSaveCodec::CurrentFormatVersion
 		&& Write.Json.Contains(
 			TEXT("\"worksCadreCharter\":\"assembly-cadence\"")));
 	const FCampaignSaveReadResult Read = FCampaignSaveCodec::Deserialize(
@@ -1003,7 +1003,8 @@ bool FCampaignSaveWorksCadreCharterRoundTripTest::RunTest(const FString& Paramet
 			TEXT("invalid_works_cadre_charter")));
 
 	FString LegacyV42Json = Write.Json.Replace(
-		TEXT("\"formatVersion\":43"), TEXT("\"formatVersion\":42"));
+		*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
+		TEXT("\"formatVersion\":42"));
 	LegacyV42Json = LegacyV42Json.Replace(
 		*Write.Envelope.Header.SaveChecksum,
 		*LegacyV42Envelope.Header.SaveChecksum);
@@ -1014,7 +1015,7 @@ bool FCampaignSaveWorksCadreCharterRoundTripTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("Checksum-valid v42 bases migrate to Common Cadence"),
 		RemovedCharterField == 1
 		&& MigratedV42.bSucceeded && MigratedV42.bMigrated
-		&& MigratedV42.Envelope.Header.FormatVersion == 43
+		&& MigratedV42.Envelope.Header.FormatVersion == FCampaignSaveCodec::CurrentFormatVersion
 		&& MigratedV42.Envelope.State.Bases.Num() == 1
 		&& MigratedV42.Envelope.State.Bases[0].WorksCadreEngineers == 2
 		&& MigratedV42.Envelope.State.Bases[0].WorksCadreCharter

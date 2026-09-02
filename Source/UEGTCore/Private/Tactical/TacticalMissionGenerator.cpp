@@ -930,6 +930,33 @@ bool FTacticalMissionGenerator::ValidateBattle(
 			return false;
 		}
 	}
+	FGuid PreviousLastKnownUnitId;
+	bool bHasPreviousLastKnownUnitId = false;
+	for (const FTacticalUnitMemoryState& Memory : Battle.PlayerLastKnownAdversaries)
+	{
+		const FTacticalUnitState* Unit = Battle.Units.FindByPredicate(
+			[&Memory](const FTacticalUnitState& Entry) { return Entry.UnitId == Memory.UnitId; });
+		const bool bKnownStance = Memory.Stance == ETacticalStance::Standing
+			|| Memory.Stance == ETacticalStance::Crouched;
+		const bool bSorted = !bHasPreviousLastKnownUnitId
+			|| PreviousLastKnownUnitId.ToString(EGuidFormats::Digits) < Memory.UnitId.ToString(EGuidFormats::Digits);
+		if (!Memory.UnitId.IsValid() || !bSorted || Unit == nullptr || Unit->Team != ETacticalTeam::Adversary
+			|| Unit->CurrentHealth <= 0 || Unit->bExtracted
+			|| !Battle.IsWithinGrid(Memory.X, Memory.Y, Memory.Z)
+			|| Memory.SourceRuleId != Unit->SourceRuleId || Memory.DisplayName != Unit->DisplayName
+			|| !bKnownStance || Memory.MaxHealth <= 0 || Memory.MaxHealth > 200
+			|| Memory.CurrentHealth <= 0 || Memory.CurrentHealth > Memory.MaxHealth
+			|| Memory.MaxMorale <= 0 || Memory.MaxMorale > 100
+			|| Memory.CurrentMorale < 0 || Memory.CurrentMorale > Memory.MaxMorale
+			|| Memory.Suppression < 0 || Memory.Suppression > 100
+			|| Memory.LastSeenTurnNumber <= 0 || Memory.LastSeenTurnNumber > Battle.TurnNumber)
+		{
+			AddError(OutDiagnostics, TEXT("invalid_tactical_memory"), TEXT("Tactical last-known adversary memory is invalid or exposes an unknown unit."));
+			return false;
+		}
+		PreviousLastKnownUnitId = Memory.UnitId;
+		bHasPreviousLastKnownUnitId = true;
+	}
 	const int32 ExpectedAdversaries = Mission->BaseEnemyCount + Mission->EnemiesPerThreat * ThreatRating;
 	if (PlayerPersonnelIds.Num() != Operation->AgentIds.Num() || AdversaryCount != ExpectedAdversaries)
 	{

@@ -73,6 +73,7 @@ public:
 	int32 GetRenderedFogMemoryCount() const;
 	int32 GetRenderedPlayerUnitCount() const;
 	int32 GetRenderedAdversaryUnitCount() const;
+	int32 GetRenderedLastKnownAdversaryCount() const;
 	int32 GetRenderedObjectiveCount() const;
 	EUEGTColorVisionMode GetColorVisionMode() const { return ColorVisionMode; }
 	bool IsHighContrastPaletteEnabled() const { return bUseHighContrast; }
@@ -106,6 +107,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
 	TObjectPtr<UInstancedStaticMeshComponent> AdversaryUnitInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> LastKnownAdversaryInstances;
 
 	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
 	TObjectPtr<UInstancedStaticMeshComponent> ObjectiveInstances;
