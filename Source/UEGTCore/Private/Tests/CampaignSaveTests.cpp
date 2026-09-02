@@ -1259,6 +1259,11 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	const FCampaignSaveValidationResult ExhaustedSequenceValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("Exhausted command sequence fails validation"), ExhaustedSequenceValidation.bSucceeded);
 	TestTrue(TEXT("Exhausted command sequence is diagnosed"), ExhaustedSequenceValidation.HasDiagnostic(TEXT("invalid_command_sequence")));
+	Invalid.State.CommandSequence = Write.Envelope.State.CommandSequence;
+	Invalid.State.NextAdversaryMissionSerial = MAX_int64;
+	const FCampaignSaveValidationResult ExhaustedMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
+	TestFalse(TEXT("Exhausted adversary mission serial fails validation"), ExhaustedMissionSerialValidation.bSucceeded);
+	TestTrue(TEXT("Exhausted adversary mission serial is diagnosed"), ExhaustedMissionSerialValidation.HasDiagnostic(TEXT("invalid_adversary_state")));
 
 	const FCampaignSaveReadResult Malformed = FCampaignSaveCodec::Deserialize(TEXT("{broken"));
 	TestFalse(TEXT("Malformed JSON is rejected"), Malformed.bSucceeded);
