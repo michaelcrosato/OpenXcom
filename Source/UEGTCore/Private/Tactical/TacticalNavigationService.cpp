@@ -809,7 +809,10 @@ int32 FTacticalNavigationService::ComputeSmokeObscuration(
 	return Battle.IsWithinGrid(OriginX, OriginY, OriginZ)
 		&& Battle.IsWithinGrid(TargetX, TargetY, TargetZ)
 		&& CellCount > 0 && CellCount <= 8192 && Battle.Cells.Num() == CellCount
-		? TraceSmokeObscuration(Battle, OriginX, OriginY, OriginZ, TargetX, TargetY, TargetZ)
+		? FMath::Clamp(
+			TraceSmokeObscuration(Battle, OriginX, OriginY, OriginZ, TargetX, TargetY, TargetZ),
+			0,
+			100)
 		: 0;
 }
 

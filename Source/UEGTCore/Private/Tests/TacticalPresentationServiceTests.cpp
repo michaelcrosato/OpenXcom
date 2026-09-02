@@ -646,6 +646,8 @@ bool FTacticalNavigationGridStateValidationTest::RunTest(const FString& Paramete
 	TestFalse(TEXT("Navigation rejects negative persisted smoke state"), NegativeSmokeVisibility.bSucceeded);
 	TestTrue(TEXT("Negative smoke state has the shared grid diagnostic"),
 		NegativeSmokeVisibility.HasDiagnostic(TEXT("invalid_tactical_grid")));
+	TestEqual(TEXT("Direct smoke query preserves its documented lower bound on malformed state"),
+		FTacticalNavigationService::ComputeSmokeObscuration(NegativeSmoke, 0, 0, 1, 0), 0);
 
 	FTacticalBattleState ExcessFire = Fixture.Campaign.TacticalBattles[0];
 	ExcessFire.Cells[0].Fire = 101;
