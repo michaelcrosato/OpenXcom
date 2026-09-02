@@ -2400,8 +2400,17 @@ namespace StrategicCommandServicePrivate
 			}
 			const FInventoryStack* Existing = ReceivingBase.Inventory.FindByPredicate(
 				[ItemId](const FInventoryStack& Stack) { return Stack.ItemId == ItemId; });
-			if (InboundQuantity > MAX_int32
-				|| (Existing != nullptr && InboundQuantity > MAX_int32 - Existing->Quantity))
+			if (Existing != nullptr && Existing->Quantity <= 0)
+			{
+				AddError(Result, TEXT("mutual_aid_inventory_overflow"),
+					TEXT("A receiving base has invalid inventory data for a Mutual Aid delivery."));
+				return false;
+			}
+			const int64 ExistingQuantity = Existing != nullptr
+				? static_cast<int64>(Existing->Quantity) : 0;
+			if (InboundQuantity > static_cast<int64>(MAX_int32)
+				|| (Existing != nullptr
+					&& InboundQuantity > static_cast<int64>(MAX_int32) - ExistingQuantity))
 			{
 				AddError(Result, TEXT("mutual_aid_inventory_overflow"),
 					TEXT("A Mutual Aid Convoy delivery would exceed the receiving base inventory range."));

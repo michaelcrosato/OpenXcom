@@ -5057,6 +5057,27 @@ bool FStrategicMutualAidReliefDiversionTest::RunTest(const FString& Parameters)
 		&& AlternateOption->ArrivalShiftSeconds == -int64(24) * 3600
 		&& AlternateOption->AffectedConvoyCount == 2
 		&& AlternateOption->TotalArrivalShiftSeconds == -int64(72) * 3600);
+	FCampaignState InvalidReceivingInventory = State;
+	FStrategicBaseState* InvalidReceivingBase = InvalidReceivingInventory.Bases.FindByPredicate(
+		[CurrentDestinationBaseId](const FStrategicBaseState& Base)
+		{
+			return Base.BaseId == CurrentDestinationBaseId;
+		});
+	check(InvalidReceivingBase != nullptr);
+	FInventoryStack& InvalidReceivingCargo =
+		InvalidReceivingBase->Inventory.AddDefaulted_GetRef();
+	InvalidReceivingCargo.ItemId = ItemId;
+	InvalidReceivingCargo.Quantity = MIN_int32;
+	const FMutualAidReliefDiversionEvaluation InvalidReceivingEvaluation =
+		FStrategicCommandService::EvaluateMutualAidReliefDiversion(
+			InvalidReceivingInventory, Rules, Config, Divert);
+	TestTrue(TEXT("Relief Diversion rejects malformed receiving inventory before delivery arithmetic"),
+		!InvalidReceivingEvaluation.bValid
+		&& InvalidReceivingEvaluation.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("mutual_aid_inventory_overflow"));
+			}));
 
 	FDivertMutualAidConvoyCommand ActiveDiversion = Divert;
 	ActiveDiversion.ConvoyId = ConvoyIds[0];
