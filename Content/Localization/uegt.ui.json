@@ -6975,6 +6975,21 @@
 	  "translations": { "en": "Relief Diversion queue projection exceeds the supported time range.", "fr": "La projection de file du déroutement secours dépasse la plage de temps prise en charge.", "de": "Die Warteschlangenprognose der Hilfsumleitung überschreitet den unterstützten Zeitbereich.", "es": "La proyección de cola del desvío de auxilio supera el intervalo de tiempo compatible.", "ja": "救援転送の待ち行列予測が、対応する時間範囲を超えています。" }
 	},
     {
+      "key": "strategic.relay-queue-clear-format",
+      "source": "RELAY LINE CLEAR  •  {0} CHANNELS READY",
+      "translations": { "en": "RELAY LINE CLEAR  •  {0} CHANNELS READY", "fr": "LIGNE RELAIS LIBRE  •  {0} CANAUX PRÊTS", "de": "RELAISLINIE FREI  •  {0} KANÄLE BEREIT", "es": "LÍNEA DE RELEVOS LIBRE  •  {0} CANALES LISTOS", "ja": "リレー回線は空き  •  使用可能CH {0}" }
+    },
+    {
+      "key": "strategic.relay-queue-pressure-format",
+      "source": "RELAY LINE {0}/{1} ACTIVE  •  {2} WAITING  •  PRESSURE {3}%  •  TAIL {4} h",
+      "translations": { "en": "RELAY LINE {0}/{1} ACTIVE  •  {2} WAITING  •  PRESSURE {3}%  •  TAIL {4} h", "fr": "LIGNE RELAIS {0}/{1} ACTIVE  •  {2} EN ATTENTE  •  PRESSION {3}%  •  FIN {4} h", "de": "RELAISLINIE {0}/{1} AKTIV  •  {2} WARTEN  •  DRUCK {3}%  •  ENDE {4} Std.", "es": "LÍNEA DE RELEVOS {0}/{1} ACTIVA  •  {2} EN ESPERA  •  PRESIÓN {3}%  •  COLA {4} h", "ja": "リレー回線 {0}/{1} 稼働  •  待機 {2}  •  負荷 {3}%  •  最終到着 {4}時間" }
+    },
+    {
+      "key": "strategic.relay-queue-offline-format",
+      "source": "RELAY LINE OFFLINE  •  {0} HOLDING  •  PRESSURE 100%",
+      "translations": { "en": "RELAY LINE OFFLINE  •  {0} HOLDING  •  PRESSURE 100%", "fr": "LIGNE RELAIS HORS LIGNE  •  {0} EN ATTENTE  •  PRESSION 100%", "de": "RELAISLINIE OFFLINE  •  {0} IN WARTESCHLEIFE  •  DRUCK 100%", "es": "LÍNEA DE RELEVOS FUERA DE LÍNEA  •  {0} EN ESPERA  •  PRESIÓN 100%", "ja": "リレー回線オフライン  •  保留 {0}  •  負荷 100%" }
+    },
+    {
       "key": "strategic.signal-watch-summary-format",
       "source": "SIGNAL WATCH  •  SCI {0}/{1}  •  RELAY CH {2}+{3}={4}",
       "translations": { "en": "SIGNAL WATCH  •  SCI {0}/{1}  •  RELAY CH {2}+{3}={4}", "fr": "VEILLE SIGNAL  •  SCI {0}/{1}  •  CANAUX RELAIS {2}+{3}={4}", "de": "SIGNALWACHE  •  FORSCH {0}/{1}  •  RELAISKANÄLE {2}+{3}={4}", "es": "GUARDIA DE SEÑAL  •  CIENT {0}/{1}  •  CANALES RELÉ {2}+{3}={4}", "ja": "信号監視  •  科学者 {0}/{1}  •  リレーCH {2}+{3}={4}" }

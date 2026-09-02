@@ -218,6 +218,7 @@ private:
 	void BuildPersonnelRecoveryPlanPanel(const FStrategicPersonnelView& Person);
 	void BuildPersonnelStewardshipPanel(const FStrategicPersonnelView& Person);
 	void AppendSignalWatchControls(const FStrategicBaseView& Base);
+	void AppendRelayQueuePressure(const FStrategicBaseView& Base);
 	FORCENOINLINE void AppendWorksCadreControls(const FStrategicBaseView& Base);
 	void AppendMutualAidDispatchControls(
 		const FStrategicBaseView& Base,

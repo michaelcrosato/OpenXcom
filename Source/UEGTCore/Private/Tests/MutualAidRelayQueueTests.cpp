@@ -69,21 +69,30 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 	const FMutualAidRelayQueueView* First = ThreeChannels.FindConvoy(FirstId);
 	const FMutualAidRelayQueueView* Second = ThreeChannels.FindConvoy(SecondId);
 	const FMutualAidRelayQueueView* Third = ThreeChannels.FindConvoy(ThirdId);
+	const FMutualAidRelayQueueBaseView* SourceTelemetry =
+		ThreeChannels.FindBase(Source.BaseId);
 	TestTrue(TEXT("Integrity-scaled authored signals supply three active Relay Weave channels"),
 		ThreeChannels.PolicyId == FName(TEXT("logistics.mutual-aid-relay-weave"))
 		&& First != nullptr && Second != nullptr && Third != nullptr
+		&& SourceTelemetry != nullptr && ThreeChannels.Bases.Num() == 1
 		&& First->RelayChannelCount == 3 && First->bInTransit
 		&& First->QueuePosition == 1 && First->RelayChannelNumber == 1
 		&& Second->bInTransit && Second->QueuePosition == 2
-		&& Second->RelayChannelNumber == 2
+		&& Second->RelayChannelNumber == 2 && Second->WaitingConvoyCount == 0
 		&& Third->bInTransit && Third->QueuePosition == 3
-		&& Third->RelayChannelNumber == 3);
+		&& Third->RelayChannelNumber == 3 && Third->QueuePressurePercent == 0
+		&& SourceTelemetry->ActiveConvoyCount == 3
+		&& SourceTelemetry->TotalConvoyCount == 3
+		&& SourceTelemetry->WaitingConvoyCount == 0
+		&& SourceTelemetry->QueuePressurePercent == 0
+		&& SourceTelemetry->QueueTailArrivalSeconds == int64(72) * 3600);
 
 	const FMutualAidRelayQueueView Prospective = FMutualAidRelayQueue::ProjectNext(
 		Campaign, Rules, Source.BaseId, 36 * 3600);
 	TestTrue(TEXT("The next FIFO convoy chooses the earliest available channel exactly"),
 		Prospective.bValid && Prospective.bRelayAvailable && !Prospective.bInTransit
 		&& Prospective.QueuePosition == 4 && Prospective.WaitingPosition == 1
+		&& Prospective.WaitingConvoyCount == 1 && Prospective.QueuePressurePercent == 25
 		&& Prospective.RelayChannelNumber == 2
 		&& Prospective.EstimatedWaitSeconds == 24 * 3600
 		&& Prospective.EstimatedArrivalSeconds == 60 * 3600);
@@ -102,6 +111,7 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 		Campaign, Rules, Source.BaseId, 36 * 3600);
 	TestTrue(TEXT("Progressive array damage reduces two authored channels to one"),
 		Degraded.RelayChannelCount == 2 && !Degraded.bInTransit
+		&& Degraded.WaitingConvoyCount == 2 && Degraded.QueuePressurePercent == 50
 		&& Degraded.WaitingPosition == 2
 		&& Degraded.EstimatedWaitSeconds == 72 * 3600
 		&& Degraded.EstimatedArrivalSeconds == 108 * 3600);
@@ -114,6 +124,9 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 		Campaign, Rules, Source.BaseId, 36 * 3600);
 	TestTrue(TEXT("A total signal outage holds every existing convoy without inventing an ETA"),
 		Offline.Convoys.Num() == 3
+		&& Offline.Bases.Num() == 1
+		&& Offline.Bases[0].WaitingConvoyCount == 3
+		&& Offline.Bases[0].QueuePressurePercent == 100
 		&& Offline.Convoys.ContainsByPredicate(
 			[](const FMutualAidRelayQueueView& View)
 			{
@@ -197,7 +210,8 @@ bool FMutualAidSignalWatchEvaluationTest::RunTest(const FString& Parameters)
 					&& View.SignalWatchScientistCount == 2
 					&& View.SignalWatchBonusChannelCount == 2
 					&& View.RelayChannelCount == 4
-					&& View.ActiveConvoyCount == 4 && View.bInTransit;
+					&& View.ActiveConvoyCount == 4 && View.WaitingConvoyCount == 0
+					&& View.QueuePressurePercent == 0 && View.bInTransit;
 			}));
 
 	Array.Damage = 50;
@@ -213,7 +227,8 @@ bool FMutualAidSignalWatchEvaluationTest::RunTest(const FString& Parameters)
 					&& View.SignalWatchScientistCount == 2
 					&& View.SignalWatchBonusChannelCount == 1
 					&& View.RelayChannelCount == 2
-					&& View.ActiveConvoyCount == 2 && !View.bInTransit;
+					&& View.ActiveConvoyCount == 2 && View.WaitingConvoyCount == 2
+					&& View.QueuePressurePercent == 50 && !View.bInTransit;
 			}));
 
 	Array.Damage = RelayArray.MaxIntegrity;

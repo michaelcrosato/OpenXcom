@@ -2426,10 +2426,55 @@ void UUEGTStrategicHudWidget::BuildPersonnelStewardshipPanel(
 	];
 }
 
+void UUEGTStrategicHudWidget::AppendRelayQueuePressure(
+	const FStrategicBaseView& Base)
+{
+	using namespace UEGTStrategicHudPrivate;
+	if (Base.RelayQueueTotalConvoyCount <= 0 && Base.RelayChannelCount <= 0)
+	{
+		return;
+	}
+
+	const int64 TailHours = Base.RelayQueueTailArrivalSeconds <= 0
+		? int64(0)
+		: 1 + (Base.RelayQueueTailArrivalSeconds - 1) / 3600;
+	const bool bOffline = Base.RelayQueueTotalConvoyCount > 0
+		&& Base.RelayChannelCount <= 0;
+	const FString Summary = bOffline
+		? LocalizedFormat(
+			TEXT("strategic.relay-queue-offline-format"),
+			TEXT("RELAY LINE OFFLINE  •  {0} HOLDING  •  PRESSURE 100%"),
+			{ FString::FromInt(Base.RelayQueueWaitingConvoyCount) })
+		: Base.RelayQueueTotalConvoyCount <= 0
+			? LocalizedFormat(
+				TEXT("strategic.relay-queue-clear-format"),
+				TEXT("RELAY LINE CLEAR  •  {0} CHANNELS READY"),
+				{ FString::FromInt(Base.RelayChannelCount) })
+			: LocalizedFormat(
+				TEXT("strategic.relay-queue-pressure-format"),
+				TEXT("RELAY LINE {0}/{1} ACTIVE  •  {2} WAITING  •  PRESSURE {3}%  •  TAIL {4} h"),
+				{
+					FString::FromInt(Base.RelayQueueActiveConvoyCount),
+					FString::FromInt(Base.RelayQueueTotalConvoyCount),
+					FString::FromInt(Base.RelayQueueWaitingConvoyCount),
+					FString::FromInt(Base.RelayQueuePressurePercent),
+					LexToString(TailHours)
+				});
+	RenderedDynamicLabels.Add(Summary);
+	LeftBox->AddSlot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
+	[
+		MakeText(Summary, 8,
+			bOffline || Base.RelayQueuePressurePercent >= 50 ? Warning
+				: Base.RelayQueuePressurePercent > 0 ? Accent : Success,
+			true)
+	];
+}
+
 void UUEGTStrategicHudWidget::AppendSignalWatchControls(
 	const FStrategicBaseView& Base)
 {
 	using namespace UEGTStrategicHudPrivate;
+	AppendRelayQueuePressure(Base);
 	if (Base.FacilityRelayChannelCount <= 0 && Base.SignalWatchScientists <= 0)
 	{
 		AppendWorksCadreControls(Base);

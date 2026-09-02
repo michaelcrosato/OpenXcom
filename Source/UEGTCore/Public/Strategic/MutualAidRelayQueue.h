@@ -58,6 +58,14 @@ struct UEGTCORE_API FMutualAidRelayQueueView
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
 	int32 WaitingPosition = 0;
 
+	/** Number of commitments waiting behind the active relay channels. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 WaitingConvoyCount = 0;
+
+	/** Share of this source line held by queue congestion, clamped to [0, 100]. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 QueuePressurePercent = 0;
+
 	/** One-based active or projected relay channel assignment. */
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
 	int32 RelayChannelNumber = 0;
@@ -77,6 +85,51 @@ struct UEGTCORE_API FMutualAidRelayQueueView
 	int64 EstimatedArrivalSeconds = 0;
 };
 
+/** Immutable aggregate Relay Weave load projection for one established source base. */
+USTRUCT(BlueprintType)
+struct UEGTCORE_API FMutualAidRelayQueueBaseView
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	bool bValid = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	FGuid BaseId;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 RelayChannelCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 FacilityRelayChannelCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 SignalWatchScientistCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 SignalWatchBonusChannelCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 ActiveConvoyCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 TotalConvoyCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 WaitingConvoyCount = 0;
+
+	/** Share of this source line held by queue congestion, clamped to [0, 100]. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 QueuePressurePercent = 0;
+
+	/** Exact arrival horizon of the last currently committed convoy, or zero when clear. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int64 QueueTailArrivalSeconds = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	bool bRelayAvailable = false;
+};
+
 /** Stable per-base Relay Weave projection for every active convoy. */
 USTRUCT(BlueprintType)
 struct UEGTCORE_API FMutualAidRelayQueueSnapshot
@@ -89,7 +142,11 @@ struct UEGTCORE_API FMutualAidRelayQueueSnapshot
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
 	TArray<FMutualAidRelayQueueView> Convoys;
 
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	TArray<FMutualAidRelayQueueBaseView> Bases;
+
 	const FMutualAidRelayQueueView* FindConvoy(const FGuid& ConvoyId) const;
+	const FMutualAidRelayQueueBaseView* FindBase(const FGuid& BaseId) const;
 };
 
 /** Pure deterministic signal-channel scheduling shared by simulation and presentation. */

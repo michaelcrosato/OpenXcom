@@ -548,6 +548,11 @@ bool FUEGTStrategicRuntimePresentationTest::RunTest(const FString& Parameters)
 	Base.FacilityRelayChannelCount = 1;
 	Base.SignalWatchBonusChannelCount = 1;
 	Base.RelayChannelCount = 2;
+	Base.RelayQueueActiveConvoyCount = 2;
+	Base.RelayQueueTotalConvoyCount = 3;
+	Base.RelayQueueWaitingConvoyCount = 1;
+	Base.RelayQueuePressurePercent = 34;
+	Base.RelayQueueTailArrivalSeconds = int64(18) * 3600;
 	Base.bCanIncreaseSignalWatch = false;
 	Base.SignalWatchIncreaseUnavailableReasonCode =
 		TEXT("signal_watch_channel_capacity_exceeded");
@@ -1887,6 +1892,9 @@ bool FUEGTStrategicRuntimePresentationTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("French Slate localizes facility-dismantling cancellation"),
 			Hud->GetRenderedStatusText(), FString(TEXT("Démantèlement de l'installation annulé.")));
 		const TArray<FString> LocalizedContentLabels = Hud->GetRenderedDynamicLabels();
+		TestTrue(TEXT("French Slate localizes the Relay Weave queue-pressure horizon"),
+			LocalizedContentLabels.Contains(
+				TEXT("LIGNE RELAIS 2/3 ACTIVE  •  1 EN ATTENTE  •  PRESSION 34%  •  FIN 18 h")));
 		TestTrue(TEXT("French Slate localizes the legacy storage summary"),
 			LocalizedContentLabels.Contains(TEXT("STOCKAGE  1 TYPES  •  RÈGLES HÉRITÉES ILLIMITÉES")));
 		TestTrue(TEXT("French Slate localizes inventory item names"),

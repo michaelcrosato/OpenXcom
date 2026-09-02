@@ -1138,6 +1138,24 @@ struct UEGTCORE_API FStrategicBaseView
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	int32 RelayChannelCount = 0;
 
+	/** Current Relay Weave load across all commitments sourced by this base. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int32 RelayQueueActiveConvoyCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int32 RelayQueueTotalConvoyCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int32 RelayQueueWaitingConvoyCount = 0;
+
+	/** Share of this source line held by queue congestion, clamped to [0, 100]. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int32 RelayQueuePressurePercent = 0;
+
+	/** Exact arrival horizon of the last currently committed convoy. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int64 RelayQueueTailArrivalSeconds = 0;
+
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	bool bCanIncreaseSignalWatch = false;
 

@@ -1023,6 +1023,13 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& Snapshot.Bases[0].EngineerCapacity == 13
 		&& Snapshot.Bases[0].EngineerPersonnel == 0
 		&& Snapshot.Bases[0].EngineerOverCapacity == 0);
+	TestTrue(TEXT("Base presentation exposes a clear Relay Weave horizon when no convoy is committed"),
+		Snapshot.Bases[0].RelayChannelCount == 1
+		&& Snapshot.Bases[0].RelayQueueActiveConvoyCount == 0
+		&& Snapshot.Bases[0].RelayQueueTotalConvoyCount == 0
+		&& Snapshot.Bases[0].RelayQueueWaitingConvoyCount == 0
+		&& Snapshot.Bases[0].RelayQueuePressurePercent == 0
+		&& Snapshot.Bases[0].RelayQueueTailArrivalSeconds == 0);
 	FCampaignState OvercapacityCampaign = Campaign;
 	OvercapacityCampaign.Bases[0].ScientistCapacity = 0;
 	OvercapacityCampaign.Bases[0].EngineerCapacity = 0;
