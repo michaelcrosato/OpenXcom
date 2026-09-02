@@ -3331,6 +3331,10 @@ namespace CampaignSavePrivate
 						&& Unit.CurrentMorale >= 0 && Unit.CurrentMorale <= Unit.MaxMorale
 						&& Unit.Suppression >= 0 && Unit.Suppression <= 100
 						&& bLoadoutValid
+						&& (Battle.Phase != ETacticalBattlePhase::Deployment
+							|| Unit.Team != ETacticalTeam::Player
+							|| (!Unit.bExtracted && bInBounds && Battle.Cells.IsValidIndex(CellIndex)
+								&& Battle.Cells[CellIndex].bPlayerDeployment))
 						&& (!Unit.bExtracted || (Battle.bRequiresExtraction && Unit.CurrentHealth > 0 && bOnExtractionCell));
 					const bool bOccupiesCell = Unit.CurrentHealth > 0 && !Unit.bExtracted;
 					if (!Unit.UnitId.IsValid() || SeenUnitIds.Contains(Unit.UnitId)

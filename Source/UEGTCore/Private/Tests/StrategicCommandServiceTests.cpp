@@ -17139,6 +17139,30 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 			|| ImpossibleExtractedUnitValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
 	}
 
+	FCampaignSaveEnvelope ImpossibleDeploymentPositionEnvelope = MagazineWrite.Envelope;
+	FTacticalBattleState& ImpossibleDeploymentBattle = ImpossibleDeploymentPositionEnvelope.State.TacticalBattles[0];
+	ImpossibleDeploymentBattle.Phase = ETacticalBattlePhase::Deployment;
+	ImpossibleDeploymentBattle.ActiveTeam = ETacticalTeam::Player;
+	FTacticalUnitState* ImpossibleDeploymentUnit = ImpossibleDeploymentBattle.Units.FindByPredicate(
+		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+	const FTacticalCellState* NonDeploymentCell = ImpossibleDeploymentBattle.Cells.FindByPredicate(
+		[](const FTacticalCellState& Cell) { return !Cell.bPlayerDeployment; });
+	TestNotNull(TEXT("Magazine save fixture has a player unit and non-deployment cell"), ImpossibleDeploymentUnit);
+	TestNotNull(TEXT("Magazine save fixture has a non-deployment cell"), NonDeploymentCell);
+	if (ImpossibleDeploymentUnit != nullptr && NonDeploymentCell != nullptr)
+	{
+		ImpossibleDeploymentUnit->X = NonDeploymentCell->X;
+		ImpossibleDeploymentUnit->Y = NonDeploymentCell->Y;
+		ImpossibleDeploymentUnit->Z = NonDeploymentCell->Z;
+		const FCampaignSaveValidationResult ImpossibleDeploymentPositionValidation = FCampaignSaveCodec::Validate(
+			ImpossibleDeploymentPositionEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects live players outside deployment cells"),
+			ImpossibleDeploymentPositionValidation.bSucceeded);
+		TestTrue(TEXT("Impossible deployment position has a stable unit diagnostic"),
+			ImpossibleDeploymentPositionValidation.HasDiagnostic(TEXT("invalid_tactical_unit"))
+			|| ImpossibleDeploymentPositionValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
+	}
+
 	FCampaignSaveEnvelope LegacyV26 = MagazineWrite.Envelope;
 	LegacyV26.Header.FormatVersion = 26;
 	for (FTacticalBattleState& LegacyBattle : LegacyV26.State.TacticalBattles)
