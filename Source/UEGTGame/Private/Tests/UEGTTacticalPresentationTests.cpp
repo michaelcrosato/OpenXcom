@@ -87,6 +87,29 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 		FMath::IsNearlyEqual(
 			AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(MarkerObjective),
 			1.0f));
+	FTacticalHudCellView MarkerTerrain;
+	MarkerTerrain.CurrentIntegrity = 100;
+	MarkerTerrain.MaxIntegrity = 100;
+	TestTrue(TEXT("Intact terrain markers retain their full silhouette"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateTerrainMarkerHeightScale(MarkerTerrain),
+			1.0f));
+	MarkerTerrain.CurrentIntegrity = 25;
+	TestTrue(TEXT("Damaged terrain markers shorten with integrity"),
+		AUEGTTacticalBoardActor::CalculateTerrainMarkerHeightScale(MarkerTerrain) > 0.32f
+		&& AUEGTTacticalBoardActor::CalculateTerrainMarkerHeightScale(MarkerTerrain) < 1.0f);
+	MarkerTerrain.CurrentIntegrity = MAX_int32;
+	MarkerTerrain.MaxIntegrity = 1;
+	TestTrue(TEXT("Terrain marker integrity clamps without overflow"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateTerrainMarkerHeightScale(MarkerTerrain),
+			1.0f));
+	MarkerTerrain.CurrentIntegrity = 40;
+	MarkerTerrain.MaxIntegrity = 0;
+	TestTrue(TEXT("Legacy terrain snapshots without maximum integrity retain full height"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateTerrainMarkerHeightScale(MarkerTerrain),
+			1.0f));
 	Board->ApplyAccessibilityPalette(EUEGTColorVisionMode::Tritanopia, false);
 	TestEqual(TEXT("Tactical board accepts the selected color-vision palette"),
 		Board->GetColorVisionMode(), EUEGTColorVisionMode::Tritanopia);

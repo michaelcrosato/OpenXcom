@@ -86,6 +86,8 @@ public:
 	static float CalculateUnitMarkerHeightScale(const FTacticalHudUnitView& Unit);
 	/** Deterministic height encoding for active objective interaction progress. */
 	static float CalculateObjectiveMarkerHeightScale(const FTacticalHudObjectiveView& Objective);
+	/** Deterministic height encoding for visible terrain integrity, with legacy full-health fallback. */
+	static float CalculateTerrainMarkerHeightScale(const FTacticalHudCellView& Cell);
 	EUEGTColorVisionMode GetColorVisionMode() const { return ColorVisionMode; }
 	bool IsHighContrastPaletteEnabled() const { return bUseHighContrast; }
 	bool IsReducedMotionEnabled() const { return bReduceMotion; }

@@ -427,6 +427,18 @@ float AUEGTTacticalBoardActor::CalculateObjectiveMarkerHeightScale(
 	return 0.45f + ProgressRatio * 0.55f;
 }
 
+float AUEGTTacticalBoardActor::CalculateTerrainMarkerHeightScale(
+	const FTacticalHudCellView& Cell)
+{
+	const float IntegrityRatio = Cell.MaxIntegrity > 0
+		? FMath::Clamp(
+			static_cast<float>(Cell.CurrentIntegrity) / static_cast<float>(Cell.MaxIntegrity),
+			0.0f,
+			1.0f)
+		: (Cell.CurrentIntegrity > 0 ? 1.0f : 0.0f);
+	return 0.32f + IntegrityRatio * 0.68f;
+}
+
 void AUEGTTacticalBoardActor::AddUnitMarker(
 	UInstancedStaticMeshComponent* Component,
 	const FTacticalHudUnitView& Unit)
@@ -491,6 +503,7 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 		if (Cell.bIsDoor && Cell.CurrentIntegrity > 0)
 		{
 			DoorCells.Add(GridCell);
+			const float TerrainScale = CalculateTerrainMarkerHeightScale(Cell);
 			const FVector Local(
 				(static_cast<float>(Cell.X) + (Cell.bDoorOpen ? 0.78f : 0.5f)) * CellSize,
 				(static_cast<float>(Cell.Y) + 0.5f) * CellSize,
@@ -498,12 +511,17 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 			DoorInstances->AddInstance(FTransform(
 				FRotator(0.0f, Cell.bDoorOpen ? 90.0f : 0.0f, 0.0f),
 				Local,
-				FVector(0.12f * CellSize / 100.0f, 0.78f * CellSize / 100.0f, 0.92f)));
+				FVector(0.12f * CellSize / 100.0f, 0.78f * CellSize / 100.0f, 0.92f * TerrainScale)));
 		}
 		else if ((Cell.bBlocksMovement || Cell.bBlocksVision) && Cell.CurrentIntegrity > 0)
 		{
 			BlockerCells.Add(GridCell);
-			AddCellMarker(BlockerInstances, GridCell, 50.0f, 0.82f, 0.96f);
+			AddCellMarker(
+				BlockerInstances,
+				GridCell,
+				50.0f,
+				0.82f,
+				CalculateTerrainMarkerHeightScale(Cell));
 		}
 		if (Cell.Smoke > 0)
 		{
