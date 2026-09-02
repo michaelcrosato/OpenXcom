@@ -41,6 +41,8 @@ bool FPersonnelCareerBalanceCorpusTest::RunTest(const FString& Parameters)
 		Anchor.Identity.RuleId
 	};
 	const int32 FixedMissions[] = { 0, 4, 5, 9, 10, 19, 20, 39, 40 };
+	constexpr int32 ScenarioCount = 1024;
+	constexpr int32 CareerOperationCount = 256;
 
 	auto GuidLess = [](const FGuid& Left, const FGuid& Right)
 	{
@@ -100,7 +102,7 @@ bool FPersonnelCareerBalanceCorpusTest::RunTest(const FString& Parameters)
 
 	bool bAllSeedsValid = true;
 	bool bReportedFailure = false;
-	for (int64 Seed = 1; Seed <= 256; ++Seed)
+	for (int64 Seed = 1; Seed <= ScenarioCount; ++Seed)
 	{
 		FDeterministicRandomStream Random(0xCAFE0000LL + Seed);
 		FCampaignState Campaign;
@@ -261,7 +263,7 @@ bool FPersonnelCareerBalanceCorpusTest::RunTest(const FString& Parameters)
 		int32 CareerMissions = 0;
 		int32 PreviousBand = -1;
 		bool SeenBands[5] = {};
-		for (int32 OperationIndex = 0; OperationIndex < 96; ++OperationIndex)
+		for (int32 OperationIndex = 0; OperationIndex < CareerOperationCount; ++OperationIndex)
 		{
 			CareerMissions += Random.NextIntInclusive(1, 3);
 			const FPersonnelServiceHistoryView History =
@@ -298,7 +300,7 @@ bool FPersonnelCareerBalanceCorpusTest::RunTest(const FString& Parameters)
 		bAllSeedsValid &= bSeedValid;
 	}
 
-	TestTrue(TEXT("256 seeded careers preserve monotonic bands, stable mentor selection, and relay invariants"),
+	TestTrue(TEXT("1024 seeded careers preserve monotonic bands across 256-operation histories, stable mentor selection, and relay invariants"),
 		bAllSeedsValid);
 	return true;
 }
