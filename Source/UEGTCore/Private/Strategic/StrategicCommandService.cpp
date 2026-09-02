@@ -48,6 +48,14 @@ namespace StrategicCommandServicePrivate
 			MAX_int32));
 	}
 
+	int32 ClampSupportAfterDelta(const int32 Support, const int64 Delta)
+	{
+		return static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(Support) + Delta,
+			0,
+			100));
+	}
+
 	struct FBaseSpecializationCandidate
 	{
 		FName SpecializationId;
@@ -3390,8 +3398,8 @@ namespace StrategicCommandServicePrivate
 			FCoalitionCounterplaySupportChange& Change = OutChanges.AddDefaulted_GetRef();
 			Change.RegionId = RegionId;
 			Change.PreviousSupport = Mandate->Support;
-			Mandate->Support = FMath::Clamp(
-				Mandate->Support + AuthoredSupportGain, 0, 100);
+			Mandate->Support = ClampSupportAfterDelta(
+				Mandate->Support, AuthoredSupportGain);
 			Change.CurrentSupport = Mandate->Support;
 			if (Change.CurrentSupport == Change.PreviousSupport)
 			{
@@ -3674,7 +3682,8 @@ namespace StrategicCommandServicePrivate
 			SupportChanged.ContactId = ContactId;
 			SupportChanged.RuleId = Mission.MissionRuleId;
 			SupportChanged.RegionId = TargetRegionId;
-			SupportChanged.Amount = Mandate->Support - OldSupport;
+			SupportChanged.Amount = SaturatingInt32Difference(
+				Mandate->Support, OldSupport);
 			SupportChanged.Quantity = Mandate->Support;
 		}
 		if (Mandate != nullptr && bWithdrewFromCompact)
@@ -3693,7 +3702,8 @@ namespace StrategicCommandServicePrivate
 			Strained.ContactId = ContactId;
 			Strained.RuleId = Mission.MissionRuleId;
 			Strained.RegionId = Change.RegionId;
-			Strained.Amount = Change.CurrentSupport - Change.PreviousSupport;
+			Strained.Amount = SaturatingInt32Difference(
+				Change.CurrentSupport, Change.PreviousSupport);
 			Strained.Quantity = Change.CurrentSupport;
 
 			FStrategicEvent& SupportChanged = AddEvent(
@@ -3703,7 +3713,8 @@ namespace StrategicCommandServicePrivate
 			SupportChanged.ContactId = ContactId;
 			SupportChanged.RuleId = Mission.MissionRuleId;
 			SupportChanged.RegionId = Change.RegionId;
-			SupportChanged.Amount = Change.CurrentSupport - Change.PreviousSupport;
+			SupportChanged.Amount = SaturatingInt32Difference(
+				Change.CurrentSupport, Change.PreviousSupport);
 			SupportChanged.Quantity = Change.CurrentSupport;
 
 			if (Change.bWithdrew)
@@ -3770,7 +3781,8 @@ namespace StrategicCommandServicePrivate
 		const int64 OldFunding = State.MonthlyFunding;
 		if (Mandate != nullptr)
 		{
-			Mandate->Support = FMath::Clamp(Mandate->Support + MissionRule->SupportGainOnThwarted, 0, 100);
+			Mandate->Support = ClampSupportAfterDelta(
+				Mandate->Support, MissionRule->SupportGainOnThwarted);
 		}
 		const int32 DirectTargetSupport = Mandate != nullptr ? Mandate->Support : 0;
 		TArray<FCoalitionCounterplaySupportChange> CoalitionRecoveryChanges;
@@ -3813,7 +3825,8 @@ namespace StrategicCommandServicePrivate
 			SupportChanged.ContactId = ContactId;
 			SupportChanged.RuleId = Mission.MissionRuleId;
 			SupportChanged.RegionId = TargetRegionId;
-			SupportChanged.Amount = DirectTargetSupport - OldSupport;
+			SupportChanged.Amount = SaturatingInt32Difference(
+				DirectTargetSupport, OldSupport);
 			SupportChanged.Quantity = DirectTargetSupport;
 		}
 		for (const FCoalitionCounterplaySupportChange& Change : CoalitionRecoveryChanges)
@@ -3825,7 +3838,8 @@ namespace StrategicCommandServicePrivate
 			Inspired.ContactId = ContactId;
 			Inspired.RuleId = Mission.MissionRuleId;
 			Inspired.RegionId = Change.RegionId;
-			Inspired.Amount = Change.CurrentSupport - Change.PreviousSupport;
+			Inspired.Amount = SaturatingInt32Difference(
+				Change.CurrentSupport, Change.PreviousSupport);
 			Inspired.Quantity = Change.CurrentSupport;
 			Inspired.bSuccessful = true;
 
@@ -3836,7 +3850,8 @@ namespace StrategicCommandServicePrivate
 			SupportChanged.ContactId = ContactId;
 			SupportChanged.RuleId = Mission.MissionRuleId;
 			SupportChanged.RegionId = Change.RegionId;
-			SupportChanged.Amount = Change.CurrentSupport - Change.PreviousSupport;
+			SupportChanged.Amount = SaturatingInt32Difference(
+				Change.CurrentSupport, Change.PreviousSupport);
 			SupportChanged.Quantity = Change.CurrentSupport;
 		}
 		if (State.MonthlyFunding != OldFunding)
@@ -5286,12 +5301,16 @@ namespace StrategicCommandServicePrivate
 			const int64 OldContribution = Mandate.CurrentMonthlyFunding;
 			if (Pressure->Pressure > PressureTolerance)
 			{
-				const int32 PressureBands = (Pressure->Pressure - PressureTolerance + 9) / 10;
-				Mandate.Support = FMath::Max(0, Mandate.Support - PressureBands * HighPressureLossPerTen);
+				const int64 PressureBands = (static_cast<int64>(Pressure->Pressure)
+					- PressureTolerance + 9) / 10;
+				Mandate.Support = ClampSupportAfterDelta(
+					Mandate.Support,
+					-PressureBands * static_cast<int64>(HighPressureLossPerTen));
 			}
 			else if (Pressure->Pressure <= PressureTolerance / 2)
 			{
-				Mandate.Support = FMath::Min(100, Mandate.Support + LowPressureRecovery);
+				Mandate.Support = ClampSupportAfterDelta(
+					Mandate.Support, LowPressureRecovery);
 			}
 			const bool bWithdrewFromCompact = Mandate.Support < OldSupport
 				&& WithdrawHorizonCompactMemberIfRequired(State, Mandate, Config);
@@ -5314,7 +5333,8 @@ namespace StrategicCommandServicePrivate
 					CommandSequence, TimestampUtc);
 				SupportChanged.RuleId = Mandate.RegionId;
 				SupportChanged.RegionId = Mandate.RegionId;
-				SupportChanged.Amount = Mandate.Support - OldSupport;
+				SupportChanged.Amount = SaturatingInt32Difference(
+					Mandate.Support, OldSupport);
 				SupportChanged.Quantity = Mandate.Support;
 			}
 			if (bWithdrewFromCompact)
@@ -6099,7 +6119,7 @@ FRegionalDiplomacyEvaluation FStrategicCommandService::EvaluateRegionalDiplomacy
 	}
 	Evaluation.bWouldWithdrawCompactMember = Evaluation.SupportDelta < 0
 		&& IsActiveHorizonCompactMember(State, *Mandate)
-		&& Mandate->Support + Evaluation.SupportDelta
+		&& static_cast<int64>(Mandate->Support) + Evaluation.SupportDelta
 			< Config.HorizonCompactWithdrawalSupportThreshold;
 	Evaluation.bAllowed = true;
 	return Evaluation;
@@ -10027,7 +10047,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			checkNoEntry();
 			return Result;
 		}
-		const int32 SupportDelta = Mandate->Support - OldSupports.FindChecked(RegionId);
+		const int32 SupportDelta = SaturatingInt32Difference(
+			Mandate->Support, OldSupports.FindChecked(RegionId));
 		if (SupportDelta != 0)
 		{
 			FStrategicEvent& SupportChanged = AddEvent(
@@ -11907,7 +11928,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	const int64 OldContribution = Mandate->CurrentMonthlyFunding;
 	const int64 OldMonthlyFunding = Transaction.MonthlyFunding;
 	Transaction.Funds -= Evaluation.Cost;
-	Mandate->Support = FMath::Clamp(Mandate->Support + Evaluation.SupportDelta, 0, 100);
+	Mandate->Support = ClampSupportAfterDelta(
+		Mandate->Support, Evaluation.SupportDelta);
 	Pressure->Pressure = FMath::Max(0, Pressure->Pressure - Evaluation.PressureReduction);
 	Mandate->LastDiplomaticActionMonth = GetDiplomaticMonthSerial(Transaction.StrategicTime.Utc);
 	const bool bWithdrewFromCompact = Evaluation.SupportDelta < 0
@@ -11960,7 +11982,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			Transaction.CommandSequence, Transaction.StrategicTime.Utc);
 		SupportChanged.RuleId = ActionId;
 		SupportChanged.RegionId = Command.RegionId;
-		SupportChanged.Amount = Mandate->Support - OldSupport;
+		SupportChanged.Amount = SaturatingInt32Difference(
+			Mandate->Support, OldSupport);
 		SupportChanged.Quantity = Mandate->Support;
 	}
 	if (bWithdrewFromCompact)
@@ -12049,7 +12072,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		Transaction.CommandSequence, Transaction.StrategicTime.Utc);
 	SupportChanged.RuleId = CharterId;
 	SupportChanged.RegionId = Command.RegionId;
-	SupportChanged.Amount = NewSupport - OldSupport;
+	SupportChanged.Amount = SaturatingInt32Difference(NewSupport, OldSupport);
 	SupportChanged.Quantity = NewSupport;
 	if (NewContribution != OldContribution)
 	{
@@ -12143,7 +12166,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			Transaction.CommandSequence, Transaction.StrategicTime.Utc);
 		SupportChanged.RuleId = CompactId;
 		SupportChanged.RegionId = RegionId;
-		SupportChanged.Amount = Mandate->Support - OldSupports.FindChecked(RegionId);
+		SupportChanged.Amount = SaturatingInt32Difference(
+			Mandate->Support, OldSupports.FindChecked(RegionId));
 		SupportChanged.Quantity = Mandate->Support;
 	}
 	for (const FName RegionId : Evaluation.MemberRegionIds)
@@ -12282,7 +12306,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			Transaction.CommandSequence, Transaction.StrategicTime.Utc);
 		TargetSupportChanged.RuleId = AidId;
 		TargetSupportChanged.RegionId = Evaluation.TargetRegionId;
-		TargetSupportChanged.Amount = Evaluation.TargetProjectedSupport - OldTargetSupport;
+		TargetSupportChanged.Amount = SaturatingInt32Difference(
+			Evaluation.TargetProjectedSupport, OldTargetSupport);
 		TargetSupportChanged.Quantity = Evaluation.TargetProjectedSupport;
 	}
 	FStrategicEvent& DonorSupportChanged = AddEvent(
@@ -12290,7 +12315,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		Transaction.CommandSequence, Transaction.StrategicTime.Utc);
 	DonorSupportChanged.RuleId = AidId;
 	DonorSupportChanged.RegionId = Evaluation.DonorRegionId;
-	DonorSupportChanged.Amount = Evaluation.DonorProjectedSupport - OldDonorSupport;
+	DonorSupportChanged.Amount = SaturatingInt32Difference(
+		Evaluation.DonorProjectedSupport, OldDonorSupport);
 	DonorSupportChanged.Quantity = Evaluation.DonorProjectedSupport;
 	if (bDonorWithdrewFromCompact)
 	{

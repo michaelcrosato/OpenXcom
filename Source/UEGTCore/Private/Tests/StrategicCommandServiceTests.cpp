@@ -20214,6 +20214,26 @@ bool FStrategicRegionalMandateTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Each partner accepts only one outreach action per month"),
 		!RepeatedCivic.bAccepted && RepeatedCivic.HasDiagnostic(TEXT("regional_action_already_used")));
 	Civic.ExpectedSequence = Initial.CommandSequence;
+	for (const int32 ExtremeSupport : { MIN_int32, MAX_int32 })
+	{
+		FCampaignState ExtremeSupportState = Initial;
+		ExtremeSupportState.RegionalMandates[0].Support = ExtremeSupport;
+		const int32 ExpectedSupport = ExtremeSupport == MIN_int32 ? 0 : 100;
+		const FStrategicCommandResult ExtremeSupportResult =
+			FStrategicCommandService::Execute(
+				ExtremeSupportState, RegionRules, Config, Civic);
+		const FStrategicEvent* ExtremeSupportChanged =
+			ExtremeSupportResult.Events.FindByPredicate(
+				[](const FStrategicEvent& Event)
+				{
+					return Event.Type == EStrategicEventType::RegionalSupportChanged;
+				});
+		TestTrue(TEXT("Regional outreach bounds malformed saved support without integer wraparound"),
+			ExtremeSupportResult.bAccepted
+			&& ExtremeSupportState.RegionalMandates[0].Support == ExpectedSupport
+			&& ExtremeSupportChanged != nullptr
+			&& ExtremeSupportChanged->Quantity == ExpectedSupport);
+	}
 
 	FRegionalDiplomacyCommand Security;
 	Security.ExpectedSequence = Initial.CommandSequence;
