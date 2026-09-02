@@ -20922,4 +20922,252 @@ bool FStrategicPersonnelProgressionTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicInterceptionBalanceCorpusTest,
+	"UEGT.Core.StrategicCommands.InterceptionSeededBalanceCorpus",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicInterceptionBalanceCorpusTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	FResolvedRuleSet Rules = MakeRules();
+	FStrategicSimulationConfig Config = MakeConfig();
+	Config.InterceptionRoundSeconds = 5;
+	FContactRule& ContactRule = Rules.Contacts.FindChecked(TEXT("contact.skimmer"));
+	ContactRule.MaxHull = 400;
+	ContactRule.AttackAccuracy = 45;
+	ContactRule.AttackDamage = 6;
+	ContactRule.AttackIntervalSeconds = 5;
+	ContactRule.ScoreValue = 25;
+	FItemRule& Weapon = Rules.Items.FindChecked(TEXT("item.sky-lance"));
+	Weapon.MagazineCapacity = 24;
+	Weapon.InterceptionAccuracy = 72;
+	Weapon.InterceptionDamage = 16;
+	Weapon.SalvoSize = 3;
+
+	constexpr int32 ScenarioCount = 256;
+	constexpr int32 MaximumRoundsPerScenario = 16;
+	bool bFixturesValid = true;
+	bool bEveryRoundAccepted = true;
+	bool bEveryManeuverTelemetryExact = true;
+	bool bEveryDrawAccounted = true;
+	bool bEveryReplayChecksumExact = true;
+	bool bEveryScenarioTerminated = true;
+	int32 CompletedScenarioCount = 0;
+	int32 DestroyedContactCount = 0;
+	int32 DefeatedContactCount = 0;
+	int32 UnresolvedContactCount = 0;
+	int32 SoloScenarioCount = 0;
+	int32 LinkedWingScenarioCount = 0;
+	int32 TotalRoundCount = 0;
+	int32 PostureCounts[3] = { 0, 0, 0 };
+	int32 VectorSurveyRoundCount = 0;
+	int32 SignalShearRoundCount = 0;
+	int32 BreaklineCounterRoundCount = 0;
+
+	auto MakeEngagement = [&bFixturesValid, &Rules](const int64 Seed)
+	{
+		FCampaignState State = MakeStateWithBase();
+		State.SimulationRandom.Initialize(Seed);
+		AddTestFlightDeck(State);
+
+		const uint32 SeedKey = static_cast<uint32>(Seed);
+		const FGuid ContactId(0x494e5400u + SeedKey, 0x00000001u, 0x00000002u, 0x00000003u);
+		FCreateStrategicContactCommand Create;
+		Create.ExpectedSequence = State.CommandSequence;
+		Create.ContactId = ContactId;
+		Create.ContactRuleId = TEXT("contact.skimmer");
+		Create.OriginLongitudeMilliDegrees = State.Bases[0].LongitudeMilliDegrees;
+		Create.OriginLatitudeMilliDegrees = State.Bases[0].LatitudeMilliDegrees;
+		Create.DestinationLongitudeMilliDegrees = -100000;
+		Create.DestinationLatitudeMilliDegrees = State.Bases[0].LatitudeMilliDegrees;
+		const FStrategicCommandResult Created = FStrategicCommandService::Execute(
+			State, Rules, Create);
+		if (!Created.bAccepted || State.StrategicContacts.Num() != 1)
+		{
+			bFixturesValid = false;
+			return State;
+		}
+
+		FStrategicContactState& Contact = State.StrategicContacts[0];
+		Contact.Status = EStrategicContactStatus::Engaged;
+		Contact.CurrentHull = 300 + static_cast<int32>(Seed % 101);
+		Contact.CompletedCombatRounds = 0;
+		Contact.RemainingAttackCooldownSeconds = 0;
+
+		const int32 CraftCount = Seed % 4 == 0 ? 1 : 2;
+		for (int32 Index = 0; Index < CraftCount; ++Index)
+		{
+			const FGuid PilotId(
+				0x50494c00u + SeedKey, 0x00000100u + static_cast<uint32>(Index),
+				0x00000200u, 0x00000300u + SeedKey);
+			const FGuid CraftId(
+				0x43524100u + SeedKey, 0x00000400u + static_cast<uint32>(Index),
+				0x00000500u, 0x00000600u + SeedKey);
+			FPersonnelState& Pilot = AddTestPilot(State, PilotId);
+			Pilot.Status = EPersonnelStatus::Deployed;
+			Pilot.Accuracy = 42 + static_cast<int32>(
+				(Seed * 13 + static_cast<int64>(Index) * 17) % 31);
+
+			FCraftState& Craft = AddTestCraft(State, CraftId);
+			Craft.AssignedPilotId = PilotId;
+			Craft.Status = ECraftStatus::Airborne;
+			Craft.TargetContactId = ContactId;
+			Craft.ReservedReturnSeconds = 5 + Index;
+			Craft.CurrentHull = 72 + static_cast<int32>(
+				(Seed * 7 + static_cast<int64>(Index) * 11) % 29);
+			Craft.EquipmentItems.Add(TEXT("item.sky-lance"));
+			Craft.EquipmentItems.Add(TEXT("item.sky-lance"));
+			FCraftWeaponState& WeaponState = Craft.WeaponStates.AddDefaulted_GetRef();
+			WeaponState.WeaponItemId = TEXT("item.sky-lance");
+			WeaponState.Ammunition = 48;
+		}
+		return State;
+	};
+
+	for (int64 Seed = 1; Seed <= ScenarioCount; ++Seed)
+	{
+		FCampaignState State = MakeEngagement(Seed);
+		FCampaignState Replay = State;
+		int32 RoundIndex = 0;
+		while (State.StrategicContacts.Num() == 1
+			&& State.StrategicContacts[0].Status == EStrategicContactStatus::Engaged
+			&& RoundIndex < MaximumRoundsPerScenario)
+		{
+			const FGuid ContactId = State.StrategicContacts[0].ContactId;
+			const FInterceptionContactManeuverPolicy ExpectedManeuver =
+				FStrategicCommandService::EvaluateInterceptionContactManeuver(
+					State, Rules, ContactId);
+			const int32 PostureIndex = static_cast<int32>(
+				(Seed + static_cast<int64>(RoundIndex) * 2) % 3);
+			const EInterceptionPosture Posture =
+				static_cast<EInterceptionPosture>(PostureIndex);
+			FResolveInterceptionRoundCommand Command;
+			Command.ExpectedSequence = State.CommandSequence;
+			Command.ContactId = ContactId;
+			Command.Posture = Posture;
+			const int64 InitialDrawCount = State.SimulationRandom.DrawCount;
+			const FStrategicCommandResult Result = FStrategicCommandService::Execute(
+				State, Rules, Config, Command);
+			const FStrategicCommandResult ReplayResult = FStrategicCommandService::Execute(
+				Replay, Rules, Config, Command);
+			bEveryRoundAccepted &= Result.bAccepted && ReplayResult.bAccepted;
+			if (!Result.bAccepted || !ReplayResult.bAccepted)
+			{
+				break;
+			}
+
+			++PostureCounts[PostureIndex];
+			int64 ExpectedDrawDelta = 0;
+			const FStrategicEvent* RoundEvent = nullptr;
+			for (const FStrategicEvent& Event : Result.Events)
+			{
+				if (Event.Type == EStrategicEventType::CraftWeaponFired)
+				{
+					ExpectedDrawDelta += Event.Quantity;
+				}
+				else if (Event.Type == EStrategicEventType::StrategicContactWeaponFired)
+				{
+					ExpectedDrawDelta += 2;
+				}
+				else if (Event.Type == EStrategicEventType::InterceptionRoundResolved)
+				{
+					RoundEvent = &Event;
+				}
+			}
+			bEveryDrawAccounted &= State.SimulationRandom.DrawCount
+				== InitialDrawCount + ExpectedDrawDelta;
+			bEveryManeuverTelemetryExact &= ExpectedManeuver.bValid
+				&& RoundEvent != nullptr
+				&& RoundEvent->ContactManeuverPolicyId == ExpectedManeuver.PolicyId
+				&& RoundEvent->ContactManeuverOutgoingAccuracyModifier
+					== ExpectedManeuver.OutgoingAccuracyModifier
+				&& RoundEvent->ContactManeuverIncomingAccuracyModifier
+					== ExpectedManeuver.IncomingAccuracyModifier
+				&& RoundEvent->Quantity == RoundIndex + 1;
+			if (ExpectedManeuver.Maneuver == EInterceptionContactManeuver::VectorSurvey)
+			{
+				++VectorSurveyRoundCount;
+			}
+			else if (ExpectedManeuver.Maneuver == EInterceptionContactManeuver::SignalShear)
+			{
+				++SignalShearRoundCount;
+			}
+			else if (ExpectedManeuver.Maneuver == EInterceptionContactManeuver::BreaklineCounter)
+			{
+				++BreaklineCounterRoundCount;
+			}
+			++RoundIndex;
+		}
+
+		++CompletedScenarioCount;
+		if (Seed % 4 == 0)
+		{
+			++SoloScenarioCount;
+		}
+		else
+		{
+			++LinkedWingScenarioCount;
+		}
+		TotalRoundCount += RoundIndex;
+		const bool bTerminal = State.StrategicContacts.IsEmpty()
+			|| State.StrategicContacts[0].Status != EStrategicContactStatus::Engaged;
+		bEveryScenarioTerminated &= bTerminal;
+		if (State.StrategicContacts.IsEmpty())
+		{
+			++DestroyedContactCount;
+		}
+		else if (State.StrategicContacts[0].Status == EStrategicContactStatus::Detected)
+		{
+			++DefeatedContactCount;
+		}
+		else
+		{
+			++UnresolvedContactCount;
+		}
+
+		const FDateTime SaveTime(2026, 9, 2, 5, 0, 0);
+		const FGuid CampaignId(
+			0x494e5443u + static_cast<uint32>(Seed), 0x00000010u,
+			0x00000020u, 0x00000030u);
+		const FCampaignSaveWriteResult LiveWrite = FCampaignSaveCodec::Serialize(
+			FCampaignSaveCodec::CreateNew(
+				State, MakePackages(), TEXT("0.60.0-test"), SaveTime, CampaignId));
+		const FCampaignSaveWriteResult ReplayWrite = FCampaignSaveCodec::Serialize(
+			FCampaignSaveCodec::CreateNew(
+				Replay, MakePackages(), TEXT("0.60.0-test"), SaveTime, CampaignId));
+		bEveryReplayChecksumExact &= LiveWrite.bSucceeded && ReplayWrite.bSucceeded
+			&& LiveWrite.Envelope.Header.SaveChecksum
+				== ReplayWrite.Envelope.Header.SaveChecksum;
+	}
+
+	AddInfo(FString::Printf(
+		TEXT("Interception corpus: scenarios=%d rounds=%d destroyed=%d defeated=%d unresolved=%d vector=%d shear=%d breakline=%d posture=%d/%d/%d"),
+		CompletedScenarioCount, TotalRoundCount, DestroyedContactCount,
+		DefeatedContactCount, UnresolvedContactCount, VectorSurveyRoundCount,
+		SignalShearRoundCount, BreaklineCounterRoundCount, PostureCounts[0],
+		PostureCounts[1], PostureCounts[2]));
+	TestEqual(TEXT("The seeded interception corpus completes all scenarios"),
+		CompletedScenarioCount, ScenarioCount);
+	TestTrue(TEXT("All seeded interception fixtures validate before combat"), bFixturesValid);
+	TestTrue(TEXT("Every seeded interception round and replay commits"), bEveryRoundAccepted);
+	TestTrue(TEXT("Every seeded round retains exact contact-maneuver telemetry"),
+		bEveryManeuverTelemetryExact);
+	TestTrue(TEXT("Maneuver selection and combat account for exactly the expected random draws"),
+		bEveryDrawAccounted);
+	TestTrue(TEXT("Every seeded interception replay has an exact save checksum"),
+		bEveryReplayChecksumExact);
+	TestTrue(TEXT("Every seeded engagement reaches a terminal contact outcome"),
+		bEveryScenarioTerminated && UnresolvedContactCount == 0);
+	TestTrue(TEXT("The corpus exercises every contact maneuver phase"),
+		VectorSurveyRoundCount > 0 && SignalShearRoundCount > 0
+		&& BreaklineCounterRoundCount > 0);
+	TestTrue(TEXT("The corpus exercises every player engagement posture"),
+		PostureCounts[0] > 0 && PostureCounts[1] > 0 && PostureCounts[2] > 0);
+	TestTrue(TEXT("The corpus includes both solo and linked-wing formations"),
+		SoloScenarioCount > 0 && LinkedWingScenarioCount > 0);
+	return true;
+}
+
 #endif
