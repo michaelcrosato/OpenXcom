@@ -13867,6 +13867,20 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Pending tactical operation deserializes"), PendingRead.bSucceeded);
 	TestEqual(TEXT("Pending tactical operation round-trips"), PendingRead.Envelope.State.TacticalOperations.Num(), 1);
 
+	FCampaignState EmptyTacticalRoster = First;
+	EmptyTacticalRoster.Craft[0].AssignedAgentIds.Reset();
+	EmptyTacticalRoster.TacticalOperations[0].AgentIds.Reset();
+	FGenerateTacticalBattleCommand EmptyRosterGenerate;
+	EmptyRosterGenerate.ExpectedSequence = EmptyTacticalRoster.CommandSequence;
+	EmptyRosterGenerate.OperationId = EmptyTacticalRoster.TacticalOperations[0].OperationId;
+	const FStrategicCommandResult EmptyRosterResult = FStrategicCommandService::Execute(
+		EmptyTacticalRoster, Rules, EmptyRosterGenerate);
+	TestFalse(TEXT("Tactical generation rejects an empty site-recovery roster"), EmptyRosterResult.bAccepted);
+	TestTrue(TEXT("Empty tactical roster has a stable operation diagnostic"),
+		EmptyRosterResult.HasDiagnostic(TEXT("invalid_tactical_operation")));
+	TestTrue(TEXT("Rejected empty tactical roster creates no battlefield"),
+		EmptyTacticalRoster.TacticalBattles.IsEmpty());
+
 	FGenerateTacticalBattleCommand GenerateBattle;
 	GenerateBattle.ExpectedSequence = First.CommandSequence;
 	GenerateBattle.OperationId = First.TacticalOperations[0].OperationId;

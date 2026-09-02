@@ -4859,6 +4859,7 @@ namespace StrategicCommandServicePrivate
 				}
 			}
 			bool bAgentsMatch = Craft != nullptr
+				&& !Operation.AgentIds.IsEmpty()
 				&& Operation.AgentIds.Num() == Craft->AssignedAgentIds.Num()
 				&& Operation.AgentIds.ContainsByPredicate(
 					[&Craft](const FGuid& AgentId) { return !Craft->AssignedAgentIds.Contains(AgentId); }) == false;
