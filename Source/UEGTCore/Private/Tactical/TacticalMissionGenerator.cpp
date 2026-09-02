@@ -1038,9 +1038,13 @@ bool FTacticalMissionGenerator::ValidateBattle(
 		&& (Objective.Status != ETacticalObjectiveStatus::Completed
 			|| (Objective.CompletedInteractions == Objective.RequiredInteractions
 				&& Objective.AdversaryInteractions == 0));
-	const bool bObjectivePhaseValid = Battle.Phase == ETacticalBattlePhase::Resolved
-		? Objective.Status != ETacticalObjectiveStatus::Active
-		: Objective.Status != ETacticalObjectiveStatus::Failed;
+	const bool bObjectivePhaseValid = Battle.bRequiresExtraction
+		? (Battle.Phase == ETacticalBattlePhase::Resolved
+			? Objective.Status != ETacticalObjectiveStatus::Active
+			: Objective.Status != ETacticalObjectiveStatus::Failed)
+		: (Battle.Phase == ETacticalBattlePhase::Resolved
+			? Objective.Status != ETacticalObjectiveStatus::Active
+			: Objective.Status == ETacticalObjectiveStatus::Active);
 	if (Objective.ObjectiveId != Mission->ObjectiveId || Objective.Type != Mission->ObjectiveType
 		|| Objective.RequiredInteractions != Mission->ObjectiveRequiredInteractions
 		|| !bKnownObjectiveStatus || !bKnownObjectiveType

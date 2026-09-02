@@ -12914,6 +12914,22 @@ bool FStrategicTacticalBaseDefenseTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Threat-driven defense population is exact"),
 		GeneratedBattle.Units.FilterByPredicate(
 			[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Adversary; }).Num(), 5);
+	FTacticalBattleState InvalidObjectivePhase = GeneratedBattle;
+	InvalidObjectivePhase.Phase = ETacticalBattlePhase::PlayerTurn;
+	InvalidObjectivePhase.ActiveTeam = ETacticalTeam::Player;
+	InvalidObjectivePhase.Objectives[0].CompletedInteractions =
+		InvalidObjectivePhase.Objectives[0].RequiredInteractions;
+	InvalidObjectivePhase.Objectives[0].Status = ETacticalObjectiveStatus::Completed;
+	TArray<FTacticalGenerationDiagnostic> InvalidCompletedPhaseDiagnostics;
+	TestFalse(TEXT("Base-defense validation rejects completed objectives in an active phase"),
+		FTacticalMissionGenerator::ValidateBattle(
+			InvalidObjectivePhase, State, Rules, InvalidCompletedPhaseDiagnostics));
+	TestTrue(TEXT("Active completed objective phase drift has a stable generator diagnostic"),
+		InvalidCompletedPhaseDiagnostics.ContainsByPredicate(
+			[](const FTacticalGenerationDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_tactical_objective"));
+			}));
 
 	FCampaignState ObjectiveCompletion = State;
 	FCampaignState ObjectiveCompletionReplay = State;
@@ -12979,6 +12995,52 @@ bool FStrategicTacticalBaseDefenseTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Base-defense objective completion replays exactly"),
 		MakeTacticalBattleFingerprint(ObjectiveCompletionReplay.TacticalBattles[0]),
 		MakeTacticalBattleFingerprint(ObjectiveCompletion.TacticalBattles[0]));
+
+	const FDateTime CompletedSaveTime(2026, 8, 30, 18, 45, 0);
+	const FCampaignSaveWriteResult CompletedWrite = FCampaignSaveCodec::Serialize(
+		FCampaignSaveCodec::CreateNew(
+			ObjectiveCompletion, MakePackages(), TEXT("0.45.0-test"), CompletedSaveTime,
+			FGuid(0x91000011, 2, 3, 4)));
+	TestTrue(TEXT("Completed base-defense battle serializes in the current save format"), CompletedWrite.bSucceeded);
+	if (CompletedWrite.bSucceeded)
+	{
+		FCampaignSaveEnvelope InvalidCompletedPhase = CompletedWrite.Envelope;
+		InvalidCompletedPhase.State.TacticalBattles[0].Phase = ETacticalBattlePhase::PlayerTurn;
+		InvalidCompletedPhase.State.TacticalBattles[0].ActiveTeam = ETacticalTeam::Player;
+		InvalidCompletedPhase.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(InvalidCompletedPhase);
+		const FCampaignSaveValidationResult InvalidCompletedPhaseValidation = FCampaignSaveCodec::Validate(
+			InvalidCompletedPhase, MakePackages());
+		TestFalse(TEXT("Current saves reject a completed no-extraction battle in an active phase"),
+			InvalidCompletedPhaseValidation.bSucceeded);
+		TestTrue(TEXT("Completed tactical phase drift has a stable objective diagnostic"),
+			InvalidCompletedPhaseValidation.HasDiagnostic(TEXT("invalid_tactical_objective")));
+
+		FCampaignSaveEnvelope LegacyCompletedPhase = InvalidCompletedPhase;
+		LegacyCompletedPhase.Header.FormatVersion = FCampaignSaveCodec::CurrentFormatVersion - 1;
+		LegacyCompletedPhase.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(LegacyCompletedPhase);
+		FString LegacyCompletedPhaseJson = CompletedWrite.Json.Replace(
+			*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
+			*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion - 1));
+		LegacyCompletedPhaseJson = LegacyCompletedPhaseJson.Replace(
+			*CompletedWrite.Envelope.Header.SaveChecksum,
+			*LegacyCompletedPhase.Header.SaveChecksum);
+		LegacyCompletedPhaseJson = LegacyCompletedPhaseJson.Replace(
+			TEXT("\"phase\":\"resolved\""), TEXT("\"phase\":\"player-turn\""));
+		const FCampaignSaveReadResult MigratedCompletedPhase = FCampaignSaveCodec::Deserialize(
+			LegacyCompletedPhaseJson, MakePackages());
+		TestTrue(TEXT("Legacy completed base-defense phase migrates successfully"),
+			MigratedCompletedPhase.bSucceeded && MigratedCompletedPhase.bMigrated);
+		if (MigratedCompletedPhase.Envelope.State.TacticalBattles.Num() == 1)
+		{
+			const FTacticalBattleState& MigratedBattle = MigratedCompletedPhase.Envelope.State.TacticalBattles[0];
+			TestTrue(TEXT("Legacy completed base-defense battle becomes resolved"),
+				MigratedBattle.Phase == ETacticalBattlePhase::Resolved
+				&& MigratedBattle.Objectives.Num() == 1
+				&& MigratedBattle.Objectives[0].Status == ETacticalObjectiveStatus::Completed);
+			TestTrue(TEXT("Migrated completed base-defense save validates in the current format"),
+				FCampaignSaveCodec::Validate(MigratedCompletedPhase.Envelope, MakePackages()).bSucceeded);
+		}
+	}
 
 	const FDateTime SaveTime(2026, 8, 30, 18, 30, 0);
 	const FCampaignSaveWriteResult ActiveWrite = FCampaignSaveCodec::Serialize(FCampaignSaveCodec::CreateNew(

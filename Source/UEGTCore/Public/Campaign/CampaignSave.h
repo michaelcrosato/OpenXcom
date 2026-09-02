@@ -144,7 +144,7 @@ struct UEGTCORE_API FCampaignSaveReadResult
 class UEGTCORE_API FCampaignSaveCodec final
 {
 public:
-	static constexpr int32 CurrentFormatVersion = 44;
+	static constexpr int32 CurrentFormatVersion = 45;
 	static constexpr int32 OldestSupportedFormatVersion = 1;
 
 	static FCampaignSaveEnvelope CreateNew(

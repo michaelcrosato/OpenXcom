@@ -447,6 +447,33 @@ namespace CampaignSavePrivate
 		}
 	}
 
+	void MigrateTacticalResolution(FCampaignState& State)
+	{
+		for (FTacticalBattleState& Battle : State.TacticalBattles)
+		{
+			if (Battle.bRequiresExtraction || Battle.Phase == ETacticalBattlePhase::Resolved)
+			{
+				continue;
+			}
+			const bool bHasTerminalObjective = Battle.Objectives.ContainsByPredicate(
+				[](const FTacticalObjectiveState& Objective)
+				{
+					return Objective.Status != ETacticalObjectiveStatus::Active;
+				});
+			if (bHasTerminalObjective)
+			{
+				for (FTacticalObjectiveState& Objective : Battle.Objectives)
+				{
+					if (Objective.Status == ETacticalObjectiveStatus::Active)
+					{
+						Objective.Status = ETacticalObjectiveStatus::Failed;
+					}
+				}
+				Battle.Phase = ETacticalBattlePhase::Resolved;
+			}
+		}
+	}
+
 	uint32 RotateRight(const uint32 Value, const uint32 Bits)
 	{
 		return (Value >> Bits) | (Value << (32U - Bits));
@@ -3355,6 +3382,14 @@ namespace CampaignSavePrivate
 					const bool bKnownType = Objective.Type == ETacticalObjectiveType::Disrupt
 						|| Objective.Type == ETacticalObjectiveType::Recover
 						|| Objective.Type == ETacticalObjectiveType::Control;
+					const bool bObjectivePhaseValid = Header.FormatVersion < FCampaignSaveCodec::CurrentFormatVersion
+						|| (Battle.bRequiresExtraction
+							? (Battle.Phase == ETacticalBattlePhase::Resolved
+								? Objective.Status != ETacticalObjectiveStatus::Active
+								: Objective.Status != ETacticalObjectiveStatus::Failed)
+							: (Battle.Phase == ETacticalBattlePhase::Resolved
+								? Objective.Status != ETacticalObjectiveStatus::Active
+								: Objective.Status == ETacticalObjectiveStatus::Active));
 					if (!FContentPackageResolver::IsValidPackageId(Objective.ObjectiveId)
 						|| SeenObjectiveIds.Contains(Objective.ObjectiveId)
 						|| !Battle.IsWithinGrid(Objective.X, Objective.Y, Objective.Z)
@@ -3362,9 +3397,10 @@ namespace CampaignSavePrivate
 						|| Objective.CompletedInteractions < 0 || Objective.CompletedInteractions > Objective.RequiredInteractions
 						|| Objective.AdversaryInteractions < 0 || Objective.AdversaryInteractions > Objective.RequiredInteractions
 						|| (Objective.Type != ETacticalObjectiveType::Control && Objective.AdversaryInteractions != 0)
-						|| (Objective.CompletedInteractions > 0 && Objective.AdversaryInteractions > 0))
+						|| (Objective.CompletedInteractions > 0 && Objective.AdversaryInteractions > 0)
+						|| !bObjectivePhaseValid)
 					{
-						AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_tactical_objective"), FString::Printf(TEXT("Tactical battle '%s' contains an invalid objective."), *Battle.BattleId.ToString()));
+						AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_tactical_objective"), FString::Printf(TEXT("Tactical battle '%s' contains an invalid objective or objective phase."), *Battle.BattleId.ToString()));
 					}
 					SeenObjectiveIds.Add(Objective.ObjectiveId);
 				}
@@ -6819,6 +6855,10 @@ namespace CampaignSavePrivate
 				{
 					Battle.PlayerLastKnownAdversaries.Reset();
 				}
+			}
+			if (Result.Envelope.Header.FormatVersion < 45)
+			{
+				MigrateTacticalResolution(Result.Envelope.State);
 			}
 			NormalizeEnvelope(Result.Envelope);
 			Result.Envelope.Header.FormatVersion = FCampaignSaveCodec::CurrentFormatVersion;
