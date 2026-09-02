@@ -884,7 +884,7 @@ bool FTacticalMissionGenerator::ValidateBattle(
 				+ static_cast<int64>(Unit.EjectedMagazines.Num());
 			bool bLoadoutValid = Unit.WeaponStates.Num() <= 16 && Unit.CarriedItems.Num() <= 16
 				&& Unit.EjectedMagazines.Num() <= 16;
-			TMap<FName, int32> PersonnelEquipmentCounts;
+			TMap<FName, int64> PersonnelEquipmentCounts;
 			if (Person != nullptr)
 			{
 				for (const FName ItemId : Person->EquippedItems)
@@ -892,7 +892,7 @@ bool FTacticalMissionGenerator::ValidateBattle(
 					++PersonnelEquipmentCounts.FindOrAdd(ItemId);
 				}
 			}
-			TMap<FName, int32> TacticalMagazineCounts;
+			TMap<FName, int64> TacticalMagazineCounts;
 			TSet<FName> TacticalAmmunitionItemIds;
 			for (const FTacticalWeaponState& WeaponState : Unit.WeaponStates)
 			{
@@ -944,7 +944,7 @@ bool FTacticalMissionGenerator::ValidateBattle(
 				}
 				SeenCarriedItemIds.Add(Stack.ItemId);
 			}
-			for (const TPair<FName, int32>& MagazineCount : TacticalMagazineCounts)
+			for (const TPair<FName, int64>& MagazineCount : TacticalMagazineCounts)
 			{
 				bLoadoutValid &= Person != nullptr
 					&& MagazineCount.Value <= PersonnelEquipmentCounts.FindRef(MagazineCount.Key);

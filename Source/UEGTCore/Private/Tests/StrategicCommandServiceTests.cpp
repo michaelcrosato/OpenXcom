@@ -14412,6 +14412,27 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 				}));
 		}
 
+		FTacticalBattleState OverflowedMagazineCount = FirstBattle;
+		FTacticalUnitState* OverflowedLoadoutUnit = OverflowedMagazineCount.Units.FindByPredicate(
+			[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+		TestTrue(TEXT("Generated player loadout provides a tactical weapon for the magazine boundary probe"),
+			OverflowedLoadoutUnit != nullptr && !OverflowedLoadoutUnit->WeaponStates.IsEmpty());
+		if (OverflowedLoadoutUnit != nullptr && !OverflowedLoadoutUnit->WeaponStates.IsEmpty())
+		{
+			const FItemRule* Weapon = Rules.Items.Find(OverflowedLoadoutUnit->WeaponStates[0].WeaponItemId);
+			TestTrue(TEXT("Magazine boundary probe resolves the tactical weapon rule"),
+				Weapon != nullptr && !Weapon->TacticalAmmunitionItemId.IsNone());
+			if (Weapon != nullptr && !Weapon->TacticalAmmunitionItemId.IsNone())
+			{
+				OverflowedLoadoutUnit->CarriedItems.Reset();
+				OverflowedLoadoutUnit->CarriedItems.Add({ Weapon->TacticalAmmunitionItemId, MAX_int32 });
+				TArray<FTacticalGenerationDiagnostic> OverflowedMagazineDiagnostics;
+				TestFalse(TEXT("Extreme carried ammunition is rejected without overflowing magazine counters"),
+					FTacticalMissionGenerator::ValidateBattle(
+						OverflowedMagazineCount, First, Rules, OverflowedMagazineDiagnostics));
+			}
+		}
+
 		FResolvedRuleSet RulesWithAlternateAdversary = Rules;
 		FTacticalUnitRule AlternateAdversary = Rules.TacticalUnits.FindChecked(
 			FirstBattle.Units.FindByPredicate(
