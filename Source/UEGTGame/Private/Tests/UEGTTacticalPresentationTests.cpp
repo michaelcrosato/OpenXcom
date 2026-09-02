@@ -90,6 +90,20 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	FTacticalHudCellView MarkerTerrain;
 	MarkerTerrain.CurrentIntegrity = 100;
 	MarkerTerrain.MaxIntegrity = 100;
+	MarkerTerrain.CoverPercent = 0;
+	TestTrue(TEXT("Cover markers retain a bounded base footprint"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateCoverMarkerScale(MarkerTerrain),
+			0.38f));
+	MarkerTerrain.CoverPercent = 45;
+	TestTrue(TEXT("Cover marker footprint reflects authored cover"),
+		AUEGTTacticalBoardActor::CalculateCoverMarkerScale(MarkerTerrain) > 0.38f
+		&& AUEGTTacticalBoardActor::CalculateCoverMarkerScale(MarkerTerrain) < 0.9f);
+	MarkerTerrain.CoverPercent = MAX_int32;
+	TestTrue(TEXT("Cover marker footprint clamps at full cover"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculateCoverMarkerScale(MarkerTerrain),
+			0.9f));
 	TestTrue(TEXT("Intact terrain markers retain their full silhouette"),
 		FMath::IsNearlyEqual(
 			AUEGTTacticalBoardActor::CalculateTerrainMarkerHeightScale(MarkerTerrain),
@@ -133,6 +147,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 		Cell.CurrentIntegrity = X == 1 ? 40 : 0;
 		Cell.bBlocksMovement = X == 1;
 		Cell.bIsVerticalConnector = X == 2;
+		Cell.CoverPercent = X == 1 ? 60 : 0;
 		Cell.bPlayerDeployment = X == 0;
 		Cell.bExtraction = X == 2;
 		Snapshot.KnownCells.Add(Cell);
@@ -216,6 +231,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Active objective receives a board marker"), Board->GetRenderedObjectiveCount(), 1);
 	TestEqual(TEXT("Selected units receive a dedicated emphasis marker"), Board->GetRenderedSelectionCount(), 1);
 	TestEqual(TEXT("Vertical connector cells receive a dedicated traversal marker"), Board->GetRenderedConnectorCount(), 1);
+	TestEqual(TEXT("Covered cells receive a dedicated cover marker"), Board->GetRenderedCoverCount(), 1);
 	TestEqual(TEXT("Player deployment cells receive a dedicated zone marker"), Board->GetRenderedDeploymentCount(), 1);
 	TestEqual(TEXT("Extraction cells receive a dedicated zone marker"), Board->GetRenderedExtractionCount(), 1);
 	UUEGTTacticalHudWidget* Hud = CreateWidget<UUEGTTacticalHudWidget>(
