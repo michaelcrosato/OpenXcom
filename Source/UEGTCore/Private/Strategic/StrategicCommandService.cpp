@@ -2295,9 +2295,10 @@ namespace StrategicCommandServicePrivate
 			{
 				continue;
 			}
-			const int32 ReservedQuantity = bWaypointReservation
-				? Convoy.BalancedHandoffQuantity
-				: Convoy.Quantity - Convoy.BalancedHandoffQuantity;
+			const int64 ReservedQuantity = bWaypointReservation
+				? static_cast<int64>(Convoy.BalancedHandoffQuantity)
+				: static_cast<int64>(Convoy.Quantity)
+					- static_cast<int64>(Convoy.BalancedHandoffQuantity);
 			const FItemRule* Item = Rules.Items.Find(Convoy.ItemId);
 			int64 ConvoyStorage = 0;
 			if (!Convoy.ConvoyId.IsValid() || Convoy.SourceBaseId == Convoy.DestinationBaseId
@@ -2433,8 +2434,11 @@ namespace StrategicCommandServicePrivate
 			}
 			SeenConvoyIds.Add(Convoy.ConvoyId);
 			SeenDispatchSequences.Add(Convoy.DispatchSequence);
-			const int32 FinalQuantity = Convoy.Quantity - Convoy.BalancedHandoffQuantity;
-			if (!ValidateInboundInventory(*Destination, Convoy.ItemId, FinalQuantity))
+			const int64 FinalQuantity = static_cast<int64>(Convoy.Quantity)
+				- static_cast<int64>(Convoy.BalancedHandoffQuantity);
+			if (FinalQuantity <= 0 || FinalQuantity > MAX_int32
+				|| !ValidateInboundInventory(
+					*Destination, Convoy.ItemId, static_cast<int32>(FinalQuantity)))
 			{
 				return false;
 			}
@@ -12516,14 +12520,30 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_manufacturing_project"), TEXT("Manufacturing project is not active."));
 		return Result;
 	}
+	if (Project->AssignedEngineers < 0 || Project->UnitsRemaining <= 0
+		|| Project->AccumulatedWorkSeconds < 0)
+	{
+		AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
+			TEXT("Manufacturing project '%s' has invalid persisted state."),
+			*Project->ProjectId.ToString()));
+		return Result;
+	}
 	const FItemRule* Item = Rules.Items.Find(Project->ItemId);
 	if (Item == nullptr || Item->ManufactureCost < 0)
 	{
 		AddError(Result, TEXT("unknown_item"), TEXT("Manufacturing project references an unavailable item rule."));
 		return Result;
 	}
-	const int32 RefundableUnits = FMath::Max(0,
-		Project->UnitsRemaining - (Project->AccumulatedWorkSeconds > 0 ? 1 : 0));
+	const int64 RefundableUnits64 = static_cast<int64>(Project->UnitsRemaining)
+		- (Project->AccumulatedWorkSeconds > 0 ? 1LL : 0LL);
+	if (RefundableUnits64 < 0 || RefundableUnits64 > MAX_int32)
+	{
+		AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
+			TEXT("Manufacturing project '%s' has an invalid refundable unit count."),
+			*Project->ProjectId.ToString()));
+		return Result;
+	}
+	const int32 RefundableUnits = static_cast<int32>(RefundableUnits64);
 	int64 Refund = 0;
 	int64 NewFunds = 0;
 	if (!TryMultiplyNonNegative(Item->ManufactureCost, RefundableUnits, Refund)

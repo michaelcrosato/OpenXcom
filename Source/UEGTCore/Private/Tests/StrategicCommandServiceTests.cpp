@@ -1664,6 +1664,25 @@ bool FStrategicStorageCapacityTest::RunTest(const FString& Parameters)
 		Initial.bValid && Initial.bEnforced && Initial.Capacity == 20
 		&& Initial.Used == 10 && Initial.Reserved == 0 && Initial.Available == 10);
 
+	FCampaignState MalformedConvoyState = State;
+	FMutualAidConvoyState& MalformedConvoy =
+		MalformedConvoyState.MutualAidConvoys.AddDefaulted_GetRef();
+	MalformedConvoy.ConvoyId = FGuid(0xa21, 0xa22, 0xa23, 0xa24);
+	MalformedConvoy.DestinationBaseId = TestBaseId;
+	MalformedConvoy.ItemId = TEXT("item.service-rifle");
+	MalformedConvoy.Quantity = MAX_int32;
+	MalformedConvoy.BalancedHandoffQuantity = MIN_int32;
+	const FBaseStorageEvaluation MalformedConvoyStorage =
+		FStrategicCommandService::EvaluateBaseStorage(
+			MalformedConvoyState, Rules, TestBaseId);
+	TestTrue(TEXT("Storage evaluation rejects a convoy whose split arithmetic exceeds int32"),
+		!MalformedConvoyStorage.bValid
+		&& MalformedConvoyStorage.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_mutual_aid_convoy"));
+			}));
+
 	FStartManufacturingCommand Start;
 	Start.ExpectedSequence = State.CommandSequence;
 	Start.ProjectId = FGuid(0xa09, 0xa10, 0xa11, 0xa12);
@@ -6634,6 +6653,37 @@ bool FStrategicEconomyDispositionTest::RunTest(const FString& Parameters)
 		FullyRefunded.HasEvent(EStrategicEventType::ManufacturingCancelled));
 	TestEqual(TEXT("Untouched units receive a full reservation refund"), State.Funds, int64(9800));
 	TestTrue(TEXT("Cancelled production releases its project and staff slot"), State.ManufacturingProjects.IsEmpty());
+
+	FCampaignState MalformedCancellationState = State;
+	FStartManufacturingCommand MalformedStart;
+	MalformedStart.ExpectedSequence = MalformedCancellationState.CommandSequence;
+	MalformedStart.ProjectId = FGuid(193, 194, 195, 196);
+	MalformedStart.BaseId = TestBaseId;
+	MalformedStart.ItemId = TEXT("item.service-rifle");
+	MalformedStart.Units = 1;
+	const FStrategicCommandResult MalformedStarted =
+		FStrategicCommandService::Execute(
+			MalformedCancellationState, Rules, Config, MalformedStart);
+	check(MalformedStarted.bAccepted);
+	check(MalformedCancellationState.ManufacturingProjects.Num() == 1);
+	MalformedCancellationState.ManufacturingProjects[0].UnitsRemaining = MIN_int32;
+	const int64 MalformedFundsBefore = MalformedCancellationState.Funds;
+	const int64 MalformedSequenceBefore = MalformedCancellationState.CommandSequence;
+	FCancelManufacturingCommand MalformedCancel;
+	MalformedCancel.ExpectedSequence = MalformedSequenceBefore;
+	MalformedCancel.ProjectId = MalformedStart.ProjectId;
+	const FStrategicCommandResult MalformedCancellation =
+		FStrategicCommandService::Execute(
+			MalformedCancellationState, Rules, MalformedCancel);
+	TestFalse(TEXT("Cancellation rejects a project with an overflowing unit count"),
+		MalformedCancellation.bAccepted);
+	TestTrue(TEXT("Malformed cancellation has a stable project diagnostic"),
+		MalformedCancellation.HasDiagnostic(TEXT("invalid_manufacturing_project")));
+	TestTrue(TEXT("Malformed cancellation remains transactional"),
+		MalformedCancellationState.Funds == MalformedFundsBefore
+		&& MalformedCancellationState.CommandSequence == MalformedSequenceBefore
+		&& MalformedCancellationState.ManufacturingProjects.Num() == 1
+		&& MalformedCancellationState.ManufacturingProjects[0].UnitsRemaining == MIN_int32);
 
 	Start.ExpectedSequence = State.CommandSequence;
 	Start.ProjectId = FGuid(189, 190, 191, 192);
