@@ -17047,6 +17047,27 @@ bool FTacticalSignalPressureCommandTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Preview exposes bounded morale and suppression pressure"),
 		Preview.MoraleDamage > 0 && Preview.SuppressionGain > 0 && Preview.HitChance >= 5 && Preview.HitChance <= 95);
 
+	FTacticalBattleState ExtremeSignalBattle = Battle;
+	FResolvedRuleSet ExtremeSignalRules = Rules;
+	FItemRule* ExtremeSignalProjector = ExtremeSignalRules.Items.Find(TEXT("item.signal-probe"));
+	FTacticalUnitState* ExtremeSignalOperator = ExtremeSignalBattle.Units.FindByPredicate(
+		[&PlayerUnitId](const FTacticalUnitState& Unit) { return Unit.UnitId == PlayerUnitId; });
+	FTacticalUnitState* ExtremeSignalTarget = ExtremeSignalBattle.Units.FindByPredicate(
+		[&TargetUnitId](const FTacticalUnitState& Unit) { return Unit.UnitId == TargetUnitId; });
+	if (ExtremeSignalProjector != nullptr && ExtremeSignalOperator != nullptr && ExtremeSignalTarget != nullptr)
+	{
+		ExtremeSignalProjector->Power = MAX_int32;
+		ExtremeSignalOperator->Resolve = MAX_int32;
+		ExtremeSignalTarget->Resolve = MIN_int32;
+		ExtremeSignalTarget->Suppression = MIN_int32;
+		ExtremeSignalTarget->CurrentMorale = MAX_int32;
+		const FTacticalSignalPreview ExtremeSignalPreview = FTacticalCombatService::PreviewSignalProjection(
+			ExtremeSignalBattle, Initial, ExtremeSignalRules, PlayerUnitId, TargetUnitId, TEXT("item.signal-probe"));
+		TestTrue(TEXT("Extreme signal inputs clamp preview chance and pressure outputs safely"),
+			ExtremeSignalPreview.bSucceeded && ExtremeSignalPreview.HitChance == 95
+			&& ExtremeSignalPreview.SuppressionGain == 30 && ExtremeSignalPreview.MoraleDamage == 35);
+	}
+
 	int64 HitSeed = 1;
 	for (; HitSeed < 10000; ++HitSeed)
 	{
@@ -18739,6 +18760,23 @@ bool FTacticalFireModesAndBlastTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("Overflowing burst ammunition cost is rejected before preview arithmetic wraps"), OverflowPreview.bSucceeded);
 		TestTrue(TEXT("Overflowing burst ammunition cost has a stable diagnostic"),
 			OverflowPreview.HasDiagnostic(TEXT("invalid_tactical_ammunition_profile")));
+	}
+
+	FResolvedRuleSet ExtremeAccuracyRules = Rules;
+	FItemRule* ExtremeAccuracyRifle = ExtremeAccuracyRules.Items.Find(TEXT("item.service-rifle"));
+	FTacticalBattleState ExtremeAccuracyBattle = First.TacticalBattles[0];
+	FTacticalUnitState* ExtremeAccuracyAttacker = ExtremeAccuracyBattle.Units.FindByPredicate(
+		[&AttackerUnitId](const FTacticalUnitState& Unit) { return Unit.UnitId == AttackerUnitId; });
+	if (ExtremeAccuracyRifle != nullptr && ExtremeAccuracyAttacker != nullptr)
+	{
+		ExtremeAccuracyRifle->TacticalAmmunitionItemId = FName();
+		ExtremeAccuracyRifle->TacticalAccuracyModifier = MAX_int32;
+		ExtremeAccuracyAttacker->Accuracy = MAX_int32;
+		const FTacticalAttackPreview ExtremeAccuracyPreview = FTacticalCombatService::PreviewUnitAttack(
+			ExtremeAccuracyBattle, First, ExtremeAccuracyRules, AttackerUnitId, BurstTargetId,
+			TEXT("item.service-rifle"));
+		TestTrue(TEXT("Extreme tactical accuracy inputs clamp to the maximum preview chance"),
+			ExtremeAccuracyPreview.bSucceeded && ExtremeAccuracyPreview.HitChance == 95);
 	}
 
 	const FCampaignSaveWriteResult BlastWrite = FCampaignSaveCodec::Serialize(FCampaignSaveCodec::CreateNew(

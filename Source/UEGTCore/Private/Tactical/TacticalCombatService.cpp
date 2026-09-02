@@ -414,15 +414,22 @@ FTacticalAttackPreview FTacticalCombatService::PreviewUnitAttack(
 	Result.StanceAccuracyModifier = Attacker->Stance == ETacticalStance::Crouched ? 10 : 0;
 	Result.StanceCoverModifier = Target->Stance == ETacticalStance::Crouched ? 15 : 0;
 	Result.ElevationAccuracyModifier = FMath::Clamp(Attacker->Z - Target->Z, -2, 2) * 10;
-	Result.CoverPercent = FMath::Min(
-		100,
-		CoverAroundTarget(Battle, Rules, Target->X, Target->Y, Target->Z) + Result.StanceCoverModifier);
-	const int32 DistancePenalty = FMath::Max(0, Result.Distance - 3) * 3;
-	Result.HitChance = FMath::Clamp(
-		Attacker->Accuracy + Profile.AccuracyModifier + Result.StanceAccuracyModifier + Result.ElevationAccuracyModifier
-			- DistancePenalty - Result.CoverPercent - Result.SmokePenalty,
-		5,
-		95);
+	Result.CoverPercent = static_cast<int32>(FMath::Clamp<int64>(
+		static_cast<int64>(CoverAroundTarget(Battle, Rules, Target->X, Target->Y, Target->Z))
+			+ static_cast<int64>(Result.StanceCoverModifier),
+		0,
+		100));
+	const int64 DistancePenalty = FMath::Max<int64>(
+		0,
+		static_cast<int64>(Result.Distance) - 3) * 3;
+	const int64 RawHitChance = static_cast<int64>(Attacker->Accuracy)
+		+ static_cast<int64>(Profile.AccuracyModifier)
+		+ static_cast<int64>(Result.StanceAccuracyModifier)
+		+ static_cast<int64>(Result.ElevationAccuracyModifier)
+		- DistancePenalty
+		- static_cast<int64>(Result.CoverPercent)
+		- static_cast<int64>(Result.SmokePenalty);
+	Result.HitChance = static_cast<int32>(FMath::Clamp<int64>(RawHitChance, 5, 95));
 	Result.bSucceeded = true;
 	return Result;
 }
@@ -617,19 +624,34 @@ FTacticalSignalPreview FTacticalCombatService::PreviewSignalProjection(
 	}
 	Result.SmokePenalty = FMath::Min(40, FTacticalNavigationService::ComputeSmokeObscuration(
 		Battle, Attacker->X, Attacker->Y, Target->X, Target->Y, Attacker->Z, Target->Z) / 2);
-	const int32 DistancePenalty = FMath::Max(0, Result.Distance - 3) * 3;
-	Result.HitChance = FMath::Clamp(
-		45 + Attacker->Resolve - Target->Resolve + Result.SignalPower / 2
-			- DistancePenalty - Result.SmokePenalty,
+	const int64 DistancePenalty = FMath::Max<int64>(
+		0,
+		static_cast<int64>(Result.Distance) - 3) * 3;
+	const int64 ResolveDelta = static_cast<int64>(Attacker->Resolve) - static_cast<int64>(Target->Resolve);
+	const int64 RawHitChance = 45LL
+		+ ResolveDelta
+		+ static_cast<int64>(Result.SignalPower) / 2
+		- DistancePenalty
+		- static_cast<int64>(Result.SmokePenalty);
+	Result.HitChance = static_cast<int32>(FMath::Clamp<int64>(RawHitChance, 5, 95));
+	const int32 RawSuppression = static_cast<int32>(FMath::Clamp<int64>(
+		4LL + static_cast<int64>(Result.SignalPower) / 3,
+		4,
+		30));
+	const int32 RawMoraleDamage = static_cast<int32>(FMath::Clamp<int64>(
+		5LL + static_cast<int64>(Result.SignalPower) / 2 + FMath::Max<int64>(0, ResolveDelta) / 5,
 		5,
-		95);
-	const int32 RawSuppression = FMath::Clamp(4 + Result.SignalPower / 3, 4, 30);
-	const int32 RawMoraleDamage = FMath::Clamp(
-		5 + Result.SignalPower / 2 + FMath::Max(0, Attacker->Resolve - Target->Resolve) / 5,
-		5,
-		35);
-	Result.SuppressionGain = FMath::Min(100 - Target->Suppression, RawSuppression);
-	Result.MoraleDamage = FMath::Min(Target->CurrentMorale, RawMoraleDamage);
+		35));
+	const int32 AvailableSuppression = static_cast<int32>(FMath::Clamp<int64>(
+		100LL - static_cast<int64>(Target->Suppression),
+		0,
+		100));
+	const int32 AvailableMorale = static_cast<int32>(FMath::Clamp<int64>(
+		static_cast<int64>(Target->CurrentMorale),
+		0,
+		100));
+	Result.SuppressionGain = FMath::Min(AvailableSuppression, RawSuppression);
+	Result.MoraleDamage = FMath::Min(AvailableMorale, RawMoraleDamage);
 	Result.bSucceeded = true;
 	return Result;
 }
