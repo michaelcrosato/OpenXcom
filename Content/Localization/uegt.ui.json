@@ -5170,6 +5170,86 @@
       "translations": { "en": "The requested inventory quantity is unavailable.", "fr": "La quantité demandée n'est pas disponible dans le stock.", "de": "Die angeforderte Lagermenge ist nicht verfügbar.", "es": "La cantidad solicitada no está disponible en el inventario.", "ja": "要求された在庫数量を利用できません。" }
     },
     {
+      "key": "diagnostic.inventory-capacity-exceeded",
+      "source": "The inventory quantity would exceed the supported limit.",
+      "translations": { "en": "The inventory quantity would exceed the supported limit.", "fr": "La quantité en stock dépasserait la limite prise en charge.", "de": "Die Lagermenge würde den unterstützten Grenzwert überschreiten.", "es": "La cantidad del inventario superaría el límite admitido.", "ja": "在庫数量がサポートされる上限を超えます。" }
+    },
+    {
+      "key": "diagnostic.inventory-overflow",
+      "source": "Adding this item would exceed the supported inventory limit.",
+      "translations": { "en": "Adding this item would exceed the supported inventory limit.", "fr": "L'ajout de cet objet dépasserait la limite de stockage prise en charge.", "de": "Das Hinzufügen dieses Gegenstands würde den unterstützten Lagerbestand überschreiten.", "es": "Añadir este objeto superaría el límite de inventario admitido.", "ja": "このアイテムを追加すると、サポートされる在庫上限を超えます。" }
+    },
+    {
+      "key": "diagnostic.inventory-transaction-failed",
+      "source": "The inventory change could not be completed safely.",
+      "translations": { "en": "The inventory change could not be completed safely.", "fr": "La modification du stock n'a pas pu être effectuée en toute sécurité.", "de": "Die Bestandsänderung konnte nicht sicher abgeschlossen werden.", "es": "No se pudo completar de forma segura el cambio del inventario.", "ja": "在庫の変更を安全に完了できませんでした。" }
+    },
+    {
+      "key": "diagnostic.item-not-manufacturable",
+      "source": "This item cannot be manufactured because it has no manufacturing definition.",
+      "translations": { "en": "This item cannot be manufactured because it has no manufacturing definition.", "fr": "Cet objet ne peut pas être fabriqué car sa définition de fabrication est absente.", "de": "Dieser Gegenstand kann nicht hergestellt werden, weil keine Herstellungsdefinition vorhanden ist.", "es": "Este objeto no se puede fabricar porque no tiene una definición de fabricación.", "ja": "このアイテムには製造定義がないため、製造できません。" }
+    },
+    {
+      "key": "diagnostic.item-not-sellable",
+      "source": "This item cannot be sold because it has no positive disposition value.",
+      "translations": { "en": "This item cannot be sold because it has no positive disposition value.", "fr": "Cet objet ne peut pas être vendu car sa valeur de cession n'est pas positive.", "de": "Dieser Gegenstand kann nicht verkauft werden, weil sein Veräußerungswert nicht positiv ist.", "es": "Este objeto no se puede vender porque no tiene un valor de venta positivo.", "ja": "このアイテムは処分価値が正ではないため、売却できません。" }
+    },
+    {
+      "key": "diagnostic.manufacturing-materials-overflow",
+      "source": "The manufacturing input quantity exceeds the supported inventory limit.",
+      "translations": { "en": "The manufacturing input quantity exceeds the supported inventory limit.", "fr": "La quantité de matériaux de fabrication dépasse la limite de stockage prise en charge.", "de": "Die Menge der Herstellungsmaterialien überschreitet den unterstützten Lagerbestand.", "es": "La cantidad de materiales de fabricación supera el límite de inventario admitido.", "ja": "製造資材の数量がサポートされる在庫上限を超えています。" }
+    },
+    {
+      "key": "diagnostic.manufacturing-progress-overflow",
+      "source": "Manufacturing progress would exceed the campaign numeric range.",
+      "translations": { "en": "Manufacturing progress would exceed the campaign numeric range.", "fr": "La progression de la fabrication dépasserait la plage numérique de la campagne.", "de": "Der Herstellungsfortschritt würde den numerischen Bereich der Kampagne überschreiten.", "es": "El progreso de fabricación superaría el rango numérico de la campaña.", "ja": "製造の進行度がキャンペーンの数値範囲を超えます。" }
+    },
+    {
+      "key": "diagnostic.manufacturing-quantity-overflow",
+      "source": "The manufacturing run would exceed the supported unit count.",
+      "translations": { "en": "The manufacturing run would exceed the supported unit count.", "fr": "La série de fabrication dépasserait le nombre d'unités pris en charge.", "de": "Der Herstellungsauftrag würde die unterstützte Stückzahl überschreiten.", "es": "La serie de fabricación superaría el número de unidades admitido.", "ja": "製造実行数がサポートされる単位数を超えます。" }
+    },
+    {
+      "key": "diagnostic.invalid-manufacturing-adjustment",
+      "source": "Manufacturing quantity adjustment cannot be zero.",
+      "translations": { "en": "Manufacturing quantity adjustment cannot be zero.", "fr": "L'ajustement de la quantité de fabrication ne peut pas être nul.", "de": "Die Anpassung der Herstellungsmenge darf nicht null sein.", "es": "El ajuste de cantidad de fabricación no puede ser cero.", "ja": "製造数量の調整値を0にはできません。" }
+    },
+    {
+      "key": "diagnostic.invalid-manufacturing-project",
+      "source": "The manufacturing project has invalid saved state.",
+      "translations": { "en": "The manufacturing project has invalid saved state.", "fr": "Le projet de fabrication possède un état sauvegardé invalide.", "de": "Das Herstellungsprojekt weist einen ungültigen gespeicherten Zustand auf.", "es": "El proyecto de fabricación tiene un estado guardado no válido.", "ja": "製造プロジェクトの保存状態が無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-manufacturing-project-id",
+      "source": "The manufacturing project ID must be valid and unique.",
+      "translations": { "en": "The manufacturing project ID must be valid and unique.", "fr": "L'identifiant du projet de fabrication doit être valide et unique.", "de": "Die ID des Herstellungsprojekts muss gültig und eindeutig sein.", "es": "El identificador del proyecto de fabricación debe ser válido y único.", "ja": "製造プロジェクトのIDは有効かつ一意でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-manufacturing-quantity",
+      "source": "Manufacturing quantity must be positive.",
+      "translations": { "en": "Manufacturing quantity must be positive.", "fr": "La quantité de fabrication doit être positive.", "de": "Die Herstellungsmenge muss positiv sein.", "es": "La cantidad de fabricación debe ser positiva.", "ja": "製造数量は正でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-manufacturing-recipe",
+      "source": "The manufacturing recipe is invalid.",
+      "translations": { "en": "The manufacturing recipe is invalid.", "fr": "La recette de fabrication est invalide.", "de": "Das Herstellungsrezept ist ungültig.", "es": "La receta de fabricación no es válida.", "ja": "製造レシピが無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-sale-quantity",
+      "source": "Sale quantity must be positive.",
+      "translations": { "en": "Sale quantity must be positive.", "fr": "La quantité à vendre doit être positive.", "de": "Die Verkaufsmenge muss positiv sein.", "es": "La cantidad de venta debe ser positiva.", "ja": "売却数量は正でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.unknown-item",
+      "source": "The selected item rule is unavailable.",
+      "translations": { "en": "The selected item rule is unavailable.", "fr": "La règle de l'objet sélectionné est indisponible.", "de": "Die Regel des ausgewählten Gegenstands ist nicht verfügbar.", "es": "La regla del objeto seleccionado no está disponible.", "ja": "選択したアイテムのルールを利用できません。" }
+    },
+    {
+      "key": "diagnostic.unknown-manufacturing-project",
+      "source": "The manufacturing project is no longer active.",
+      "translations": { "en": "The manufacturing project is no longer active.", "fr": "Le projet de fabrication n'est plus actif.", "de": "Das Herstellungsprojekt ist nicht mehr aktiv.", "es": "El proyecto de fabricación ya no está activo.", "ja": "製造プロジェクトはすでに有効ではありません。" }
+    },
+    {
       "key": "diagnostic.storage-capacity-exceeded",
       "source": "Free storage capacity before completing this order.",
       "translations": { "en": "Free storage capacity before completing this order.", "fr": "Libérez de la capacité de stockage avant de terminer cette commande.", "de": "Schaffen Sie Lagerkapazität, bevor Sie diesen Auftrag abschließen.", "es": "Libera capacidad de almacenamiento antes de completar esta orden.", "ja": "この命令を完了する前に保管容量を空けてください。" }

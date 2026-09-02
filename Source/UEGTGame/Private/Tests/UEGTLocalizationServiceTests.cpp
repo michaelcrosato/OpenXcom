@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, and personnel-craft safeguards expose one thousand five hundred five localized keys"),
-		Loaded.Catalog.Entries.Num(), 1505);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, and economy safeguards expose one thousand five hundred twenty-one localized keys"),
+		Loaded.Catalog.Entries.Num(), 1521);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1505);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1521);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1357,6 +1357,70 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("invalid_adversary_config"), TEXT("Raw adversary diagnostic"), TEXT("es-ES")),
 		FString(TEXT("La configuración del adversario, la dificultad, la diplomacia regional, la adaptación y el desenlace de campaña debe mantenerse dentro de los límites admitidos.")));
+	TestEqual(TEXT("Exact French inventory-capacity diagnostics preserve the quantity limit"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("inventory_capacity_exceeded"), TEXT("Raw inventory-capacity diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La quantité en stock dépasserait la limite prise en charge.")));
+	TestEqual(TEXT("Exact German inventory-overflow diagnostics identify the guarded addition"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("inventory_overflow"), TEXT("Raw inventory-overflow diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Das Hinzufügen dieses Gegenstands würde den unterstützten Lagerbestand überschreiten.")));
+	TestEqual(TEXT("Exact Spanish inventory-transaction diagnostics preserve safe completion"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("inventory_transaction_failed"), TEXT("Raw inventory-transaction diagnostic"), TEXT("es-ES")),
+		FString(TEXT("No se pudo completar de forma segura el cambio del inventario.")));
+	TestEqual(TEXT("Exact Japanese manufacturing eligibility diagnostics identify missing definitions"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("item_not_manufacturable"), TEXT("Raw manufacturing-eligibility diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("このアイテムには製造定義がないため、製造できません。")));
+	TestEqual(TEXT("Exact French sale eligibility diagnostics identify nonpositive value"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("item_not_sellable"), TEXT("Raw sale-eligibility diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Cet objet ne peut pas être vendu car sa valeur de cession n'est pas positive.")));
+	TestEqual(TEXT("Exact German manufacturing-material diagnostics preserve the inventory guard"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("manufacturing_materials_overflow"), TEXT("Raw manufacturing-material diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Menge der Herstellungsmaterialien überschreitet den unterstützten Lagerbestand.")));
+	TestEqual(TEXT("Exact Spanish manufacturing-progress diagnostics preserve the campaign range"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("manufacturing_progress_overflow"), TEXT("Raw manufacturing-progress diagnostic"), TEXT("es-ES")),
+		FString(TEXT("El progreso de fabricación superaría el rango numérico de la campaña.")));
+	TestEqual(TEXT("Exact Japanese manufacturing-quantity diagnostics preserve the unit bound"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("manufacturing_quantity_overflow"), TEXT("Raw manufacturing-quantity diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("製造実行数がサポートされる単位数を超えます。")));
+	TestEqual(TEXT("Exact French manufacturing-adjustment diagnostics reject no-op changes"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_manufacturing_adjustment"), TEXT("Raw manufacturing-adjustment diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("L'ajustement de la quantité de fabrication ne peut pas être nul.")));
+	TestEqual(TEXT("Exact German manufacturing-project diagnostics identify invalid saved state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_manufacturing_project"), TEXT("Raw manufacturing-project diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Das Herstellungsprojekt weist einen ungültigen gespeicherten Zustand auf.")));
+	TestEqual(TEXT("Exact Spanish manufacturing-project-id diagnostics preserve uniqueness"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_manufacturing_project_id"), TEXT("Raw manufacturing-project-id diagnostic"), TEXT("es-ES")),
+		FString(TEXT("El identificador del proyecto de fabricación debe ser válido y único.")));
+	TestEqual(TEXT("Exact Japanese manufacturing-quantity diagnostics preserve positive input"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_manufacturing_quantity"), TEXT("Raw manufacturing-quantity-input diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("製造数量は正でなければなりません。")));
+	TestEqual(TEXT("Exact French manufacturing-recipe diagnostics preserve authored rule validation"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_manufacturing_recipe"), TEXT("Raw manufacturing-recipe diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La recette de fabrication est invalide.")));
+	TestEqual(TEXT("Exact German sale-quantity diagnostics preserve positive input"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_sale_quantity"), TEXT("Raw sale-quantity diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Verkaufsmenge muss positiv sein.")));
+	TestEqual(TEXT("Exact Spanish unknown-item diagnostics preserve rule availability"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_item"), TEXT("Raw unknown-item diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La regla del objeto seleccionado no está disponible.")));
+	TestEqual(TEXT("Exact Japanese unknown-manufacturing-project diagnostics preserve active state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_manufacturing_project"), TEXT("Raw unknown-manufacturing-project diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("製造プロジェクトはすでに有効ではありません。")));
 	TestEqual(TEXT("Exact French storage scaling diagnostics preserve the numeric guard"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("storage_capacity_overflow"), TEXT("Raw storage-overflow diagnostic"), TEXT("fr-FR")),
