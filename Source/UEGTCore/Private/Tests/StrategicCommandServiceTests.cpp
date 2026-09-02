@@ -8106,6 +8106,30 @@ bool FStrategicPersonnelPersistenceAndSalaryTest::RunTest(const FString& Paramet
 		TestEqual(TEXT("Duplicate equipped item units round-trip"), Read.Envelope.State.Personnel[0].EquippedItems.Num(), 2);
 	}
 
+	FCampaignState InvalidMemorialState = State;
+	if (InvalidMemorialState.Memorial.Num() == 1)
+	{
+		InvalidMemorialState.Memorial[0].Rank = 101;
+		const FCampaignSaveValidationResult InvalidMemorialValidation = FCampaignSaveCodec::Validate(
+			FCampaignSaveCodec::CreateNew(
+				InvalidMemorialState,
+				MakePackages(),
+				TEXT("0.6.0-invalid-memorial-rank"),
+				InvalidMemorialState.StrategicTime.Utc,
+				FGuid(201, 202, 203, 204)),
+			MakePackages());
+		TestFalse(TEXT("Memorial rank above the supported range is rejected by save validation"), InvalidMemorialValidation.bSucceeded);
+		TestTrue(TEXT("Invalid memorial rank is diagnosed in saves"), InvalidMemorialValidation.HasDiagnostic(TEXT("invalid_memorial_record")));
+
+		FAdvanceStrategicTimeCommand InvalidAdvance;
+		InvalidAdvance.ExpectedSequence = InvalidMemorialState.CommandSequence;
+		InvalidAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+		const FStrategicCommandResult InvalidMemorialCommand = FStrategicCommandService::Execute(
+			InvalidMemorialState, Rules, Config, InvalidAdvance);
+		TestFalse(TEXT("Memorial rank above the supported range is rejected by commands"), InvalidMemorialCommand.bAccepted);
+		TestTrue(TEXT("Invalid memorial rank is diagnosed by commands"), InvalidMemorialCommand.HasDiagnostic(TEXT("invalid_memorial_record")));
+	}
+
 	FAdvanceStrategicTimeCommand Advance;
 	Advance.ExpectedSequence = State.CommandSequence;
 	Advance.Rate = EStrategicTimeRate::FiveSeconds;

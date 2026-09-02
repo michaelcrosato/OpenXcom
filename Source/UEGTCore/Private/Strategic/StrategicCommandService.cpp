@@ -4471,7 +4471,7 @@ namespace StrategicCommandServicePrivate
 				|| !IsUsablePersonnelName(Record.DisplayName)
 				|| !FContentPackageResolver::IsValidPackageId(Record.RoleId)
 				|| !FContentPackageResolver::IsValidPackageId(Record.CauseId)
-				|| Record.Rank <= 0 || Record.Missions < 0 || Record.Kills < 0
+				|| Record.Rank <= 0 || Record.Rank > 100 || Record.Missions < 0 || Record.Kills < 0
 				|| Record.StewardshipToursCompleted < 0
 				|| Record.DoctrineSelections.Num() > Record.Rank - 1
 				|| Record.DeathUtc <= FDateTime::MinValue() || Record.DeathUtc > State.StrategicTime.Utc)

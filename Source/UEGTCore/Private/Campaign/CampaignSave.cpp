@@ -2679,7 +2679,7 @@ namespace CampaignSavePrivate
 						|| Record.DisplayName.TrimStartAndEnd().IsEmpty() || Record.DisplayName.Len() > 64
 						|| !FContentPackageResolver::IsValidPackageId(Record.RoleId)
 						|| !FContentPackageResolver::IsValidPackageId(Record.CauseId)
-						|| Record.Rank <= 0 || Record.Missions < 0 || Record.Kills < 0
+						|| Record.Rank <= 0 || Record.Rank > 100 || Record.Missions < 0 || Record.Kills < 0
 						|| Record.StewardshipToursCompleted < 0
 						|| !IsUsableWallClock(Record.DeathUtc) || Record.DeathUtc > State.StrategicTime.Utc)
 					{
