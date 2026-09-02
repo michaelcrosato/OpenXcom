@@ -11367,7 +11367,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 							{
 								int64 RecoveryHours = 0;
 								int64 RecoverySeconds = 0;
-								const int64 MissingHealth = static_cast<int64>(Agent->MaxHealth - Agent->CurrentHealth);
+								const int64 MissingHealth = static_cast<int64>(Agent->MaxHealth) - static_cast<int64>(Agent->CurrentHealth);
 								if (!TryMultiplyNonNegative(MissingHealth, Config.RecoveryHoursPerHealth, RecoveryHours)
 									|| !TryMultiplyNonNegative(RecoveryHours, 3600, RecoverySeconds)
 									|| RecoverySeconds <= 0)
@@ -14384,7 +14384,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 
 	Person->CurrentHealth -= Command.Damage;
-	const int64 MissingHealth = static_cast<int64>(Person->MaxHealth - Person->CurrentHealth);
+	const int64 MissingHealth = static_cast<int64>(Person->MaxHealth) - static_cast<int64>(Person->CurrentHealth);
 	int64 RecoveryHours = 0;
 	int64 RecoverySeconds = 0;
 	if (!TryMultiplyNonNegative(MissingHealth, Config.RecoveryHoursPerHealth, RecoveryHours)

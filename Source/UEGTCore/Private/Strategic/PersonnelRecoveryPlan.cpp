@@ -107,7 +107,7 @@ FPersonnelRecoveryPlanView FPersonnelRecoveryPlan::Evaluate(
 	int64 SurgeDuration = 0;
 	int64 SurgeCost = 0;
 	int64 BaselineSurgeCost = 0;
-	const int64 MissingHealth = static_cast<int64>(Person->MaxHealth - Person->CurrentHealth);
+	const int64 MissingHealth = static_cast<int64>(Person->MaxHealth) - static_cast<int64>(Person->CurrentHealth);
 	const bool bRecoveryStewardship = FPersonnelStewardship::HasActiveFocus(
 		Campaign, Person->BaseId, EPersonnelStewardshipFocus::RecoveryAdvocacy);
 	const bool bSurgeConfigValid = Config.RecoverySurgeDurationPercent > 0

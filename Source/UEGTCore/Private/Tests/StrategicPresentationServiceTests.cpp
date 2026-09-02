@@ -107,6 +107,18 @@ bool FPersonnelRecoveryPlanProjectionTest::RunTest(const FString& Parameters)
 		&& Campaign.Personnel[0].RecoveryPlan == EPersonnelRecoveryPlan::DecisionRequired
 		&& Campaign.Personnel[0].RemainingRecoverySeconds == int64(10) * 3600);
 
+	FCampaignState ExtremeHealth = Campaign;
+	ExtremeHealth.Personnel[0].MaxHealth = MAX_int32;
+	ExtremeHealth.Personnel[0].CurrentHealth = MIN_int32;
+	const FPersonnelRecoveryPlanView ExtremeProjection = FPersonnelRecoveryPlan::Evaluate(
+		ExtremeHealth, Config, ExtremeHealth.Personnel[0].PersonnelId);
+	TestTrue(TEXT("Return Path projection widens malformed missing-health arithmetic before pricing Surge Care"),
+		ExtremeProjection.bRecovering && ExtremeProjection.Options.Num() == 3
+		&& !ExtremeProjection.Options[1].bAvailable
+		&& ExtremeProjection.Options[1].FundingCost
+			== (static_cast<int64>(MAX_int32) - static_cast<int64>(MIN_int32)) * Config.RecoverySurgeCostPerMissingHealth
+		&& ExtremeProjection.Options[1].UnavailableReasonCode == FName(TEXT("recovery_surge_unaffordable")));
+
 	Campaign.Personnel[0].RecoveryPlan = EPersonnelRecoveryPlan::ReflectionCycle;
 	Campaign.Personnel[0].RemainingRecoverySeconds = int64(15) * 3600;
 	const FStrategicDashboardSnapshot Active =
