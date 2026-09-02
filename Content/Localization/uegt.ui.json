@@ -5250,6 +5250,51 @@
       "translations": { "en": "The manufacturing project is no longer active.", "fr": "Le projet de fabrication n'est plus actif.", "de": "Das Herstellungsprojekt ist nicht mehr aktiv.", "es": "El proyecto de fabricación ya no está activo.", "ja": "製造プロジェクトはすでに有効ではありません。" }
     },
     {
+      "key": "diagnostic.unknown-base",
+      "source": "The referenced base is unavailable.",
+      "translations": { "en": "The referenced base is unavailable.", "fr": "La base référencée est indisponible.", "de": "Die referenzierte Basis ist nicht verfügbar.", "es": "La base referenciada no está disponible.", "ja": "参照先の基地を利用できません。" }
+    },
+    {
+      "key": "diagnostic.unknown-craft-rule",
+      "source": "The referenced craft rule is unavailable.",
+      "translations": { "en": "The referenced craft rule is unavailable.", "fr": "La règle de l'appareil référencé est indisponible.", "de": "Die Regel des referenzierten Fluggeräts ist nicht verfügbar.", "es": "La regla de la nave referenciada no está disponible.", "ja": "参照先の航空機ルールを利用できません。" }
+    },
+    {
+      "key": "diagnostic.unknown-contact-rule",
+      "source": "The referenced contact rule is unavailable.",
+      "translations": { "en": "The referenced contact rule is unavailable.", "fr": "La règle du contact référencé est indisponible.", "de": "Die Regel des referenzierten Kontakts ist nicht verfügbar.", "es": "La regla del contacto referenciado no está disponible.", "ja": "参照先のコンタクトルールを利用できません。" }
+    },
+    {
+      "key": "diagnostic.unknown-research",
+      "source": "The referenced research rule is unavailable.",
+      "translations": { "en": "The referenced research rule is unavailable.", "fr": "La règle de recherche référencée est indisponible.", "de": "Die referenzierte Forschungsregel ist nicht verfügbar.", "es": "La regla de investigación referenciada no está disponible.", "ja": "参照先の研究ルールを利用できません。" }
+    },
+    {
+      "key": "diagnostic.unknown-research-project",
+      "source": "The referenced research project is no longer active.",
+      "translations": { "en": "The referenced research project is no longer active.", "fr": "Le projet de recherche référencé n'est plus actif.", "de": "Das referenzierte Forschungsprojekt ist nicht mehr aktiv.", "es": "El proyecto de investigación referenciado ya no está activo.", "ja": "参照先の研究プロジェクトはすでに有効ではありません。" }
+    },
+    {
+      "key": "diagnostic.unknown-personnel",
+      "source": "The referenced personnel member is unavailable.",
+      "translations": { "en": "The referenced personnel member is unavailable.", "fr": "Le membre du personnel référencé est indisponible.", "de": "Das referenzierte Personalmitglied ist nicht verfügbar.", "es": "El miembro del personal referenciado no está disponible.", "ja": "参照先の人員を利用できません。" }
+    },
+    {
+      "key": "diagnostic.unknown-personnel-role",
+      "source": "The referenced personnel role is unavailable.",
+      "translations": { "en": "The referenced personnel role is unavailable.", "fr": "Le rôle du personnel référencé est indisponible.", "de": "Die Rolle des referenzierten Personalmitglieds ist nicht verfügbar.", "es": "El rol del personal referenciado no está disponible.", "ja": "参照先の人員役割を利用できません。" }
+    },
+    {
+      "key": "diagnostic.unknown-construction-project",
+      "source": "The referenced construction project is no longer active.",
+      "translations": { "en": "The referenced construction project is no longer active.", "fr": "Le projet de construction référencé n'est plus actif.", "de": "Das referenzierte Bauprojekt ist nicht mehr aktiv.", "es": "El proyecto de construcción referenciado ya no está activo.", "ja": "参照先の建設プロジェクトはすでに有効ではありません。" }
+    },
+    {
+      "key": "diagnostic.legacy-layout-upgrade-required",
+      "source": "Position legacy facilities before starting new construction.",
+      "translations": { "en": "Position legacy facilities before starting new construction.", "fr": "Positionnez les installations héritées avant de commencer une nouvelle construction.", "de": "Positionieren Sie die alten Anlagen, bevor Sie einen neuen Bau beginnen.", "es": "Coloca las instalaciones heredadas antes de iniciar una nueva construcción.", "ja": "新しい建設を始める前に、旧式施設を配置してください。" }
+    },
+    {
       "key": "diagnostic.storage-capacity-exceeded",
       "source": "Free storage capacity before completing this order.",
       "translations": { "en": "Free storage capacity before completing this order.", "fr": "Libérez de la capacité de stockage avant de terminer cette commande.", "de": "Schaffen Sie Lagerkapazität, bevor Sie diesen Auftrag abschließen.", "es": "Libera capacidad de almacenamiento antes de completar esta orden.", "ja": "この命令を完了する前に保管容量を空けてください。" }

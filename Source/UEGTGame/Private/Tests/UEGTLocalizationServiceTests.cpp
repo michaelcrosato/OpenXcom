@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, and numeric-boundary safeguards expose one thousand five hundred thirty-one localized keys"),
-		Loaded.Catalog.Entries.Num(), 1531);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, and identity safeguards expose one thousand five hundred forty localized keys"),
+		Loaded.Catalog.Entries.Num(), 1540);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1531);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1540);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1421,6 +1421,42 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("unknown_manufacturing_project"), TEXT("Raw unknown-manufacturing-project diagnostic"), TEXT("ja-JP")),
 		FString(TEXT("製造プロジェクトはすでに有効ではありません。")));
+	TestEqual(TEXT("Exact French unknown-base diagnostics identify unavailable destinations"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_base"), TEXT("Raw unknown-base diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La base référencée est indisponible.")));
+	TestEqual(TEXT("Exact German unknown-craft-rule diagnostics preserve authored rule availability"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_craft_rule"), TEXT("Raw unknown-craft-rule diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Regel des referenzierten Fluggeräts ist nicht verfügbar.")));
+	TestEqual(TEXT("Exact Spanish unknown-contact-rule diagnostics preserve contact availability"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_contact_rule"), TEXT("Raw unknown-contact-rule diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La regla del contacto referenciado no está disponible.")));
+	TestEqual(TEXT("Exact Japanese unknown-research diagnostics identify unavailable rules"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_research"), TEXT("Raw unknown-research diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("参照先の研究ルールを利用できません。")));
+	TestEqual(TEXT("Exact French unknown-research-project diagnostics preserve active state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_research_project"), TEXT("Raw unknown-research-project diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Le projet de recherche référencé n'est plus actif.")));
+	TestEqual(TEXT("Exact German unknown-personnel diagnostics identify unavailable roster members"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_personnel"), TEXT("Raw unknown-personnel diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Das referenzierte Personalmitglied ist nicht verfügbar.")));
+	TestEqual(TEXT("Exact Spanish unknown-personnel-role diagnostics preserve role availability"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_personnel_role"), TEXT("Raw unknown-personnel-role diagnostic"), TEXT("es-ES")),
+		FString(TEXT("El rol del personal referenciado no está disponible.")));
+	TestEqual(TEXT("Exact Japanese unknown-construction-project diagnostics preserve active state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_construction_project"), TEXT("Raw unknown-construction-project diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("参照先の建設プロジェクトはすでに有効ではありません。")));
+	TestEqual(TEXT("Exact French legacy-layout diagnostics preserve the placement prerequisite"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("legacy_layout_upgrade_required"), TEXT("Raw legacy-layout diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Positionnez les installations héritées avant de commencer une nouvelle construction.")));
 	TestEqual(TEXT("Exact French economy diagnostics preserve the numeric boundary"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("economy_overflow"), TEXT("Raw economy-overflow diagnostic"), TEXT("fr-FR")),
