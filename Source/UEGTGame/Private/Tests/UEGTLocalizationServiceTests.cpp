@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, and Enduring Beacon expose one thousand four hundred forty-one localized keys"),
-		Loaded.Catalog.Entries.Num(), 1441);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, and interception safeguards expose one thousand four hundred forty-eight localized keys"),
+		Loaded.Catalog.Entries.Num(), 1448);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -246,6 +246,10 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		TEXT("invalid_adversary_config"), TEXT("invalid_base_defense_overcharge_config"),
 		TEXT("insufficient_base_defense_overcharge_funds"),
 		TEXT("invalid_interception_posture"), TEXT("invalid_interception_withdrawal_doctrine"),
+		TEXT("invalid_interception_rules"), TEXT("contact_not_engaged"),
+		TEXT("invalid_contact_rule"), TEXT("interception_round_overflow"),
+		TEXT("interception_range_overflow"), TEXT("invalid_contact_route"),
+		TEXT("invalid_craft_route"),
 		TEXT("interception_wake_snare_rounds_required"),
 		TEXT("interception_wake_snare_no_route_progress"),
 		TEXT("invalid_base_defense_fire_doctrine"),
@@ -1105,7 +1109,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1441);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1448);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1313,6 +1317,34 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("invalid_adversary_config"), TEXT("Raw adversary diagnostic"), TEXT("es-ES")),
 		FString(TEXT("La configuración del adversario, la dificultad, la diplomacia regional, la adaptación y el desenlace de campaña debe mantenerse dentro de los límites admitidos.")));
+	TestEqual(TEXT("Exact French interception rule diagnostics identify the missing formation data"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_interception_rules"), TEXT("Raw interception-rules diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Les données de l'appareil, du contact ou de la base d'attache requises pour l'interception sont manquantes.")));
+	TestEqual(TEXT("Exact German contact participation diagnostics identify the on-station requirement"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("contact_not_engaged"), TEXT("Raw contact-participation diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Abfangkampfrunden erfordern mindestens ein stationiertes Fluggerät an einem engagierten Kontakt.")));
+	TestEqual(TEXT("Exact Spanish contact profile diagnostics remain actionable"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_contact_rule"), TEXT("Raw contact-rule diagnostic"), TEXT("es-ES")),
+		FString(TEXT("Falta el perfil de combate del contacto o no es válido.")));
+	TestEqual(TEXT("Exact Japanese interception round diagnostics identify the guarded counter"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("interception_round_overflow"), TEXT("Raw interception-round diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("迎撃はこれ以上戦闘ラウンドを受け付けられません。")));
+	TestEqual(TEXT("Exact English interception range diagnostics preserve the numeric guard"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("interception_range_overflow"), TEXT("Raw interception-range diagnostic"), TEXT("en-US")),
+		FString(TEXT("Interception route exceeds the supported numeric range.")));
+	TestEqual(TEXT("Exact French contact route diagnostics preserve the coordinate guard"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_contact_route"), TEXT("Raw contact-route diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La route du contact exige des coordonnées d'origine et de destination distinctes dans les limites de longitude et de latitude.")));
+	TestEqual(TEXT("Exact Japanese craft route diagnostics identify the return-path failure"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_craft_route"), TEXT("Raw craft-route diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("航空機に有効な帰還航路がありません。")));
 	TestEqual(TEXT("Exact French Grid Overcharge funding guidance replaces dynamic fund totals"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("insufficient_base_defense_overcharge_funds"), TEXT("Raw dynamic overcharge diagnostic"), TEXT("fr-FR")),

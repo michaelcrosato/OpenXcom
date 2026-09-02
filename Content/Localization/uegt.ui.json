@@ -6340,6 +6340,41 @@
       "translations": { "en": "The selected interception withdrawal doctrine is not supported.", "fr": "La doctrine de retrait d’interception sélectionnée n’est pas prise en charge.", "de": "Die gewählte Rückzugsdoktrin für den Abfangkampf wird nicht unterstützt.", "es": "La doctrina de retirada de intercepción seleccionada no es compatible.", "ja": "選択した迎撃離脱ドクトリンには対応していません。" }
     },
     {
+      "key": "diagnostic.invalid-interception-rules",
+      "source": "Craft, contact, or home-base data required for interception is missing.",
+      "translations": { "en": "Craft, contact, or home-base data required for interception is missing.", "fr": "Les données de l'appareil, du contact ou de la base d'attache requises pour l'interception sont manquantes.", "de": "Für den Abfangkampf fehlen erforderliche Daten zum Fluggerät, Kontakt oder zur Heimatbasis.", "es": "Faltan datos de la aeronave, el contacto o la base de origen necesarios para la intercepción.", "ja": "迎撃に必要な航空機、接触、または母基地のデータがありません。" }
+    },
+    {
+      "key": "diagnostic.contact-not-engaged",
+      "source": "Interception rounds require at least one craft on station at an engaged contact.",
+      "translations": { "en": "Interception rounds require at least one craft on station at an engaged contact.", "fr": "Les tours d'interception exigent au moins un appareil en station sur un contact engagé.", "de": "Abfangkampfrunden erfordern mindestens ein stationiertes Fluggerät an einem engagierten Kontakt.", "es": "Las rondas de intercepción requieren al menos una aeronave en estación ante un contacto en combate.", "ja": "迎撃ラウンドには、交戦中の接触に少なくとも1機の待機中航空機が必要です。" }
+    },
+    {
+      "key": "diagnostic.invalid-contact-rule",
+      "source": "Contact combat profile is missing or invalid.",
+      "translations": { "en": "Contact combat profile is missing or invalid.", "fr": "Le profil de combat du contact est manquant ou invalide.", "de": "Das Kampfprofil des Kontakts fehlt oder ist ungültig.", "es": "Falta el perfil de combate del contacto o no es válido.", "ja": "接触の戦闘プロファイルがないか、無効です。" }
+    },
+    {
+      "key": "diagnostic.interception-round-overflow",
+      "source": "Interception cannot accept another combat round.",
+      "translations": { "en": "Interception cannot accept another combat round.", "fr": "L'interception ne peut pas accepter un tour de combat supplémentaire.", "de": "Der Abfangkampf kann keine weitere Kampfrunde aufnehmen.", "es": "La intercepción no puede aceptar otra ronda de combate.", "ja": "迎撃はこれ以上戦闘ラウンドを受け付けられません。" }
+    },
+    {
+      "key": "diagnostic.interception-range-overflow",
+      "source": "Interception route exceeds the supported numeric range.",
+      "translations": { "en": "Interception route exceeds the supported numeric range.", "fr": "La route d'interception dépasse la plage numérique prise en charge.", "de": "Die Abfangroute überschreitet den unterstützten Zahlenbereich.", "es": "La ruta de intercepción supera el rango numérico admitido.", "ja": "迎撃航路が対応する数値範囲を超えています。" }
+    },
+    {
+      "key": "diagnostic.invalid-contact-route",
+      "source": "Contact route requires distinct origin and destination coordinates within longitude/latitude bounds.",
+      "translations": { "en": "Contact route requires distinct origin and destination coordinates within longitude/latitude bounds.", "fr": "La route du contact exige des coordonnées d'origine et de destination distinctes dans les limites de longitude et de latitude.", "de": "Die Kontaktroute erfordert unterschiedliche Ursprungs- und Zielkoordinaten innerhalb der Längen- und Breitengrenzen.", "es": "La ruta del contacto requiere coordenadas de origen y destino distintas dentro de los límites de longitud y latitud.", "ja": "接触航路には経度・緯度の範囲内で、出発地と目的地が異なる座標が必要です。" }
+    },
+    {
+      "key": "diagnostic.invalid-craft-route",
+      "source": "The craft has no valid return route.",
+      "translations": { "en": "The craft has no valid return route.", "fr": "L'appareil ne dispose d'aucune route de retour valide.", "de": "Das Fluggerät verfügt über keine gültige Rückkehrroute.", "es": "La aeronave no tiene una ruta de regreso válida.", "ja": "航空機に有効な帰還航路がありません。" }
+    },
+    {
       "key": "diagnostic.interception-wake-snare-rounds-required",
       "source": "Wake Snare requires two completed combat rounds.",
       "translations": { "en": "Wake Snare requires two completed combat rounds.", "fr": "Le piège de sillage exige deux tours de combat terminés.", "de": "Die Kielwasserfalle erfordert zwei abgeschlossene Kampfrunden.", "es": "La trampa de estela requiere dos rondas de combate completadas.", "ja": "航跡スネアには戦闘を2ラウンド完了する必要があります。" }
