@@ -882,6 +882,23 @@ enum class ETacticalSiteType : uint8
 	Landing
 };
 
+/** Authored adversary behavior profile for a tactical mission. */
+UENUM(BlueprintType)
+enum class ETacticalAiPosture : uint8
+{
+	/** Preserve the legacy attack-then-advance behavior. */
+	Assault,
+
+	/** Prefer an intrinsic signal projection over a conventional attack when both are viable. */
+	SignalPressure,
+
+	/** Move toward an active control objective even while a visible hostile is present. */
+	ObjectivePush,
+
+	/** Attack from the current position, then hold ground and take cover instead of advancing. */
+	Sentinel
+};
+
 /** Procedural battlefield recipe selected from a strategic contact and operation context. */
 USTRUCT(BlueprintType)
 struct UEGTCORE_API FTacticalMissionRule
@@ -921,6 +938,10 @@ struct UEGTCORE_API FTacticalMissionRule
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Rules")
 	FName AdversaryUnitRuleId;
+
+	/** Deterministic adversary role for this mission; omitted legacy recipes remain assault missions. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Rules")
+	ETacticalAiPosture AiPosture = ETacticalAiPosture::Assault;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Rules")
 	FName ObjectiveId;

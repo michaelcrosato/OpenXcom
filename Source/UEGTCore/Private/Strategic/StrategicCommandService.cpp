@@ -18866,6 +18866,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			DecisionEvent.TacticalUnitId = UnitId;
 			DecisionEvent.TargetTacticalUnitId = Decision.TargetUnitId;
 			DecisionEvent.RuleId = GoalRuleId;
+			DecisionEvent.PolicyId = FTacticalAiService::GetPosturePolicyId(Decision.Posture);
 			DecisionEvent.FromX = FromX;
 			DecisionEvent.FromY = FromY;
 			DecisionEvent.FromZ = FromZ;

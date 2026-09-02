@@ -52,6 +52,9 @@ struct UEGTCORE_API FTacticalAiDecision
 	bool bSucceeded = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|AI")
+	ETacticalAiPosture Posture = ETacticalAiPosture::Assault;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|AI")
 	ETacticalAiGoal Goal = ETacticalAiGoal::Guard;
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|AI")
@@ -100,6 +103,9 @@ struct UEGTCORE_API FTacticalAiDecision
 class UEGTCORE_API FTacticalAiService final
 {
 public:
+	/** Stable telemetry identity for an authored tactical AI posture. */
+	static FName GetPosturePolicyId(ETacticalAiPosture Posture);
+
 	static FTacticalAiDecision ChooseAction(
 		const FTacticalBattleState& Battle,
 		const FCampaignState& Campaign,

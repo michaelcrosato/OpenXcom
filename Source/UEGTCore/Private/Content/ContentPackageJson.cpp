@@ -450,6 +450,46 @@ namespace ContentPackageJsonPrivate
 		return false;
 	}
 
+	bool ReadTacticalAiPosture(
+		const TSharedPtr<FJsonObject>& Object,
+		const TCHAR* Field,
+		ETacticalAiPosture& OutValue,
+		const FString& Context,
+		FContentPackageParseResult& Result)
+	{
+		if (!Object->HasField(Field))
+		{
+			return true;
+		}
+		FString Value;
+		if (!ReadRequiredString(Object, Field, Value, Context, Result))
+		{
+			return false;
+		}
+		if (Value == TEXT("assault"))
+		{
+			OutValue = ETacticalAiPosture::Assault;
+			return true;
+		}
+		if (Value == TEXT("signalPressure"))
+		{
+			OutValue = ETacticalAiPosture::SignalPressure;
+			return true;
+		}
+		if (Value == TEXT("objectivePush"))
+		{
+			OutValue = ETacticalAiPosture::ObjectivePush;
+			return true;
+		}
+		if (Value == TEXT("sentinel"))
+		{
+			OutValue = ETacticalAiPosture::Sentinel;
+			return true;
+		}
+		AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("invalid_field_value"), FString::Printf(TEXT("%s.%s has unknown tactical AI posture '%s'."), *Context, Field, *Value));
+		return false;
+	}
+
 	bool ParseItem(const TSharedPtr<FJsonObject>& Object, const FString& Context, FItemRule& OutRule, FContentPackageParseResult& Result)
 	{
 		WarnUnknownFields(Object, { TEXT("id"), TEXT("replace"), TEXT("displayName"), TEXT("category"), TEXT("purchaseCost"), TEXT("sellValue"), TEXT("mass"), TEXT("power"), TEXT("manufactureCost"), TEXT("manufactureHours"), TEXT("manufactureInputs"), TEXT("requires"), TEXT("tacticalRange"), TEXT("tacticalAccuracyModifier"), TEXT("tacticalActionPointCost"), TEXT("tacticalDamageType"), TEXT("tacticalAmmunitionItemId"), TEXT("tacticalMagazineCapacity"), TEXT("tacticalAmmunitionPerAttack"), TEXT("tacticalReloadActionPointCost"), TEXT("tacticalBurstShotCount"), TEXT("tacticalBurstActionPointCost"), TEXT("tacticalBurstAccuracyModifier"), TEXT("tacticalBlastRadius"), TEXT("tacticalScatterRadius"), TEXT("tacticalBlastFalloffPercent"), TEXT("tacticalTerrainDamagePercent"), TEXT("tacticalBlastSmoke"), TEXT("tacticalBlastFire"), TEXT("tacticalBlastSuppression"), TEXT("tacticalRadius"), TEXT("tacticalThrowArcHeight"), TEXT("tacticalSmoke"), TEXT("tacticalFire"), TEXT("tacticalSuppression"), TEXT("tacticalSmokeReduction"), TEXT("tacticalFireReduction"), TEXT("tacticalSuppressionReduction"), TEXT("tacticalMoraleRecovery"), TEXT("tacticalKineticArmor"), TEXT("tacticalThermalArmor"), TEXT("tacticalArcArmor"), TEXT("ammunitionItemId"), TEXT("magazineCapacity"), TEXT("salvoSize"), TEXT("interceptionAccuracy"), TEXT("interceptionDamage"), TEXT("fireIntervalSeconds") }, Context, Result);
@@ -1259,7 +1299,7 @@ namespace ContentPackageJsonPrivate
 	{
 		WarnUnknownFields(Object, {
 			TEXT("id"), TEXT("replace"), TEXT("displayName"), TEXT("context"), TEXT("siteType"), TEXT("sourceContactRuleId"),
-			TEXT("floorTerrainRuleId"), TEXT("obstacleTerrainRuleId"), TEXT("doorTerrainRuleId"), TEXT("verticalConnectorTerrainRuleId"), TEXT("adversaryUnitRuleId"), TEXT("objectiveId"),
+			TEXT("floorTerrainRuleId"), TEXT("obstacleTerrainRuleId"), TEXT("doorTerrainRuleId"), TEXT("verticalConnectorTerrainRuleId"), TEXT("adversaryUnitRuleId"), TEXT("aiPosture"), TEXT("objectiveId"),
 			TEXT("objectiveType"), TEXT("objectiveRequiredInteractions"), TEXT("objectiveRewardItemId"), TEXT("objectiveRewardQuantity"),
 			TEXT("missionExperienceReward"), TEXT("objectiveExperienceReward"),
 			TEXT("mapWidth"), TEXT("mapHeight"), TEXT("mapLevels"), TEXT("deploymentDepth"), TEXT("obstaclePercent"),
@@ -1295,6 +1335,7 @@ namespace ContentPackageJsonPrivate
 		OutRule.FloorTerrainRuleId = FName(*FloorTerrainRuleId);
 		OutRule.ObstacleTerrainRuleId = FName(*ObstacleTerrainRuleId);
 		OutRule.AdversaryUnitRuleId = FName(*AdversaryUnitRuleId);
+		bValid &= ReadTacticalAiPosture(Object, TEXT("aiPosture"), OutRule.AiPosture, Context, Result);
 		OutRule.ObjectiveId = FName(*ObjectiveId);
 		bValid &= ReadTacticalObjectiveType(Object, TEXT("objectiveType"), OutRule.ObjectiveType, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("objectiveRequiredInteractions"), OutRule.ObjectiveRequiredInteractions, false, Context, Result);

@@ -456,6 +456,10 @@ namespace RuleSetBuilderPrivate
 		{
 			const int64 MapCells = static_cast<int64>(Rule.MapWidth) * Rule.MapHeight * Rule.MapLevels;
 			const int64 MaximumEnemies = static_cast<int64>(Rule.BaseEnemyCount) + static_cast<int64>(Rule.EnemiesPerThreat) * 10;
+			const bool bKnownAiPosture = Rule.AiPosture == ETacticalAiPosture::Assault
+				|| Rule.AiPosture == ETacticalAiPosture::SignalPressure
+				|| Rule.AiPosture == ETacticalAiPosture::ObjectivePush
+				|| Rule.AiPosture == ETacticalAiPosture::Sentinel;
 			const bool bKnownObjectiveType = Rule.ObjectiveType == ETacticalObjectiveType::Disrupt
 				|| Rule.ObjectiveType == ETacticalObjectiveType::Recover
 				|| Rule.ObjectiveType == ETacticalObjectiveType::Control;
@@ -467,7 +471,7 @@ namespace RuleSetBuilderPrivate
 				? FContentPackageResolver::IsValidPackageId(Rule.ObjectiveRewardItemId)
 					&& Rule.ObjectiveRewardQuantity > 0 && Rule.ObjectiveRewardQuantity <= 100
 				: Rule.ObjectiveRewardItemId.IsNone() && Rule.ObjectiveRewardQuantity == 0;
-			if (Rule.DisplayName.TrimStartAndEnd().IsEmpty() || !bKnownContext || !bKnownSiteType
+			if (Rule.DisplayName.TrimStartAndEnd().IsEmpty() || !bKnownContext || !bKnownSiteType || !bKnownAiPosture
 				|| (Rule.Context == ETacticalMissionContext::BaseDefense && Rule.MapLevels != 1)
 				|| (Rule.Context == ETacticalMissionContext::BaseDefense && Rule.SiteType != ETacticalSiteType::Wreckage)
 				|| !FContentPackageResolver::IsValidPackageId(Rule.SourceContactRuleId)
@@ -494,7 +498,7 @@ namespace RuleSetBuilderPrivate
 				|| Rule.ObjectiveActionPointCost <= 0 || Rule.ObjectiveActionPointCost > 20
 				|| Rule.ExtractionActionPointCost <= 0 || Rule.ExtractionActionPointCost > 20)
 			{
-				AddError(Result, TEXT("invalid_rule_value"), PackageId, FString::Printf(TEXT("Tactical mission rule '%s' contains invalid map, deployment, population, objective, or turn-limit values."), *Rule.Identity.RuleId.ToString()));
+				AddError(Result, TEXT("invalid_rule_value"), PackageId, FString::Printf(TEXT("Tactical mission rule '%s' contains invalid map, deployment, population, objective, AI-posture, or turn-limit values."), *Rule.Identity.RuleId.ToString()));
 			}
 		}
 	}

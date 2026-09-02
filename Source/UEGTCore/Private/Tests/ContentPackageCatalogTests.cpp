@@ -38,7 +38,7 @@ bool FProjectBaseContentCatalogTest::RunTest(const FString& Parameters)
 	if (Result.Packages.Num() == 1)
 	{
 		TestEqual(TEXT("Base package id is original UEGT namespace"), Result.Packages[0].Descriptor.PackageId, FName(TEXT("uegt.base")));
-		TestEqual(TEXT("Base package version is explicit"), Result.Packages[0].Descriptor.Version, FString(TEXT("0.42.0")));
+		TestEqual(TEXT("Base package version is explicit"), Result.Packages[0].Descriptor.Version, FString(TEXT("0.43.0")));
 		TestEqual(TEXT("Base package exposes knowledge-archive records"),
 			Result.Packages[0].ArchiveEntries.Num(), 9);
 		TestEqual(TEXT("Base package exposes strategic contact rules"), Result.Packages[0].Contacts.Num(), 3);
@@ -476,6 +476,8 @@ bool FProjectBaseContentCatalogTest::RunTest(const FString& Parameters)
 	const FTacticalMissionRule* CinderRecovery = Result.RuleSet.TacticalMissions.Find(TEXT("tactical.cinder-loom-recovery"));
 	const FTacticalMissionRule* HearthlineDenial = Result.RuleSet.TacticalMissions.Find(TEXT("tactical.hearthline-seed-denial"));
 	const FTacticalMissionRule* CinderDefense = Result.RuleSet.TacticalMissions.Find(TEXT("tactical.cinder-perimeter-lock"));
+	const FTacticalMissionRule* AuroraBreach = Result.RuleSet.TacticalMissions.Find(TEXT("tactical.aurora-vault-breach"));
+	const FTacticalMissionRule* AegisDefense = Result.RuleSet.TacticalMissions.Find(TEXT("tactical.aegis-perimeter-stand"));
 	TestTrue(TEXT("Cinder wreckage has a three-level high-threat recovery recipe"),
 		CinderRecovery != nullptr
 		&& CinderRecovery->Context == ETacticalMissionContext::StrategicSite
@@ -496,6 +498,11 @@ bool FProjectBaseContentCatalogTest::RunTest(const FString& Parameters)
 		&& CinderDefense->ObjectiveType == ETacticalObjectiveType::Control
 		&& CinderDefense->MapLevels == 1
 		&& CinderDefense->VerticalConnectorTerrainRuleId.IsNone());
+	TestTrue(TEXT("Authored tactical missions expose distinct adversary posture roles"),
+		AuroraBreach != nullptr && AuroraBreach->AiPosture == ETacticalAiPosture::ObjectivePush
+		&& AegisDefense != nullptr && AegisDefense->AiPosture == ETacticalAiPosture::Sentinel
+		&& CinderRecovery != nullptr && CinderRecovery->AiPosture == ETacticalAiPosture::SignalPressure
+		&& CinderDefense != nullptr && CinderDefense->AiPosture == ETacticalAiPosture::Sentinel);
 	const FTacticalUnitRule* Scout = Result.RuleSet.TacticalUnits.Find(TEXT("unit.glass-tide-scout"));
 	TestNotNull(TEXT("Glass Tide Scout tactical unit resolves"), Scout);
 	if (Scout != nullptr)

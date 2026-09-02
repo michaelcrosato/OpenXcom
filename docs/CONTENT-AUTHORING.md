@@ -200,6 +200,8 @@ Set `createsLandingSiteOnArrival` only when a visible intact arrival should leav
 
 Tactical mappings are unique by context, site type, and source contact. Multi-level strategic-site recipes require a traversable `verticalConnectorTerrainRuleId`; base-defense recipes are deliberately single-level and must omit multi-level layouts. Recovery objectives require a valid item reward and positive quantity, while disrupt and control objectives must not define a reward item. The built-in Cinder Lattice Sequence demonstrates a four-stage converging graph with a landing branch, three stage-three outcomes, two coalition-counterplay terminals, and separate wreckage, landing, and base-defense mappings.
 
+Use the optional tactical-mission `aiPosture` field to author deterministic adversary behavior: `assault` preserves the legacy attack-then-advance flow, `signalPressure` prefers an available intrinsic signal projection over a conventional attack, `objectivePush` advances toward an active control objective even while a hostile is visible, and `sentinel` attacks from its current position before taking cover instead of advancing. Omit the field for backward-compatible assault behavior; signal pressure falls back to the normal attack/advance flow when the unit has no intrinsic signal profile. These choices alter tactical behavior and therefore require a package-version update.
+
 ## Explicit replacement
 
 Adding a rule ID already defined by an earlier package is an error unless the later rule includes `"replace": true`. Replacement is whole-rule replacement, not a field merge, so specify every required and desired field:

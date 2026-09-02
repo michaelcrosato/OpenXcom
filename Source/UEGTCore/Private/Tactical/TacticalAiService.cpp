@@ -42,6 +42,31 @@ namespace TacticalAiPrivate
 		}
 	}
 
+	FName PosturePolicyId(const ETacticalAiPosture Posture)
+	{
+		switch (Posture)
+		{
+		case ETacticalAiPosture::Assault:
+			return FName(TEXT("ai.posture.assault"));
+		case ETacticalAiPosture::SignalPressure:
+			return FName(TEXT("ai.posture.signal-pressure"));
+		case ETacticalAiPosture::ObjectivePush:
+			return FName(TEXT("ai.posture.objective-push"));
+		case ETacticalAiPosture::Sentinel:
+			return FName(TEXT("ai.posture.sentinel"));
+		default:
+			return FName(TEXT("ai.posture.assault"));
+		}
+	}
+
+	bool IsKnownPosture(const ETacticalAiPosture Posture)
+	{
+		return Posture == ETacticalAiPosture::Assault
+			|| Posture == ETacticalAiPosture::SignalPressure
+			|| Posture == ETacticalAiPosture::ObjectivePush
+			|| Posture == ETacticalAiPosture::Sentinel;
+	}
+
 	const FTacticalUnitState* FindUnit(const FTacticalBattleState& Battle, const FGuid UnitId)
 	{
 		return Battle.Units.FindByPredicate(
@@ -191,6 +216,11 @@ namespace TacticalAiPrivate
 	}
 }
 
+FName FTacticalAiService::GetPosturePolicyId(const ETacticalAiPosture Posture)
+{
+	return TacticalAiPrivate::PosturePolicyId(Posture);
+}
+
 bool FTacticalAiDecision::HasDiagnostic(const FName Code) const
 {
 	return Diagnostics.ContainsByPredicate(
@@ -267,6 +297,9 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 	Decision.PerceivedHostileCount = Hostiles.Num();
 	Decision.bSucceeded = true;
 	const FTacticalMissionRule* Mission = Rules.TacticalMissions.Find(Battle.MissionRuleId);
+	Decision.Posture = Mission != nullptr && IsKnownPosture(Mission->AiPosture)
+		? Mission->AiPosture
+		: ETacticalAiPosture::Assault;
 	const FTacticalObjectiveState* ControlObjective = Battle.Objectives.FindByPredicate(
 		[](const FTacticalObjectiveState& Objective)
 		{
@@ -290,7 +323,7 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 				+ (ControlObjective->AdversaryInteractions - ControlObjective->CompletedInteractions) * 1000;
 			return Decision;
 		}
-		if (Hostiles.IsEmpty())
+		if (Hostiles.IsEmpty() || Decision.Posture == ETacticalAiPosture::ObjectivePush)
 		{
 			const int32 MovementBudget = FMath::Clamp(
 				Unit->RemainingActionPoints * Policy.MovementBudgetPercent / 100,
@@ -412,7 +445,9 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 				}
 			}
 		}
-		if (SignalTarget != nullptr && (AttackTarget == nullptr || BestSignalScore > BestAttackScore))
+		if (SignalTarget != nullptr && Decision.Posture != ETacticalAiPosture::Sentinel
+			&& (Decision.Posture == ETacticalAiPosture::SignalPressure
+				|| AttackTarget == nullptr || BestSignalScore > BestAttackScore))
 		{
 			Decision.Goal = ETacticalAiGoal::Engage;
 			Decision.ActionType = ETacticalAiActionType::ProjectSignal;
@@ -436,6 +471,17 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 			Decision.UtilityScore = ClampUtility(BestAttackScore);
 			return Decision;
 		}
+	}
+	if (!bWithdraw && Decision.Posture == ETacticalAiPosture::Sentinel)
+	{
+		if (Unit->Stance == ETacticalStance::Standing && Unit->RemainingActionPoints >= 1)
+		{
+			Decision.Goal = ETacticalAiGoal::Guard;
+			Decision.ActionType = ETacticalAiActionType::ChangeStance;
+			Decision.DesiredStance = ETacticalStance::Crouched;
+			Decision.UtilityScore = 100;
+		}
+		return Decision;
 	}
 
 	const int32 CurrentDistance = CeilDistance(

@@ -14563,6 +14563,80 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 		&& AttackDecision.PerceivedHostileCount == 2 && AttackDecision.HitChance >= 25);
 	TestEqual(TEXT("Standard AI deterministically prioritizes the equally reachable wounded target"),
 		AttackDecision.TargetUnitId, WoundedTargetId);
+	TestTrue(TEXT("Legacy tactical missions retain the authored assault posture"),
+		AttackDecision.Posture == ETacticalAiPosture::Assault
+		&& FTacticalAiService::GetPosturePolicyId(AttackDecision.Posture) == FName(TEXT("ai.posture.assault")));
+
+	FResolvedRuleSet SignalRules = Rules;
+	FTacticalUnitRule* SignalScout = SignalRules.TacticalUnits.Find(TEXT("unit.test-scout"));
+	FTacticalMissionRule* SignalMission = SignalRules.TacticalMissions.Find(TEXT("tactical.test-recovery"));
+	check(SignalScout != nullptr && SignalMission != nullptr);
+	SignalScout->SignalPower = 1;
+	SignalScout->SignalRange = 10;
+	SignalScout->SignalActionPointCost = 4;
+	SignalMission->AiPosture = ETacticalAiPosture::SignalPressure;
+	const FTacticalAiDecision SignalDecision = FTacticalAiService::ChooseAction(
+		AttackProbe, ProbeCampaign, SignalRules, AttackAiId);
+	TestTrue(TEXT("Signal-pressure posture prefers an intrinsic projection over a viable attack"),
+		SignalDecision.bSucceeded && SignalDecision.Posture == ETacticalAiPosture::SignalPressure
+		&& SignalDecision.ActionType == ETacticalAiActionType::ProjectSignal
+		&& SignalDecision.PerceivedHostileCount == 2 && SignalDecision.HitChance >= 25);
+	TestEqual(TEXT("Signal-pressure posture exposes a stable policy identity"),
+		FTacticalAiService::GetPosturePolicyId(SignalDecision.Posture), FName(TEXT("ai.posture.signal-pressure")));
+
+	FResolvedRuleSet ObjectiveRules = Rules;
+	FTacticalMissionRule* ObjectiveMission = ObjectiveRules.TacticalMissions.Find(TEXT("tactical.test-recovery"));
+	check(ObjectiveMission != nullptr);
+	ObjectiveMission->ObjectiveType = ETacticalObjectiveType::Control;
+	ObjectiveMission->AiPosture = ETacticalAiPosture::ObjectivePush;
+	FTacticalBattleState ObjectiveProbe = MakeProbeBattle(9, 5, 1);
+	const FGuid ObjectiveAiId(681, 682, 683, 684);
+	const FGuid ObjectiveTargetId(685, 686, 687, 688);
+	AddProbeUnit(ObjectiveProbe, ObjectiveAiId, ETacticalTeam::Adversary, 1, 2, 0);
+	AddProbeUnit(ObjectiveProbe, ObjectiveTargetId, ETacticalTeam::Player, 3, 2, 0);
+	FTacticalObjectiveState& Objective = ObjectiveProbe.Objectives.AddDefaulted_GetRef();
+	Objective.ObjectiveId = TEXT("objective.test-control");
+	Objective.X = 6;
+	Objective.Y = 2;
+	Objective.Z = 0;
+	Objective.Type = ETacticalObjectiveType::Control;
+	Objective.Status = ETacticalObjectiveStatus::Active;
+	Objective.RequiredInteractions = 3;
+	const FTacticalAiDecision ObjectiveDecision = FTacticalAiService::ChooseAction(
+		ObjectiveProbe, ProbeCampaign, ObjectiveRules, ObjectiveAiId);
+	const int32 ObjectiveStartDistance = FMath::Abs(1 - Objective.X) + FMath::Abs(2 - Objective.Y);
+	const int32 ObjectiveDecisionDistance = FMath::Abs(ObjectiveDecision.DestinationX - Objective.X)
+		+ FMath::Abs(ObjectiveDecision.DestinationY - Objective.Y);
+	TestTrue(TEXT("Objective-push posture advances toward control while a hostile remains visible"),
+		ObjectiveDecision.bSucceeded && ObjectiveDecision.Posture == ETacticalAiPosture::ObjectivePush
+		&& ObjectiveDecision.PerceivedHostileCount == 1
+		&& ObjectiveDecision.Goal == ETacticalAiGoal::ControlObjective
+		&& ObjectiveDecision.ActionType == ETacticalAiActionType::Move
+		&& ObjectiveDecision.MovementCost > 0
+		&& ObjectiveDecisionDistance < ObjectiveStartDistance);
+
+	FResolvedRuleSet SentinelRules = Rules;
+	FTacticalUnitRule* SentinelScout = SentinelRules.TacticalUnits.Find(TEXT("unit.test-scout"));
+	FTacticalMissionRule* SentinelMission = SentinelRules.TacticalMissions.Find(TEXT("tactical.test-recovery"));
+	check(SentinelScout != nullptr && SentinelMission != nullptr);
+	SentinelScout->AttackRange = 1;
+	SentinelScout->SignalPower = 1;
+	SentinelScout->SignalRange = 10;
+	SentinelScout->SignalActionPointCost = 4;
+	SentinelMission->AiPosture = ETacticalAiPosture::Sentinel;
+	FTacticalBattleState SentinelProbe = MakeProbeBattle(7, 5, 1);
+	const FGuid SentinelAiId(689, 690, 691, 692);
+	const FGuid SentinelTargetId(693, 694, 695, 696);
+	AddProbeUnit(SentinelProbe, SentinelAiId, ETacticalTeam::Adversary, 1, 2, 0);
+	AddProbeUnit(SentinelProbe, SentinelTargetId, ETacticalTeam::Player, 4, 2, 0);
+	const FTacticalAiDecision SentinelDecision = FTacticalAiService::ChooseAction(
+		SentinelProbe, ProbeCampaign, SentinelRules, SentinelAiId);
+	TestTrue(TEXT("Sentinel posture takes cover instead of advancing when no immediate attack is available"),
+		SentinelDecision.bSucceeded && SentinelDecision.Posture == ETacticalAiPosture::Sentinel
+		&& SentinelDecision.PerceivedHostileCount == 1
+		&& SentinelDecision.Goal == ETacticalAiGoal::Guard
+		&& SentinelDecision.ActionType == ETacticalAiActionType::ChangeStance
+		&& SentinelDecision.DesiredStance == ETacticalStance::Crouched);
 
 	FTacticalBattleState DifficultyProbe = MakeProbeBattle(20, 3, 1);
 	const FGuid DifficultyAiId(625, 626, 627, 628);
@@ -14752,6 +14826,14 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 		&& FirstAi.HasEvent(EStrategicEventType::TacticalAttackResolved)
 		&& FirstAi.HasEvent(EStrategicEventType::TacticalTurnEnded)
 		&& FirstAi.HasEvent(EStrategicEventType::TacticalAiTurnCompleted));
+	const FStrategicEvent* FirstDecisionEvent = FirstAi.Events.FindByPredicate(
+		[](const FStrategicEvent& Event)
+		{
+			return Event.Type == EStrategicEventType::TacticalAiDecisionMade;
+		});
+	TestTrue(TEXT("AI decision telemetry carries the authored posture policy identity"),
+		FirstDecisionEvent != nullptr
+		&& FirstDecisionEvent->PolicyId == FName(TEXT("ai.posture.assault")));
 	TestTrue(TEXT("AI turn hands control back to the player without exhausting the battle"),
 		First.TacticalBattles[0].Phase == ETacticalBattlePhase::PlayerTurn
 		&& First.TacticalBattles[0].ActiveTeam == ETacticalTeam::Player
@@ -14765,12 +14847,13 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 		for (const FStrategicEvent& Event : CommandResult.Events)
 		{
 			Fingerprint += FString::Printf(
-				TEXT("%d:%lld:%s:%s:%s:%d,%d,%d:%d,%d,%d:%s:%d:%d:%d:%lld:%d|"),
+				TEXT("%d:%lld:%s:%s:%s:%s:%d,%d,%d:%d,%d,%d:%s:%d:%d:%d:%lld:%d|"),
 				static_cast<int32>(Event.Type),
 				static_cast<long long>(Event.CommandSequence),
 				*Event.TacticalUnitId.ToString(EGuidFormats::Digits),
 				*Event.TargetTacticalUnitId.ToString(EGuidFormats::Digits),
 				*Event.RuleId.ToString(),
+				*Event.PolicyId.ToString(),
 				Event.FromX, Event.FromY, Event.FromZ,
 				Event.ToX, Event.ToY, Event.ToZ,
 				*LexToString(Event.bSuccessful),
