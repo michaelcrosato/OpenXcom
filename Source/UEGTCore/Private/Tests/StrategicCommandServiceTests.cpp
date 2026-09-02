@@ -17426,6 +17426,31 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 		&& GeneratedPlayer->KineticArmor == 12 && GeneratedPlayer->ThermalArmor == 0
 		&& GeneratedPlayer->ArcArmor == 0 && GeneratedPlayer->MaxMorale == AgentResolve
 		&& GeneratedPlayer->CurrentMorale == AgentResolve);
+	FResolvedRuleSet BoundaryGenerationRules = Rules;
+	FResolvedRuleSet ExtremeGenerationRules = Rules;
+	BoundaryGenerationRules.Items.FindChecked(TEXT("item.service-rifle")).TacticalMagazineCapacity = 200;
+	ExtremeGenerationRules.Items.FindChecked(TEXT("item.service-rifle")).TacticalMagazineCapacity = MAX_int32;
+	const FTacticalGenerationResult BoundaryGeneration = FTacticalMissionGenerator::Generate(
+		First, BoundaryGenerationRules, OperationId);
+	const FTacticalGenerationResult ExtremeGeneration = FTacticalMissionGenerator::Generate(
+		First, ExtremeGenerationRules, OperationId);
+	const FTacticalUnitState* BoundaryGeneratedPlayer = BoundaryGeneration.Battle.Units.FindByPredicate(
+		[&AgentId](const FTacticalUnitState& Unit) { return Unit.PersonnelId == AgentId; });
+	const FTacticalUnitState* ExtremeGeneratedPlayer = ExtremeGeneration.Battle.Units.FindByPredicate(
+		[&AgentId](const FTacticalUnitState& Unit) { return Unit.PersonnelId == AgentId; });
+	TestTrue(TEXT("Extreme tactical magazine capacity normalizes to the supported generation boundary"),
+		BoundaryGeneration.bSucceeded && ExtremeGeneration.bSucceeded
+		&& BoundaryGeneratedPlayer != nullptr && ExtremeGeneratedPlayer != nullptr
+		&& BoundaryGeneratedPlayer->WeaponStates.Num() == 1
+		&& ExtremeGeneratedPlayer->WeaponStates.Num() == 1
+		&& BoundaryGeneratedPlayer->WeaponStates[0].LoadedAmmunition == 200
+		&& ExtremeGeneratedPlayer->WeaponStates[0].LoadedAmmunition == 200);
+	if (BoundaryGeneration.bSucceeded && ExtremeGeneration.bSucceeded)
+	{
+		TestEqual(TEXT("Extreme tactical magazine generation matches the bounded rule fingerprint"),
+			MakeTacticalBattleFingerprint(ExtremeGeneration.Battle),
+			MakeTacticalBattleFingerprint(BoundaryGeneration.Battle));
+	}
 
 	FTacticalBattleState InvalidMagazineLoadout = First.TacticalBattles[0];
 	FTacticalUnitState* InvalidMagazineUnit = InvalidMagazineLoadout.Units.FindByPredicate(

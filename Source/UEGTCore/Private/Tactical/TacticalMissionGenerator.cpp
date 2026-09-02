@@ -146,6 +146,13 @@ namespace TacticalMissionGeneratorPrivate
 		Stack.Quantity = Quantity;
 	}
 
+	int32 GetEffectiveTacticalMagazineCapacity(const FItemRule& Weapon)
+	{
+		return Weapon.TacticalMagazineCapacity > 0
+			? FMath::Clamp(Weapon.TacticalMagazineCapacity, 1, 200)
+			: 0;
+	}
+
 	void BuildPlayerLoadout(
 		const FPersonnelState& Person,
 		const FResolvedRuleSet& Rules,
@@ -176,7 +183,7 @@ namespace TacticalMissionGeneratorPrivate
 					int32& AvailableMagazines = RemainingItems.FindOrAdd(Item->TacticalAmmunitionItemId);
 					if (AvailableMagazines > 0)
 					{
-						Weapon.LoadedAmmunition = Item->TacticalMagazineCapacity;
+						Weapon.LoadedAmmunition = GetEffectiveTacticalMagazineCapacity(*Item);
 						--AvailableMagazines;
 					}
 				}
@@ -905,13 +912,17 @@ bool FTacticalMissionGenerator::ValidateBattle(
 			for (const FTacticalWeaponState& WeaponState : Unit.WeaponStates)
 			{
 				const FItemRule* Weapon = Rules.Items.Find(WeaponState.WeaponItemId);
+				const int32 EffectiveMagazineCapacity = Weapon != nullptr
+					? GetEffectiveTacticalMagazineCapacity(*Weapon)
+					: 0;
 				bLoadoutValid &= Weapon != nullptr && Weapon->IsTacticalWeapon()
 					&& !SeenWeaponIds.Contains(WeaponState.WeaponItemId)
 					&& Person != nullptr && Person->EquippedItems.Contains(WeaponState.WeaponItemId)
 					&& WeaponState.LoadedAmmunition >= 0
 					&& (Weapon != nullptr && (Weapon->TacticalAmmunitionItemId.IsNone()
 						? WeaponState.LoadedAmmunition == 0
-						: WeaponState.LoadedAmmunition <= Weapon->TacticalMagazineCapacity));
+						: EffectiveMagazineCapacity > 0
+							&& WeaponState.LoadedAmmunition <= EffectiveMagazineCapacity));
 				if (Weapon != nullptr && !Weapon->TacticalAmmunitionItemId.IsNone()
 					&& WeaponState.LoadedAmmunition >= 0)
 				{
@@ -926,11 +937,15 @@ bool FTacticalMissionGenerator::ValidateBattle(
 			for (const FTacticalMagazineState& Magazine : Unit.EjectedMagazines)
 			{
 				const FItemRule* Weapon = Rules.Items.Find(Magazine.WeaponItemId);
+				const int32 EffectiveMagazineCapacity = Weapon != nullptr
+					? GetEffectiveTacticalMagazineCapacity(*Weapon)
+					: 0;
 				bLoadoutValid &= Weapon != nullptr && Weapon->IsTacticalWeapon()
 					&& SeenWeaponIds.Contains(Magazine.WeaponItemId)
 					&& Weapon->TacticalAmmunitionItemId == Magazine.AmmunitionItemId
 					&& Magazine.LoadedAmmunition > 0
-					&& Magazine.LoadedAmmunition <= Weapon->TacticalMagazineCapacity;
+					&& EffectiveMagazineCapacity > 0
+					&& Magazine.LoadedAmmunition <= EffectiveMagazineCapacity;
 				if (Magazine.LoadedAmmunition > 0)
 				{
 					++TacticalMagazineCounts.FindOrAdd(Magazine.AmmunitionItemId);
