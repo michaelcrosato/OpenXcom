@@ -3555,9 +3555,9 @@ namespace CampaignSavePrivate
 				}
 
 				TSet<FName> SeenObjectiveIds;
-				if (Battle.Objectives.IsEmpty() || Battle.Objectives.Num() > 16)
+				if (Battle.Objectives.Num() != 1)
 				{
-					AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_tactical_objective"), FString::Printf(TEXT("Tactical battle '%s' has no supported objectives."), *Battle.BattleId.ToString()));
+					AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_tactical_objective"), FString::Printf(TEXT("Tactical battle '%s' must contain exactly one primary objective."), *Battle.BattleId.ToString()));
 				}
 				for (const FTacticalObjectiveState& Objective : Battle.Objectives)
 				{

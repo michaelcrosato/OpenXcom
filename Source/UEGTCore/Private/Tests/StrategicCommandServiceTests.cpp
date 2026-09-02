@@ -17305,6 +17305,30 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 			ImpossibleCompletedObjectiveValidation.HasDiagnostic(TEXT("invalid_tactical_objective")));
 	}
 
+	FCampaignSaveEnvelope MultipleObjectivesEnvelope = MagazineWrite.Envelope;
+	FTacticalObjectiveState ExtraObjective = MultipleObjectivesEnvelope.State.TacticalBattles[0].Objectives[0];
+	ExtraObjective.ObjectiveId = TEXT("objective.test-secondary");
+	MultipleObjectivesEnvelope.State.TacticalBattles[0].Objectives.Add(ExtraObjective);
+	const FCampaignSaveValidationResult MultipleObjectivesValidation = FCampaignSaveCodec::Validate(
+		MultipleObjectivesEnvelope, MakePackages());
+	TestFalse(TEXT("Save validation rejects tactical battles with multiple primary objectives"),
+		MultipleObjectivesValidation.bSucceeded);
+	TestTrue(TEXT("Multiple tactical objectives have a stable objective diagnostic"),
+		MultipleObjectivesValidation.HasDiagnostic(TEXT("invalid_tactical_objective")));
+	TArray<FTacticalGenerationDiagnostic> MultipleObjectivesDiagnostics;
+	TestFalse(TEXT("Rules-aware tactical validation rejects multiple primary objectives"),
+		FTacticalMissionGenerator::ValidateBattle(
+			MultipleObjectivesEnvelope.State.TacticalBattles[0],
+			MultipleObjectivesEnvelope.State,
+			Rules,
+			MultipleObjectivesDiagnostics));
+	TestTrue(TEXT("Rules-aware multiple-objective rejection uses the objective diagnostic"),
+		MultipleObjectivesDiagnostics.ContainsByPredicate(
+			[](const FTacticalGenerationDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_tactical_objective"));
+			}));
+
 	FCampaignSaveEnvelope ImpossibleExtractedUnitEnvelope = MagazineWrite.Envelope;
 	FTacticalUnitState* ImpossibleExtractedUnit = ImpossibleExtractedUnitEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
 		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
