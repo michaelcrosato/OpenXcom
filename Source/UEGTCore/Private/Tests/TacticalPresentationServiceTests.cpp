@@ -337,6 +337,18 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 		&& PlayerView->Weapons[0].PartialReserveMagazines == 1
 		&& PlayerView->Weapons[0].ReserveAmmunition == 15
 		&& PlayerView->Weapons[0].NextReloadAmmunition == 6);
+	FCampaignState ExtremeReserveCampaign = Fixture.Campaign;
+	ExtremeReserveCampaign.TacticalBattles[0].Units[0].CarriedItems[0].Quantity = MAX_int32;
+	const FTacticalHudSnapshot ExtremeReserve = FTacticalPresentationService::BuildHudSnapshot(
+		ExtremeReserveCampaign.TacticalBattles[0], ExtremeReserveCampaign, Fixture.Rules, Query);
+	const FTacticalHudUnitView* ExtremeReservePlayer = ExtremeReserve.Units.FindByPredicate(
+		[&Fixture](const FTacticalHudUnitView& Unit) { return Unit.UnitId == Fixture.PlayerUnitId; });
+	TestTrue(TEXT("HUD reserve totals saturate instead of wrapping for extreme carried ammunition"),
+		ExtremeReserve.bSucceeded && ExtremeReservePlayer != nullptr
+		&& ExtremeReservePlayer->Weapons.Num() == 1
+		&& ExtremeReservePlayer->Weapons[0].ReserveAmmunition == MAX_int32
+		&& ExtremeReservePlayer->Weapons[0].FullReserveMagazines == MAX_int32
+		&& ExtremeReservePlayer->Weapons[0].ReserveMagazines == MAX_int32);
 	const FTacticalHudActionAvailability* Objective = Snapshot.FindAction(ETacticalHudActionType::InteractObjective);
 	TestTrue(TEXT("Adjacent active objective is selected without leaking pointer state"), Objective != nullptr && Objective->bAvailable
 		&& Objective->ObjectiveId == FName(TEXT("objective.presentation-control")));

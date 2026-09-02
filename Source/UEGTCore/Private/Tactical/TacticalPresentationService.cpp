@@ -82,6 +82,16 @@ namespace TacticalPresentationPrivate
 		return Stack != nullptr ? FMath::Max(0, Stack->Quantity) : 0;
 	}
 
+	int32 SaturatingNonNegativeAdd(const int32 Current, const int64 Contribution)
+	{
+		const int64 ClampedCurrent = FMath::Clamp<int64>(Current, 0, MAX_int32);
+		if (Contribution <= 0 || Contribution > MAX_int32 - ClampedCurrent)
+		{
+			return Contribution <= 0 ? static_cast<int32>(ClampedCurrent) : MAX_int32;
+		}
+		return static_cast<int32>(ClampedCurrent + Contribution);
+	}
+
 	bool CanAddInventoryStack(
 		const TArray<FInventoryStack>& Inventory,
 		const FName ItemId,
@@ -406,7 +416,9 @@ namespace TacticalPresentationPrivate
 			WeaponView.AmmunitionItemId = Weapon->TacticalAmmunitionItemId;
 			const int32 CarriedFullMagazines = FindItemQuantity(Unit.CarriedItems, Weapon->TacticalAmmunitionItemId);
 			WeaponView.FullReserveMagazines = CarriedFullMagazines;
-			WeaponView.ReserveAmmunition = CarriedFullMagazines * Weapon->TacticalMagazineCapacity;
+			WeaponView.ReserveAmmunition = SaturatingNonNegativeAdd(
+				0,
+				static_cast<int64>(CarriedFullMagazines) * Weapon->TacticalMagazineCapacity);
 			for (const FTacticalMagazineState& Magazine : Unit.EjectedMagazines)
 			{
 				if (Magazine.WeaponItemId != WeaponId
@@ -414,18 +426,21 @@ namespace TacticalPresentationPrivate
 				{
 					continue;
 				}
-				WeaponView.ReserveAmmunition += Magazine.LoadedAmmunition;
+				WeaponView.ReserveAmmunition = SaturatingNonNegativeAdd(
+					WeaponView.ReserveAmmunition, Magazine.LoadedAmmunition);
 				if (Magazine.LoadedAmmunition >= Weapon->TacticalMagazineCapacity)
 				{
-					++WeaponView.FullReserveMagazines;
+					WeaponView.FullReserveMagazines = SaturatingNonNegativeAdd(
+						WeaponView.FullReserveMagazines, 1);
 				}
 				else
 				{
-					++WeaponView.PartialReserveMagazines;
+					WeaponView.PartialReserveMagazines = SaturatingNonNegativeAdd(
+						WeaponView.PartialReserveMagazines, 1);
 				}
 			}
-			WeaponView.ReserveMagazines = WeaponView.FullReserveMagazines
-				+ WeaponView.PartialReserveMagazines;
+			WeaponView.ReserveMagazines = SaturatingNonNegativeAdd(
+				WeaponView.FullReserveMagazines, WeaponView.PartialReserveMagazines);
 			WeaponView.NextReloadAmmunition = FindBestReserveAmmunition(Unit, WeaponId, *Weapon);
 			WeaponView.ReloadActionPointCost = Weapon->TacticalReloadActionPointCost;
 		}
