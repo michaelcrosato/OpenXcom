@@ -868,6 +868,16 @@ bool FTacticalMissionGenerator::ValidateBattle(
 				+ static_cast<int64>(Unit.EjectedMagazines.Num());
 			bool bLoadoutValid = Unit.WeaponStates.Num() <= 16 && Unit.CarriedItems.Num() <= 16
 				&& Unit.EjectedMagazines.Num() <= 16;
+			TMap<FName, int32> PersonnelEquipmentCounts;
+			if (Person != nullptr)
+			{
+				for (const FName ItemId : Person->EquippedItems)
+				{
+					++PersonnelEquipmentCounts.FindOrAdd(ItemId);
+				}
+			}
+			TMap<FName, int32> TacticalMagazineCounts;
+			TSet<FName> TacticalAmmunitionItemIds;
 			for (const FTacticalWeaponState& WeaponState : Unit.WeaponStates)
 			{
 				const FItemRule* Weapon = Rules.Items.Find(WeaponState.WeaponItemId);
@@ -878,6 +888,15 @@ bool FTacticalMissionGenerator::ValidateBattle(
 					&& (Weapon != nullptr && (Weapon->TacticalAmmunitionItemId.IsNone()
 						? WeaponState.LoadedAmmunition == 0
 						: WeaponState.LoadedAmmunition <= Weapon->TacticalMagazineCapacity));
+				if (Weapon != nullptr && !Weapon->TacticalAmmunitionItemId.IsNone()
+					&& WeaponState.LoadedAmmunition >= 0)
+				{
+					TacticalAmmunitionItemIds.Add(Weapon->TacticalAmmunitionItemId);
+					if (WeaponState.LoadedAmmunition > 0)
+					{
+						++TacticalMagazineCounts.FindOrAdd(Weapon->TacticalAmmunitionItemId);
+					}
+				}
 				SeenWeaponIds.Add(WeaponState.WeaponItemId);
 			}
 			for (const FTacticalMagazineState& Magazine : Unit.EjectedMagazines)
@@ -888,17 +907,31 @@ bool FTacticalMissionGenerator::ValidateBattle(
 					&& Weapon->TacticalAmmunitionItemId == Magazine.AmmunitionItemId
 					&& Magazine.LoadedAmmunition > 0
 					&& Magazine.LoadedAmmunition <= Weapon->TacticalMagazineCapacity;
+				if (Magazine.LoadedAmmunition > 0)
+				{
+					++TacticalMagazineCounts.FindOrAdd(Magazine.AmmunitionItemId);
+				}
 			}
 			TSet<FName> SeenCarriedItemIds;
 			for (const FInventoryStack& Stack : Unit.CarriedItems)
 			{
 				bLoadoutValid &= Rules.Items.Contains(Stack.ItemId) && Stack.Quantity > 0
-					&& !SeenCarriedItemIds.Contains(Stack.ItemId);
+					&& !SeenCarriedItemIds.Contains(Stack.ItemId)
+					&& (Person == nullptr || Stack.Quantity <= PersonnelEquipmentCounts.FindRef(Stack.ItemId));
 				if (Stack.Quantity > 0)
 				{
 					TacticalLoadoutCount += Stack.Quantity;
+					if (TacticalAmmunitionItemIds.Contains(Stack.ItemId))
+					{
+						TacticalMagazineCounts.FindOrAdd(Stack.ItemId) += Stack.Quantity;
+					}
 				}
 				SeenCarriedItemIds.Add(Stack.ItemId);
+			}
+			for (const TPair<FName, int32>& MagazineCount : TacticalMagazineCounts)
+			{
+				bLoadoutValid &= Person != nullptr
+					&& MagazineCount.Value <= PersonnelEquipmentCounts.FindRef(MagazineCount.Key);
 			}
 			bLoadoutValid &= TacticalLoadoutCount <= 16;
 			if (Person == nullptr || !Operation->AgentIds.Contains(Unit.PersonnelId)

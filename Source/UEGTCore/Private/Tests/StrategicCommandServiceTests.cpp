@@ -16683,6 +16683,26 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 		&& GeneratedPlayer->ArcArmor == 0 && GeneratedPlayer->MaxMorale == AgentResolve
 		&& GeneratedPlayer->CurrentMorale == AgentResolve);
 
+	FTacticalBattleState InvalidMagazineLoadout = First.TacticalBattles[0];
+	FTacticalUnitState* InvalidMagazineUnit = InvalidMagazineLoadout.Units.FindByPredicate(
+		[&AgentId](const FTacticalUnitState& Unit) { return Unit.PersonnelId == AgentId; });
+	if (InvalidMagazineUnit != nullptr)
+	{
+		FTacticalMagazineState& ExtraMagazine = InvalidMagazineUnit->EjectedMagazines.AddDefaulted_GetRef();
+		ExtraMagazine.WeaponItemId = TEXT("item.service-rifle");
+		ExtraMagazine.AmmunitionItemId = TEXT("item.test-rifle-magazine");
+		ExtraMagazine.LoadedAmmunition = 1;
+		TArray<FTacticalGenerationDiagnostic> InvalidMagazineDiagnostics;
+		TestFalse(TEXT("Tactical magazines cannot exceed the deployed personnel loadout"),
+			FTacticalMissionGenerator::ValidateBattle(
+				InvalidMagazineLoadout, First, Rules, InvalidMagazineDiagnostics));
+		TestTrue(TEXT("Tactical magazine duplication has a stable player-unit diagnostic"), InvalidMagazineDiagnostics.ContainsByPredicate(
+			[](const FTacticalGenerationDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_tactical_player_unit"));
+			}));
+	}
+
 	FConfirmTacticalDeploymentCommand Confirm;
 	Confirm.ExpectedSequence = First.CommandSequence;
 	Confirm.BattleId = BattleId;
