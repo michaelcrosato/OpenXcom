@@ -4707,6 +4707,7 @@ void AUEGTTacticalPlayerController::ApplyPresentationAccessibilitySettings()
 		BoardActor->ApplyAccessibilityPalette(
 			Settings->GetColorVisionMode(),
 			Settings->IsHighContrastEnabled());
+		BoardActor->SetReducedMotionEnabled(Settings->IsReducedMotionEnabled());
 	}
 	if (GlobeActor != nullptr)
 	{

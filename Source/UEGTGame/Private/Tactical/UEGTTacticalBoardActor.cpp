@@ -12,7 +12,8 @@
 
 AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
 
@@ -103,6 +104,18 @@ void AUEGTTacticalBoardActor::BeginPlay()
 	ConfigureMeshComponent(SmokeInstances, false);
 	ConfigureMeshComponent(FireInstances, false);
 	ApplyPalette();
+}
+
+void AUEGTTacticalBoardActor::Tick(const float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (bReduceMotion || DeltaSeconds <= 0.0f)
+	{
+		return;
+	}
+	PresentationAnimationTimeSeconds = FMath::Fmod(
+		PresentationAnimationTimeSeconds + DeltaSeconds, 100000.0f);
+	UpdateAnimatedEffects(true);
 }
 
 void AUEGTTacticalBoardActor::ConfigureMeshComponent(
@@ -211,6 +224,85 @@ void AUEGTTacticalBoardActor::ApplyAccessibilityPalette(
 	ApplyPalette();
 }
 
+void AUEGTTacticalBoardActor::SetReducedMotionEnabled(const bool bEnabled)
+{
+	bReduceMotion = bEnabled;
+	PresentationAnimationTimeSeconds = 0.0f;
+	SetActorTickEnabled(!bReduceMotion);
+	UpdateAnimatedEffects(false);
+}
+
+void AUEGTTacticalBoardActor::UpdateAnimatedEffects(const bool bAnimate)
+{
+	const auto UpdateEffect = [this, bAnimate](
+		UInstancedStaticMeshComponent* Component,
+		const TArray<FIntVector>& Cells,
+		const TArray<int32>& Intensities,
+		const float BaseHeight,
+		const float BaseXYScale,
+		const float BaseZScale,
+		const float XYAmplitude,
+		const float ZAmplitude,
+		const float HeightAmplitude,
+		const float Frequency,
+		const float PhaseStep)
+	{
+		if (Component == nullptr)
+		{
+			return;
+		}
+		const int32 Count = FMath::Min(
+			Component->GetInstanceCount(), FMath::Min(Cells.Num(), Intensities.Num()));
+		for (int32 Index = 0; Index < Count; ++Index)
+		{
+			const float Pulse = bAnimate
+				? FMath::Sin(PresentationAnimationTimeSeconds * Frequency + Index * PhaseStep)
+				: 0.0f;
+			const float Intensity = FMath::Clamp(static_cast<float>(Intensities[Index]), 0.0f, 100.0f) / 100.0f;
+			const FIntVector& Cell = Cells[Index];
+			const FVector Local(
+				(static_cast<float>(Cell.X) + 0.5f) * CellSize,
+				(static_cast<float>(Cell.Y) + 0.5f) * CellSize,
+				static_cast<float>(Cell.Z) * LevelHeight + BaseHeight + Pulse * HeightAmplitude * (0.5f + Intensity * 0.5f));
+			const float XYScale = BaseXYScale * (1.0f + Pulse * XYAmplitude);
+			const float ZScale = BaseZScale * (1.0f + Pulse * ZAmplitude);
+			Component->UpdateInstanceTransform(
+				Index,
+				FTransform(
+					FRotator::ZeroRotator,
+					Local,
+					FVector(XYScale * CellSize / 100.0f, XYScale * CellSize / 100.0f, ZScale)),
+				false,
+				true,
+				false);
+		}
+	};
+	UpdateEffect(
+		SmokeInstances,
+		SmokeCells,
+		SmokeIntensities,
+		8.0f,
+		0.72f,
+		0.04f,
+		0.06f,
+		0.12f,
+		5.0f,
+		1.6f,
+		0.71f);
+	UpdateEffect(
+		FireInstances,
+		FireCells,
+		FireIntensities,
+		12.0f,
+		0.42f,
+		0.06f,
+		0.10f,
+		0.18f,
+		7.0f,
+		2.25f,
+		1.17f);
+}
+
 FVector AUEGTTacticalBoardActor::GridToWorld(
 	const int32 X,
 	const int32 Y,
@@ -261,6 +353,10 @@ void AUEGTTacticalBoardActor::ClearBoard()
 	FogMemoryCells.Reset();
 	BlockerCells.Reset();
 	DoorCells.Reset();
+	SmokeCells.Reset();
+	SmokeIntensities.Reset();
+	FireCells.Reset();
+	FireIntensities.Reset();
 	PlayerUnitIds.Reset();
 	PlayerUnitCells.Reset();
 	AdversaryUnitIds.Reset();
@@ -308,10 +404,14 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 		}
 		if (Cell.Smoke > 0)
 		{
+			SmokeCells.Add(GridCell);
+			SmokeIntensities.Add(Cell.Smoke);
 			AddCellMarker(SmokeInstances, GridCell, 8.0f + Cell.Smoke * 0.2f, 0.72f, 0.04f + Cell.Smoke / 1000.0f);
 		}
 		if (Cell.Fire > 0)
 		{
+			FireCells.Add(GridCell);
+			FireIntensities.Add(Cell.Fire);
 			AddCellMarker(FireInstances, GridCell, 12.0f + Cell.Fire * 0.18f, 0.42f, 0.06f + Cell.Fire / 900.0f);
 		}
 	}
@@ -371,6 +471,7 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 	{
 		AddCellMarker(HoverInstances, FIntVector(Snapshot.Hover.X, Snapshot.Hover.Y, Snapshot.Hover.Z), 4.0f, 0.88f, 0.018f);
 	}
+	UpdateAnimatedEffects(!bReduceMotion);
 }
 
 bool AUEGTTacticalBoardActor::ResolveHit(const FHitResult& Hit, FUEGTTacticalBoardHit& OutHit) const

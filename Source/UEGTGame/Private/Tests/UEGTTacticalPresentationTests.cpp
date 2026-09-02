@@ -51,6 +51,11 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("Tactical board loads semantic primitive geometry for marker and effect layers"),
 		Board->UsesSemanticMarkerGeometry());
+	TestTrue(TEXT("Tactical board defaults to reduced motion for effect pulses"),
+		Board->IsReducedMotionEnabled());
+	Board->SetReducedMotionEnabled(false);
+	TestFalse(TEXT("Tactical board enables presentation pulses when reduced motion is disabled"),
+		Board->IsReducedMotionEnabled());
 	Board->ApplyAccessibilityPalette(EUEGTColorVisionMode::Tritanopia, false);
 	TestEqual(TEXT("Tactical board accepts the selected color-vision palette"),
 		Board->GetColorVisionMode(), EUEGTColorVisionMode::Tritanopia);
@@ -134,6 +139,15 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	Snapshot.Hover.Path.Steps.Add({ 1, 1, 0, 1 });
 
 	Board->ApplySnapshot(Snapshot);
+	const float InitialPresentationTime = Board->GetPresentationAnimationTimeSeconds();
+	Board->Tick(0.5f);
+	TestTrue(TEXT("Tactical board advances effect presentation time independently of tactical state"),
+		Board->GetPresentationAnimationTimeSeconds() > InitialPresentationTime);
+	Board->SetReducedMotionEnabled(true);
+	const float ReducedMotionPresentationTime = Board->GetPresentationAnimationTimeSeconds();
+	Board->Tick(0.5f);
+	TestTrue(TEXT("Reduced motion freezes tactical effect presentation"),
+		FMath::IsNearlyEqual(Board->GetPresentationAnimationTimeSeconds(), ReducedMotionPresentationTime));
 	TestEqual(TEXT("Every fog-safe cell becomes one ground instance"), Board->GetRenderedGroundCount(), 3);
 	TestEqual(TEXT("Historical coordinates use a separate fog-memory instance"), Board->GetRenderedFogMemoryCount(), 1);
 	TestEqual(TEXT("Friendly presentation uses its own instance set"), Board->GetRenderedPlayerUnitCount(), 1);

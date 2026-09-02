@@ -52,6 +52,7 @@ class UEGTGAME_API AUEGTTacticalBoardActor final : public AActor
 
 public:
 	AUEGTTacticalBoardActor();
+	virtual void Tick(float DeltaSeconds) override;
 
 	UFUNCTION(BlueprintCallable, Category = "UEGT|Tactical|Board")
 	void ApplySnapshot(const FTacticalHudSnapshot& Snapshot);
@@ -61,6 +62,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "UEGT|Settings|Accessibility")
 	void ApplyAccessibilityPalette(EUEGTColorVisionMode Mode, bool bHighContrast);
+
+	UFUNCTION(BlueprintCallable, Category = "UEGT|Settings|Accessibility")
+	void SetReducedMotionEnabled(bool bEnabled);
 
 	UFUNCTION(BlueprintPure, Category = "UEGT|Tactical|Board")
 	FVector GridToWorld(int32 X, int32 Y, int32 Z, float HeightOffset = 0.0f) const;
@@ -79,6 +83,8 @@ public:
 	bool UsesSemanticMarkerGeometry() const;
 	EUEGTColorVisionMode GetColorVisionMode() const { return ColorVisionMode; }
 	bool IsHighContrastPaletteEnabled() const { return bUseHighContrast; }
+	bool IsReducedMotionEnabled() const { return bReduceMotion; }
+	float GetPresentationAnimationTimeSeconds() const { return PresentationAnimationTimeSeconds; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -86,6 +92,7 @@ protected:
 private:
 	void ConfigureMeshComponent(UInstancedStaticMeshComponent* Component, bool bCollisionEnabled) const;
 	void ApplyPalette();
+	void UpdateAnimatedEffects(bool bAnimate);
 	UMaterialInstanceDynamic* MakeColorMaterial(FName ObjectName, const FLinearColor& Color);
 	void AddCellMarker(UInstancedStaticMeshComponent* Component, const FIntVector& Cell, float Height, float XYScale, float ZScale);
 
@@ -150,6 +157,10 @@ private:
 	TArray<FIntVector> FogMemoryCells;
 	TArray<FIntVector> BlockerCells;
 	TArray<FIntVector> DoorCells;
+	TArray<FIntVector> SmokeCells;
+	TArray<int32> SmokeIntensities;
+	TArray<FIntVector> FireCells;
+	TArray<int32> FireIntensities;
 	TArray<FGuid> PlayerUnitIds;
 	TArray<FIntVector> PlayerUnitCells;
 	TArray<FGuid> AdversaryUnitIds;
@@ -158,4 +169,6 @@ private:
 	TArray<FIntVector> ObjectiveCells;
 	EUEGTColorVisionMode ColorVisionMode = EUEGTColorVisionMode::Standard;
 	bool bUseHighContrast = true;
+	bool bReduceMotion = true;
+	float PresentationAnimationTimeSeconds = 0.0f;
 };
