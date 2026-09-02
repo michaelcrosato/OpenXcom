@@ -1427,6 +1427,9 @@ namespace StrategicCommandServicePrivate
 	bool TryAdd(int64 Left, int64 Right, int64& OutValue);
 	bool TryMultiplyNonNegative(int64 Left, int64 Right, int64& OutValue);
 	bool TryScaleNonNegativeByPercent(int64 BaseValue, int32 Percent, int64& OutValue);
+	bool WouldExhaustDeterministicRandomStream(
+		const FDeterministicRandomStream& Stream,
+		int64 RequiredDraws);
 
 	bool TryComputeCargoMass(
 		const TArray<FInventoryStack>& Cargo,
@@ -2148,6 +2151,17 @@ namespace StrategicCommandServicePrivate
 		}
 		OutValue = Left * Right;
 		return true;
+	}
+
+	bool WouldExhaustDeterministicRandomStream(
+		const FDeterministicRandomStream& Stream,
+		const int64 RequiredDraws)
+	{
+		if (!Stream.IsValid() || RequiredDraws < 0)
+		{
+			return true;
+		}
+		return RequiredDraws > (MAX_int64 - 1) - Stream.DrawCount;
 	}
 
 	bool ComputeBaseStorageCapacity(
@@ -10580,7 +10594,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	int64 MaximumArrivalDraws = 0;
 	if (!TryMultiplyNonNegative(PotentialArrivals, 5, MaximumArrivalDraws)
-		|| State.SimulationRandom.DrawCount > MAX_int64 - MaximumArrivalDraws)
+		|| WouldExhaustDeterministicRandomStream(State.SimulationRandom, MaximumArrivalDraws))
 	{
 		AddError(Result, TEXT("random_draw_overflow"), TEXT("Personnel arrivals would exceed the deterministic random-stream draw range."));
 		return Result;
@@ -10606,7 +10620,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	if (!TryMultiplyNonNegative(MaximumHiddenContacts, MaximumSensorPasses, MaximumSensorDraws)
 		|| !TryAdd(MaximumArrivalDraws, MaximumSensorDraws, MaximumTimeAdvanceDraws)
 		|| !TryAdd(MaximumTimeAdvanceDraws, MaximumMissionSelectionDraws, MaximumTimeAdvanceDraws)
-		|| State.SimulationRandom.DrawCount > MAX_int64 - MaximumTimeAdvanceDraws)
+		|| WouldExhaustDeterministicRandomStream(State.SimulationRandom, MaximumTimeAdvanceDraws))
 	{
 		AddError(Result, TEXT("random_draw_overflow"), TEXT("Contact detection or adversary scheduling would exceed the deterministic random-stream draw range."));
 		return Result;
@@ -16975,7 +16989,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	const int64 MaximumRandomDraws = static_cast<int64>(Preview.ProjectileCount) * 2;
-	if (ExistingBattle->TacticalRandom.DrawCount > MAX_int64 - MaximumRandomDraws)
+	if (WouldExhaustDeterministicRandomStream(ExistingBattle->TacticalRandom, MaximumRandomDraws))
 	{
 		AddError(Result, TEXT("tactical_random_exhausted"), TEXT("Tactical random stream cannot accept another attack."));
 		return Result;
@@ -17195,7 +17209,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddCombatDiagnostics(Result, Preview);
 		return Result;
 	}
-	if (ExistingBattle->TacticalRandom.DrawCount == MAX_int64)
+	if (WouldExhaustDeterministicRandomStream(ExistingBattle->TacticalRandom, 1))
 	{
 		AddError(Result, TEXT("tactical_random_exhausted"), TEXT("Tactical random stream cannot accept another signal projection."));
 		return Result;
@@ -17333,7 +17347,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	const int64 RequiredRandomDraws = 1
 		+ (Preview.BlastRadius > 0 && Preview.ScatterRadius > 0 ? 1 : 0);
-	if (ExistingBattle->TacticalRandom.DrawCount > MAX_int64 - RequiredRandomDraws)
+	if (WouldExhaustDeterministicRandomStream(ExistingBattle->TacticalRandom, RequiredRandomDraws))
 	{
 		AddError(Result, TEXT("tactical_random_exhausted"), TEXT("Tactical random stream cannot accept another terrain attack."));
 		return Result;
@@ -19111,7 +19125,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			});
 		const int32 MaximumFacilityTargets = FMath::Min(DamageCandidateIds.Num(), MissionRule->BaseFacilitiesHit);
 		if (!Command.bObjectiveCompleted
-			&& State.SimulationRandom.DrawCount > MAX_int64 - static_cast<int64>(MaximumFacilityTargets))
+			&& WouldExhaustDeterministicRandomStream(State.SimulationRandom, static_cast<int64>(MaximumFacilityTargets)))
 		{
 			AddError(Result, TEXT("random_draw_overflow"), TEXT("Tactical base-defense breach exceeds the deterministic random-stream draw range."));
 			return Result;
@@ -20242,7 +20256,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			}
 		}
 	}
-	if (State.SimulationRandom.DrawCount > MAX_int64 - MaximumDraws)
+	if (WouldExhaustDeterministicRandomStream(State.SimulationRandom, MaximumDraws))
 	{
 		AddError(Result, TEXT("random_draw_overflow"), TEXT("Interception round exceeds the deterministic random-stream draw range."));
 		return Result;
@@ -20683,7 +20697,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	SortGuids(DamageCandidateIds);
 	const int64 MaximumDraws = static_cast<int64>(Volley.ReadyShots.Num())
 		+ FMath::Min<int64>(DamageCandidateIds.Num(), MissionRule->BaseFacilitiesHit);
-	if (State.SimulationRandom.DrawCount > MAX_int64 - MaximumDraws)
+	if (WouldExhaustDeterministicRandomStream(State.SimulationRandom, MaximumDraws))
 	{
 		AddError(Result, TEXT("random_draw_overflow"), TEXT("Base defense exceeds the deterministic random-stream draw range."));
 		return Result;

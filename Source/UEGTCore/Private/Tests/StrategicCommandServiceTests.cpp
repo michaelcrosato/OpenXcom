@@ -16738,6 +16738,20 @@ bool FTacticalSignalPressureCommandTest::RunTest(const FString& Parameters)
 	Project.AttackerUnitId = PlayerUnitId;
 	Project.TargetUnitId = TargetUnitId;
 	Project.ProjectorItemId = TEXT("item.signal-probe");
+	FCampaignState Boundary = Initial;
+	Boundary.TacticalBattles[0].TacticalRandom.DrawCount = MAX_int64 - 1;
+	const FString BoundaryFingerprint = MakeTacticalBattleFingerprint(Boundary.TacticalBattles[0]);
+	FProjectTacticalSignalCommand BoundaryProject = Project;
+	BoundaryProject.ExpectedSequence = Boundary.CommandSequence;
+	const FStrategicCommandResult BoundaryResult = FStrategicCommandService::Execute(
+		Boundary, Rules, BoundaryProject);
+	TestFalse(TEXT("Signal projection rejects a draw that would reach the terminal random count"),
+		BoundaryResult.bAccepted);
+	TestTrue(TEXT("Terminal-boundary signal rejection has a stable exhaustion diagnostic"),
+		BoundaryResult.HasDiagnostic(TEXT("tactical_random_exhausted")));
+	TestTrue(TEXT("Terminal-boundary signal rejection is transactional"),
+		Boundary.TacticalBattles[0].TacticalRandom.DrawCount == MAX_int64 - 1
+		&& MakeTacticalBattleFingerprint(Boundary.TacticalBattles[0]) == BoundaryFingerprint);
 	const FStrategicCommandResult FirstResult = FStrategicCommandService::Execute(First, Rules, Project);
 	const FStrategicCommandResult ReplayResult = FStrategicCommandService::Execute(Replay, Rules, Project);
 	TestTrue(TEXT("Signal projection commits and replays"), FirstResult.bAccepted && ReplayResult.bAccepted);
