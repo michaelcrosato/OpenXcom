@@ -1076,6 +1076,68 @@ bool FStrategicFabricationSpecializationBenefitTest::RunTest(const FString& Para
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicLogisticsSpecializationBenefitTest,
+	"UEGT.Core.StrategicCommands.LogisticsSpecializationBenefit",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicLogisticsSpecializationBenefitTest::RunTest(const FString& Parameters)
+{
+	FResolvedRuleSet Rules;
+	FFacilityRule LogisticsDepot;
+	LogisticsDepot.Identity.RuleId = TEXT("facility.test-logistics-depot");
+	LogisticsDepot.DisplayName = TEXT("Logistics Depot");
+	LogisticsDepot.StorageCapacity = 1200;
+	LogisticsDepot.MaxIntegrity = 100;
+	Rules.Facilities.Add(LogisticsDepot.Identity.RuleId, LogisticsDepot);
+	FItemRule Cargo;
+	Cargo.Identity.RuleId = TEXT("item.test-logistics-cargo");
+	Cargo.DisplayName = TEXT("Logistics Cargo");
+	Cargo.Mass = 10;
+	Rules.Items.Add(Cargo.Identity.RuleId, Cargo);
+
+	FCampaignState State;
+	State.CommandSequence = 17;
+	FStrategicBaseState& Base = State.Bases.AddDefaulted_GetRef();
+	Base.BaseId = FGuid(0x5a560001, 0x5a560002, 0x5a560003, 0x5a560004);
+	Base.Name = TEXT("Logistics Station");
+	FBaseFacilityState& InstalledDepot = Base.Facilities.AddDefaulted_GetRef();
+	InstalledDepot.InstanceId = FGuid(0x5a560011, 0x5a560012, 0x5a560013, 0x5a560014);
+	InstalledDepot.FacilityId = LogisticsDepot.Identity.RuleId;
+	Base.Inventory.Add({ Cargo.Identity.RuleId, 3 });
+
+	const uint64 InitialRandomState = State.SimulationRandom.GetStateForSave();
+	const FStrategicBaseSpecializationView Specialization =
+		FStrategicCommandService::EvaluateBaseSpecialization(Base, Rules);
+	const FBaseStorageEvaluation Storage =
+		FStrategicCommandService::EvaluateBaseStorage(State, Rules, Base.BaseId);
+	TestTrue(TEXT("Logistics Depot specialization exposes its 20 percent storage consequence"),
+		Specialization.bSpecialized
+		&& Specialization.SpecializationId
+			== FName(TEXT("base.specialization.logistics-depot"))
+		&& Specialization.OperationalBenefitMetricId
+			== FName(TEXT("base.specialization.storage-efficiency"))
+		&& Specialization.OperationalBenefitValue == 20
+		&& FStrategicCommandService::EvaluateBaseStorageCapacityPercent(Base, Rules) == 120
+		&& Storage.bValid && Storage.bEnforced
+		&& Storage.Capacity == 1440
+		&& Storage.Used == 30 && Storage.Committed == 30
+		&& Storage.Available == 1410 && Storage.Overflow == 0
+		&& State.Bases.Num() == 1
+		&& Base.Facilities.Num() == 1
+		&& State.SimulationRandom.GetStateForSave() == InitialRandomState);
+
+	InstalledDepot.Damage = LogisticsDepot.MaxIntegrity;
+	const FBaseStorageEvaluation DamagedStorage =
+		FStrategicCommandService::EvaluateBaseStorage(State, Rules, Base.BaseId);
+	TestTrue(TEXT("A damaged Logistics Depot falls back to unscaled storage capacity"),
+		FStrategicCommandService::EvaluateBaseStorageCapacityPercent(Base, Rules) == 100
+		&& DamagedStorage.bValid && DamagedStorage.Capacity == 0
+		&& DamagedStorage.Used == 30 && DamagedStorage.Overflow == 30
+		&& State.SimulationRandom.GetStateForSave() == InitialRandomState);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicMonthlyFinanceTest,
 	"UEGT.Core.StrategicCommands.MonthlyFinances",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -5887,6 +5949,7 @@ bool FStrategicMutualAidBalancedHandoffTest::RunTest(const FString& Parameters)
 	FResolvedRuleSet Rules = MakeRules();
 	Rules.AdversaryMissions.Reset();
 	Rules.Facilities.FindChecked(TEXT("facility.operations-hub")).DetectionStrength = 20;
+	Rules.Facilities.FindChecked(TEXT("facility.operations-hub")).StorageCapacity = 60;
 	const FStrategicSimulationConfig Config = MakeConfig();
 	FCampaignState State = MakeStateWithBase();
 	State.Funds = 500000;
@@ -6278,11 +6341,12 @@ bool FStrategicMutualAidBalancedHandoffTest::RunTest(const FString& Parameters)
 	const FStrategicCommandResult DestinationOverflowRejected =
 		FStrategicCommandService::Execute(
 			DestinationOverflowState, Rules, DestinationOverflowCommand);
-	TestTrue(TEXT("Balanced Handoff protects both receiving storage commitments transactionally"),
+	TestTrue(TEXT("Balanced Handoff protects the waypoint storage commitment transactionally"),
 		!WaypointOverflowRejected.bAccepted
 		&& WaypointOverflowRejected.HasDiagnostic(
-			TEXT("mutual_aid_balanced_handoff_waypoint_storage"))
-		&& !DestinationOverflowRejected.bAccepted
+			TEXT("mutual_aid_balanced_handoff_waypoint_storage")));
+	TestTrue(TEXT("Balanced Handoff protects the destination storage commitment transactionally"),
+		!DestinationOverflowRejected.bAccepted
 		&& DestinationOverflowRejected.HasDiagnostic(
 			TEXT("mutual_aid_balanced_handoff_destination_storage")));
 

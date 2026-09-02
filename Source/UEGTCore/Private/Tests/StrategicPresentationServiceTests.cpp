@@ -310,7 +310,10 @@ bool FStrategicBaseSpecializationProjectionTest::RunTest(const FString& Paramete
 		&& Logistics.SpecializationId == FName(TEXT("base.specialization.logistics-depot"))
 		&& Logistics.Score == 100
 		&& Logistics.BenefitMetricId == FName(TEXT("base.specialization.storage-capacity"))
-		&& Logistics.BenefitValue == 1200);
+		&& Logistics.BenefitValue == 1200
+		&& Logistics.OperationalBenefitMetricId
+			== FName(TEXT("base.specialization.storage-efficiency"))
+		&& Logistics.OperationalBenefitValue == 20);
 	TestTrue(TEXT("Legacy abstract facilities retain the same specialization and damaged output falls back safely"),
 		LegacySignal.bSpecialized
 		&& LegacySignal.SpecializationId == Signal.SpecializationId

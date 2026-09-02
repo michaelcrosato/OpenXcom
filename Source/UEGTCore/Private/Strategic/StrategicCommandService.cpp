@@ -103,7 +103,9 @@ namespace StrategicCommandServicePrivate
 				TEXT("base.specialization.storage-capacity"),
 				static_cast<int32>(FMath::Clamp<int64>(
 					NonNegativeStorageCapacity / 12, 0, 100)),
-				NonNegativeStorageCapacity
+				NonNegativeStorageCapacity,
+				TEXT("base.specialization.storage-efficiency"),
+				20
 			}
 		};
 		Candidates.Sort([](
@@ -1422,6 +1424,7 @@ namespace StrategicCommandServicePrivate
 
 	bool TryAdd(int64 Left, int64 Right, int64& OutValue);
 	bool TryMultiplyNonNegative(int64 Left, int64 Right, int64& OutValue);
+	bool TryScaleNonNegativeByPercent(int64 BaseValue, int32 Percent, int64& OutValue);
 
 	bool TryComputeCargoMass(
 		const TArray<FInventoryStack>& Cargo,
@@ -2208,6 +2211,16 @@ namespace StrategicCommandServicePrivate
 
 		if (!ComputeBaseStorageCapacity(Base, Rules, OutEvaluation.Capacity, Result))
 		{
+			return false;
+		}
+		const int32 StorageCapacityPercent =
+			FStrategicCommandService::EvaluateBaseStorageCapacityPercent(Base, Rules);
+		if (!TryScaleNonNegativeByPercent(
+			OutEvaluation.Capacity, StorageCapacityPercent, OutEvaluation.Capacity))
+		{
+			AddError(Result, TEXT("storage_capacity_overflow"), FString::Printf(
+				TEXT("Base '%s' storage capacity exceeds the supported numeric range after specialization scaling."),
+				*Base.Name));
 			return false;
 		}
 
@@ -6831,6 +6844,23 @@ int32 FStrategicCommandService::EvaluateBaseServiceLaneBonus(
 	}
 	return static_cast<int32>(FMath::Clamp<int64>(
 		Specialization.OperationalBenefitValue, 0, MAX_int32));
+}
+
+int32 FStrategicCommandService::EvaluateBaseStorageCapacityPercent(
+	const FStrategicBaseState& Base,
+	const FResolvedRuleSet& Rules)
+{
+	const FStrategicBaseSpecializationView Specialization =
+		EvaluateBaseSpecialization(Base, Rules);
+	if (!Specialization.bSpecialized
+		|| Specialization.OperationalBenefitMetricId
+			!= FName(TEXT("base.specialization.storage-efficiency"))
+		|| Specialization.OperationalBenefitValue <= 0)
+	{
+		return 100;
+	}
+	return static_cast<int32>(FMath::Clamp<int64>(
+		100 + Specialization.OperationalBenefitValue, 100, 300));
 }
 
 FBaseStorageEvaluation FStrategicCommandService::EvaluateBaseStorage(
