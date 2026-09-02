@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, and base specialization expose one thousand four hundred seventy-seven localized keys"),
-		Loaded.Catalog.Entries.Num(), 1477);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, and base specialization expose one thousand four hundred eighty-two localized keys"),
+		Loaded.Catalog.Entries.Num(), 1482);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1477);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1482);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1361,6 +1361,26 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("storage_capacity_overflow"), TEXT("Raw storage-overflow diagnostic"), TEXT("fr-FR")),
 		FString(TEXT("La capacité de stockage dépasse la plage numérique prise en charge après la mise à l'échelle de la spécialisation.")));
+	TestEqual(TEXT("Exact French storage-facility diagnostics identify unsupported facility data"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_storage_facility"), TEXT("Raw storage-facility diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La base contient une installation de stockage dont les données de capacité, d'intégrité ou de dégâts ne sont pas prises en charge.")));
+	TestEqual(TEXT("Exact German storage-capacity diagnostics identify invalid capacity data"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_storage_capacity"), TEXT("Raw storage-capacity diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Basis enthält ungültige oder überlaufende Lagerkapazitätsdaten.")));
+	TestEqual(TEXT("Exact Spanish storage-inventory diagnostics identify invalid inventory data"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_storage_inventory"), TEXT("Raw storage-inventory diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La base contiene datos de almacenamiento de inventario no válidos o desbordados.")));
+	TestEqual(TEXT("Exact Japanese storage-reservation diagnostics identify invalid production reservations"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_storage_reservation"), TEXT("Raw storage-reservation diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("基地の生産保管予約が無効か、数値範囲を超えています。")));
+	TestEqual(TEXT("Exact English storage-usage diagnostics identify the numeric boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("storage_usage_overflow"), TEXT("Raw storage-usage diagnostic"), TEXT("en-US")),
+		FString(TEXT("Storage reservations or commitments exceed the supported numeric range.")));
 	TestEqual(TEXT("Exact French interception rule diagnostics identify the missing formation data"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("invalid_interception_rules"), TEXT("Raw interception-rules diagnostic"), TEXT("fr-FR")),

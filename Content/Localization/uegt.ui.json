@@ -5180,6 +5180,31 @@
       "translations": { "en": "Storage capacity exceeds the supported numeric range after specialization scaling.", "fr": "La capacité de stockage dépasse la plage numérique prise en charge après la mise à l'échelle de la spécialisation.", "de": "Die Lagerkapazität überschreitet nach der Skalierung durch die Spezialisierung den unterstützten numerischen Bereich.", "es": "La capacidad de almacenamiento supera el rango numérico admitido después del escalado de especialización.", "ja": "専門化によるスケーリング後、保管容量がサポートされる数値範囲を超えています。" }
     },
     {
+      "key": "diagnostic.invalid-storage-facility",
+      "source": "The base contains a storage facility with unsupported capacity, integrity, or damage data.",
+      "translations": { "en": "The base contains a storage facility with unsupported capacity, integrity, or damage data.", "fr": "La base contient une installation de stockage dont les données de capacité, d'intégrité ou de dégâts ne sont pas prises en charge.", "de": "Die Basis enthält eine Lageranlage mit nicht unterstützten Kapazitäts-, Integritäts- oder Schadensdaten.", "es": "La base contiene una instalación de almacenamiento con datos de capacidad, integridad o daño no admitidos.", "ja": "基地に、対応していない容量、耐久度、または損傷データを持つ保管施設があります。" }
+    },
+    {
+      "key": "diagnostic.invalid-storage-capacity",
+      "source": "The base contains invalid or overflowing storage-capacity data.",
+      "translations": { "en": "The base contains invalid or overflowing storage-capacity data.", "fr": "La base contient des données de capacité de stockage invalides ou en dépassement.", "de": "Die Basis enthält ungültige oder überlaufende Lagerkapazitätsdaten.", "es": "La base contiene datos de capacidad de almacenamiento no válidos o desbordados.", "ja": "基地の保管容量データが無効か、数値範囲を超えています。" }
+    },
+    {
+      "key": "diagnostic.invalid-storage-inventory",
+      "source": "The base contains invalid or overflowing inventory storage data.",
+      "translations": { "en": "The base contains invalid or overflowing inventory storage data.", "fr": "La base contient des données de stockage d'inventaire invalides ou en dépassement.", "de": "Die Basis enthält ungültige oder überlaufende Lagerbestandsdaten.", "es": "La base contiene datos de almacenamiento de inventario no válidos o desbordados.", "ja": "基地の在庫保管データが無効か、数値範囲を超えています。" }
+    },
+    {
+      "key": "diagnostic.invalid-storage-reservation",
+      "source": "The base contains an invalid or overflowing production storage reservation.",
+      "translations": { "en": "The base contains an invalid or overflowing production storage reservation.", "fr": "La base contient une réservation de stockage de production invalide ou en dépassement.", "de": "Die Basis enthält eine ungültige oder überlaufende Produktionslagerreservierung.", "es": "La base contiene una reserva de almacenamiento de producción no válida o desbordada.", "ja": "基地の生産保管予約が無効か、数値範囲を超えています。" }
+    },
+    {
+      "key": "diagnostic.storage-usage-overflow",
+      "source": "Storage reservations or commitments exceed the supported numeric range.",
+      "translations": { "en": "Storage reservations or commitments exceed the supported numeric range.", "fr": "Les réservations ou engagements de stockage dépassent la plage numérique prise en charge.", "de": "Lagerreservierungen oder -bindungen überschreiten den unterstützten numerischen Bereich.", "es": "Las reservas o compromisos de almacenamiento superan el rango numérico admitido.", "ja": "保管予約または保管確保量がサポートされる数値範囲を超えています。" }
+    },
+    {
       "key": "diagnostic.salvage-disposition-required",
       "source": "Retain or sell recovered salvage before this craft can continue operations.",
       "translations": { "en": "Retain or sell recovered salvage before this craft can continue operations.", "fr": "Conservez ou vendez le matériel récupéré avant que cet appareil puisse poursuivre ses opérations.", "de": "Behalte oder verkaufe die Bergung, bevor dieses Fluggerät den Betrieb fortsetzen kann.", "es": "Conserva o vende la recuperación antes de que esta nave pueda continuar sus operaciones.", "ja": "この航空機が運用を続ける前に、回収物を保持または売却してください。" }
