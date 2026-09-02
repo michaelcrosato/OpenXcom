@@ -17257,6 +17257,21 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 			ForeignTacticalMagazineValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
 	}
 
+	FCampaignSaveEnvelope MismatchedTacticalMagazineEnvelope = MagazineWrite.Envelope;
+	FTacticalUnitState* MismatchedTacticalMagazineUnit = MismatchedTacticalMagazineEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
+		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+	TestNotNull(TEXT("Magazine save fixture has a player magazine link"), MismatchedTacticalMagazineUnit);
+	if (MismatchedTacticalMagazineUnit != nullptr && !MismatchedTacticalMagazineUnit->EjectedMagazines.IsEmpty())
+	{
+		MismatchedTacticalMagazineUnit->EjectedMagazines[0].WeaponItemId = TEXT("item.test-field-vest");
+		const FCampaignSaveValidationResult MismatchedTacticalMagazineValidation = FCampaignSaveCodec::Validate(
+			MismatchedTacticalMagazineEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects ejected magazines linked to a non-carried weapon"),
+			MismatchedTacticalMagazineValidation.bSucceeded);
+		TestTrue(TEXT("Mismatched tactical magazine has a stable unit diagnostic"),
+			MismatchedTacticalMagazineValidation.HasDiagnostic(TEXT("invalid_tactical_unit")));
+	}
+
 	FCampaignSaveEnvelope LegacyV26 = MagazineWrite.Envelope;
 	LegacyV26.Header.FormatVersion = 26;
 	for (FTacticalBattleState& LegacyBattle : LegacyV26.State.TacticalBattles)

@@ -3312,6 +3312,7 @@ namespace CampaignSavePrivate
 					{
 						bLoadoutValid &= FContentPackageResolver::IsValidPackageId(Magazine.WeaponItemId)
 							&& FContentPackageResolver::IsValidPackageId(Magazine.AmmunitionItemId)
+							&& WeaponItemIds.Contains(Magazine.WeaponItemId)
 							&& Magazine.LoadedAmmunition > 0 && Magazine.LoadedAmmunition <= 200;
 					}
 					if (Header.FormatVersion < 27 && !Unit.EjectedMagazines.IsEmpty())
