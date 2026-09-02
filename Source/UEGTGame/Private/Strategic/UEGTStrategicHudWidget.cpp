@@ -262,6 +262,58 @@ namespace UEGTStrategicHudPrivate
 			*Name, *State, Facility.CurrentIntegrity, Facility.MaxIntegrity);
 	}
 
+	FString BaseSpecializationName(const FName SpecializationId)
+	{
+		if (SpecializationId == FName(TEXT("base.specialization.signal-relay")))
+		{
+			return Localized(TEXT("strategic.base-specialization-name-signal"), TEXT("SIGNAL RELAY"));
+		}
+		if (SpecializationId == FName(TEXT("base.specialization.research-enclave")))
+		{
+			return Localized(TEXT("strategic.base-specialization-name-research"), TEXT("RESEARCH ENCLAVE"));
+		}
+		if (SpecializationId == FName(TEXT("base.specialization.fabrication-works")))
+		{
+			return Localized(TEXT("strategic.base-specialization-name-fabrication"), TEXT("FABRICATION WORKS"));
+		}
+		if (SpecializationId == FName(TEXT("base.specialization.flight-operations")))
+		{
+			return Localized(TEXT("strategic.base-specialization-name-flight"), TEXT("FLIGHT OPERATIONS"));
+		}
+		if (SpecializationId == FName(TEXT("base.specialization.logistics-depot")))
+		{
+			return Localized(TEXT("strategic.base-specialization-name-logistics"), TEXT("LOGISTICS DEPOT"));
+		}
+		return Localized(
+			TEXT("strategic.base-specialization-name-integrated"), TEXT("INTEGRATED COMMAND"));
+	}
+
+	FString BaseSpecializationMetric(const FName BenefitMetricId)
+	{
+		if (BenefitMetricId == FName(TEXT("base.specialization.detection-strength")))
+		{
+			return Localized(TEXT("strategic.base-specialization-metric-detection"), TEXT("DETECTION"));
+		}
+		if (BenefitMetricId == FName(TEXT("base.specialization.scientist-capacity")))
+		{
+			return Localized(TEXT("strategic.base-specialization-metric-scientist"), TEXT("SCI CAP"));
+		}
+		if (BenefitMetricId == FName(TEXT("base.specialization.engineer-capacity")))
+		{
+			return Localized(TEXT("strategic.base-specialization-metric-engineer"), TEXT("ENG CAP"));
+		}
+		if (BenefitMetricId == FName(TEXT("base.specialization.craft-berths")))
+		{
+			return Localized(TEXT("strategic.base-specialization-metric-craft"), TEXT("BERTHS"));
+		}
+		if (BenefitMetricId == FName(TEXT("base.specialization.storage-capacity")))
+		{
+			return Localized(TEXT("strategic.base-specialization-metric-storage"), TEXT("STORAGE"));
+		}
+		return Localized(
+			TEXT("strategic.base-specialization-metric-balanced"), TEXT("BALANCED CAPABILITIES"));
+	}
+
 	FString LocalizedResearchProjectDetail(const FStrategicProjectView& Project)
 	{
 		if (Project.bPaused)
@@ -2426,6 +2478,42 @@ void UUEGTStrategicHudWidget::BuildPersonnelStewardshipPanel(
 	];
 }
 
+void UUEGTStrategicHudWidget::AppendBaseSpecialization(
+	const FStrategicBaseView& Base)
+{
+	using namespace UEGTStrategicHudPrivate;
+	const FString Name = BaseSpecializationName(Base.Specialization.SpecializationId);
+	const FString Summary = Base.Specialization.bSpecialized
+		? LocalizedFormat(
+			TEXT("strategic.base-specialization-format"),
+			TEXT("BASE SPECIALIZATION  •  {0}  •  INDEX {1}/100  •  {2} {3}"),
+			{
+				Name,
+				FString::FromInt(Base.Specialization.Score),
+				BaseSpecializationMetric(Base.Specialization.BenefitMetricId),
+				LexToString(Base.Specialization.BenefitValue)
+			})
+		: LocalizedFormat(
+			TEXT("strategic.base-specialization-integrated-format"),
+			TEXT("BASE SPECIALIZATION  •  {0}  •  INDEX {1}/100"),
+			{
+				Name,
+				FString::FromInt(Base.Specialization.Score)
+			});
+	const FString Guidance = Localized(
+		TEXT("strategic.base-specialization-guidance"),
+		TEXT("Derived from operational facility output; this read-only profile updates as infrastructure is repaired or lost and grants no separate bonus."));
+	RenderedDynamicLabels.Add(Summary);
+	LeftBox->AddSlot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
+	[
+		SNew(SBox)
+		.ToolTipText(FText::FromString(Guidance))
+		[
+			MakeText(Summary, 8, Base.Specialization.bSpecialized ? Success : SecondaryText, true)
+		]
+	];
+}
+
 void UUEGTStrategicHudWidget::AppendRelayQueuePressure(
 	const FStrategicBaseView& Base)
 {
@@ -3553,6 +3641,7 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 		[
 			MakeText(BaseSummary, 13)
 		];
+		AppendBaseSpecialization(Base);
 		AppendSignalWatchControls(Base);
 
 		const int32 RenderWidth = FMath::Clamp(Base.GridWidth, 1, 12);

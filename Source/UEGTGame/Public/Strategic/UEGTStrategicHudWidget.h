@@ -217,6 +217,7 @@ private:
 	void BuildCraftServicePanel(const FStrategicCraftView& Craft);
 	void BuildPersonnelRecoveryPlanPanel(const FStrategicPersonnelView& Person);
 	void BuildPersonnelStewardshipPanel(const FStrategicPersonnelView& Person);
+	void AppendBaseSpecialization(const FStrategicBaseView& Base);
 	void AppendSignalWatchControls(const FStrategicBaseView& Base);
 	void AppendRelayQueuePressure(const FStrategicBaseView& Base);
 	FORCENOINLINE void AppendWorksCadreControls(const FStrategicBaseView& Base);

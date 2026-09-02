@@ -4495,6 +4495,81 @@
       "translations": { "en": "{0}  //  {1}\nSCI WORK {2}/{3} • ROSTER {4}/{5} • FAC +{6}{7}\nENG WORK {8}/{9} • ROSTER {10}/{11} • FAC +{12}{13}\nBERTHS {14}/{15}   SENSOR {16} km / {17}%   DEFENSE {18} BAT • MAX {19} • EXP ~{20}\n{21}", "fr": "{0}  //  {1}\nSCI AFFECTÉS {2}/{3} • EFFECTIF {4}/{5} • INST +{6}{7}\nING AFFECTÉS {8}/{9} • EFFECTIF {10}/{11} • INST +{12}{13}\nPOSTES {14}/{15}   CAPTEUR {16} km / {17}%   DÉFENSE {18} BAT • MAX {19} • ATT ~{20}\n{21}", "de": "{0}  //  {1}\nWISS ARBEIT {2}/{3} • PERSONAL {4}/{5} • ANL +{6}{7}\nTECH ARBEIT {8}/{9} • PERSONAL {10}/{11} • ANL +{12}{13}\nSTELLPLÄTZE {14}/{15}   SENSOR {16} km / {17}%   ABWEHR {18} BAT • MAX {19} • ERW ~{20}\n{21}", "es": "{0}  //  {1}\nCIEN TRABAJO {2}/{3} • PLANTILLA {4}/{5} • INST +{6}{7}\nING TRABAJO {8}/{9} • PLANTILLA {10}/{11} • INST +{12}{13}\nATRAQUES {14}/{15}   SENSOR {16} km / {17}%   DEFENSA {18} BAT • MÁX {19} • PREV ~{20}\n{21}", "ja": "{0}  //  {1}\n科学任務 {2}/{3} • 要員 {4}/{5} • 施設 +{6}{7}\n技術任務 {8}/{9} • 要員 {10}/{11} • 施設 +{12}{13}\n格納枠 {14}/{15}   センサー {16} km / {17}%   防衛 砲台{18} • 最大{19} • 予測~{20}\n{21}" }
     },
     {
+      "key": "strategic.base-specialization-format",
+      "source": "BASE SPECIALIZATION  •  {0}  •  INDEX {1}/100  •  {2} {3}",
+      "translations": { "en": "BASE SPECIALIZATION  •  {0}  •  INDEX {1}/100  •  {2} {3}", "fr": "SPÉCIALISATION DE BASE  •  {0}  •  INDICE {1}/100  •  {2} {3}", "de": "BASISSPEZIALISIERUNG  •  {0}  •  INDEX {1}/100  •  {2} {3}", "es": "ESPECIALIZACIÓN DE BASE  •  {0}  •  ÍNDICE {1}/100  •  {2} {3}", "ja": "基地専門化  •  {0}  •  指数 {1}/100  •  {2} {3}" }
+    },
+    {
+      "key": "strategic.base-specialization-integrated-format",
+      "source": "BASE SPECIALIZATION  •  {0}  •  INDEX {1}/100",
+      "translations": { "en": "BASE SPECIALIZATION  •  {0}  •  INDEX {1}/100", "fr": "SPÉCIALISATION DE BASE  •  {0}  •  INDICE {1}/100", "de": "BASISSPEZIALISIERUNG  •  {0}  •  INDEX {1}/100", "es": "ESPECIALIZACIÓN DE BASE  •  {0}  •  ÍNDICE {1}/100", "ja": "基地専門化  •  {0}  •  指数 {1}/100" }
+    },
+    {
+      "key": "strategic.base-specialization-guidance",
+      "source": "Derived from operational facility output; this read-only profile updates as infrastructure is repaired or lost and grants no separate bonus.",
+      "translations": { "en": "Derived from operational facility output; this read-only profile updates as infrastructure is repaired or lost and grants no separate bonus.", "fr": "Dérivé du rendement des installations opérationnelles ; ce profil en lecture seule évolue quand l'infrastructure est réparée ou perdue et n'accorde aucun bonus distinct.", "de": "Aus der Leistung betriebsbereiter Anlagen abgeleitet; dieses schreibgeschützte Profil ändert sich bei Reparatur oder Verlust von Infrastruktur und gewährt keinen eigenen Bonus.", "es": "Derivado del rendimiento de las instalaciones operativas; este perfil de solo lectura se actualiza al reparar o perder infraestructura y no concede una bonificación independiente.", "ja": "稼働中の施設出力から導出される読み取り専用プロファイルです。施設の修復や喪失で更新され、個別のボーナスは発生しません。" }
+    },
+    {
+      "key": "strategic.base-specialization-name-integrated",
+      "source": "INTEGRATED COMMAND",
+      "translations": { "en": "INTEGRATED COMMAND", "fr": "COMMANDE INTÉGRÉE", "de": "INTEGRIERTE FÜHRUNG", "es": "MANDO INTEGRADO", "ja": "統合指揮" }
+    },
+    {
+      "key": "strategic.base-specialization-name-signal",
+      "source": "SIGNAL RELAY",
+      "translations": { "en": "SIGNAL RELAY", "fr": "RELAIS SIGNAL", "de": "SIGNALRELAIS", "es": "RELÉ DE SEÑAL", "ja": "信号リレー" }
+    },
+    {
+      "key": "strategic.base-specialization-name-research",
+      "source": "RESEARCH ENCLAVE",
+      "translations": { "en": "RESEARCH ENCLAVE", "fr": "ENCLAVE DE RECHERCHE", "de": "FORSCHUNGSENKLAVE", "es": "ENCLAVE DE INVESTIGACIÓN", "ja": "研究拠点" }
+    },
+    {
+      "key": "strategic.base-specialization-name-fabrication",
+      "source": "FABRICATION WORKS",
+      "translations": { "en": "FABRICATION WORKS", "fr": "ATELIER DE FABRICATION", "de": "FERTIGUNGSWERK", "es": "TALLER DE FABRICACIÓN", "ja": "製造工廠" }
+    },
+    {
+      "key": "strategic.base-specialization-name-flight",
+      "source": "FLIGHT OPERATIONS",
+      "translations": { "en": "FLIGHT OPERATIONS", "fr": "OPÉRATIONS AÉRIENNES", "de": "FLUGBETRIEB", "es": "OPERACIONES DE VUELO", "ja": "飛行運用" }
+    },
+    {
+      "key": "strategic.base-specialization-name-logistics",
+      "source": "LOGISTICS DEPOT",
+      "translations": { "en": "LOGISTICS DEPOT", "fr": "DÉPÔT LOGISTIQUE", "de": "LOGISTIKDEPOT", "es": "DEPÓSITO LOGÍSTICO", "ja": "兵站拠点" }
+    },
+    {
+      "key": "strategic.base-specialization-metric-balanced",
+      "source": "BALANCED CAPABILITIES",
+      "translations": { "en": "BALANCED CAPABILITIES", "fr": "CAPACITÉS ÉQUILIBRÉES", "de": "AUSGEWOGENE FÄHIGKEITEN", "es": "CAPACIDADES EQUILIBRADAS", "ja": "均衡能力" }
+    },
+    {
+      "key": "strategic.base-specialization-metric-detection",
+      "source": "DETECTION",
+      "translations": { "en": "DETECTION", "fr": "DÉTECTION", "de": "ERKENNUNG", "es": "DETECCIÓN", "ja": "探知" }
+    },
+    {
+      "key": "strategic.base-specialization-metric-scientist",
+      "source": "SCI CAP",
+      "translations": { "en": "SCI CAP", "fr": "CAP SCI", "de": "FORSCH-KAP", "es": "CAP CIENT", "ja": "科学者枠" }
+    },
+    {
+      "key": "strategic.base-specialization-metric-engineer",
+      "source": "ENG CAP",
+      "translations": { "en": "ENG CAP", "fr": "CAP ING", "de": "TECH-KAP", "es": "CAP ING", "ja": "技術者枠" }
+    },
+    {
+      "key": "strategic.base-specialization-metric-craft",
+      "source": "BERTHS",
+      "translations": { "en": "BERTHS", "fr": "POSTES", "de": "STELLPLÄTZE", "es": "ATRAQUES", "ja": "格納枠" }
+    },
+    {
+      "key": "strategic.base-specialization-metric-storage",
+      "source": "STORAGE",
+      "translations": { "en": "STORAGE", "fr": "STOCKAGE", "de": "LAGER", "es": "ALMACÉN", "ja": "保管" }
+    },
+    {
       "key": "strategic.facility-empty-cell-format",
       "source": "Empty grid cell {0},{1}",
       "translations": { "en": "Empty grid cell {0},{1}", "fr": "Case vide de la grille {0},{1}", "de": "Leere Rasterzelle {0},{1}", "es": "Celda vacía de la cuadrícula {0},{1}", "ja": "空きグリッドセル {0},{1}" }

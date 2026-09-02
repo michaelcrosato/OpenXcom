@@ -1030,6 +1030,29 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& Snapshot.Bases[0].RelayQueueWaitingConvoyCount == 0
 		&& Snapshot.Bases[0].RelayQueuePressurePercent == 0
 		&& Snapshot.Bases[0].RelayQueueTailArrivalSeconds == 0);
+	TestTrue(TEXT("Base presentation derives a flight specialization from the strongest operational output"),
+		Snapshot.Bases[0].Specialization.bSpecialized
+		&& Snapshot.Bases[0].Specialization.SpecializationId
+			== FName(TEXT("base.specialization.flight-operations"))
+		&& Snapshot.Bases[0].Specialization.Score == 100
+		&& Snapshot.Bases[0].Specialization.SecondaryScore == 40
+		&& Snapshot.Bases[0].Specialization.BenefitMetricId
+			== FName(TEXT("base.specialization.craft-berths"))
+		&& Snapshot.Bases[0].Specialization.BenefitValue == 2);
+	FCampaignState DegradedSpecializationCampaign = Campaign;
+	DegradedSpecializationCampaign.Bases[0].Facilities[1].Damage = FlightDeck.MaxIntegrity;
+	const FStrategicDashboardSnapshot DegradedSpecializationSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			DegradedSpecializationCampaign, Rules, Config);
+	TestTrue(TEXT("A facility outage falls back to an integrated profile without changing campaign state"),
+		DegradedSpecializationSnapshot.bSucceeded
+		&& DegradedSpecializationSnapshot.Bases.Num() == 1
+		&& !DegradedSpecializationSnapshot.Bases[0].Specialization.bSpecialized
+		&& DegradedSpecializationSnapshot.Bases[0].Specialization.SpecializationId
+			== FName(TEXT("base.specialization.integrated-command"))
+		&& DegradedSpecializationSnapshot.Bases[0].Specialization.Score == 40
+		&& DegradedSpecializationSnapshot.Bases[0].Specialization.SecondaryScore == 35
+		&& Campaign.Bases[0].Facilities[1].Damage == 50);
 	FCampaignState OvercapacityCampaign = Campaign;
 	OvercapacityCampaign.Bases[0].ScientistCapacity = 0;
 	OvercapacityCampaign.Bases[0].EngineerCapacity = 0;

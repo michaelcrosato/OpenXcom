@@ -553,6 +553,12 @@ bool FUEGTStrategicRuntimePresentationTest::RunTest(const FString& Parameters)
 	Base.RelayQueueWaitingConvoyCount = 1;
 	Base.RelayQueuePressurePercent = 34;
 	Base.RelayQueueTailArrivalSeconds = int64(18) * 3600;
+	Base.Specialization.SpecializationId = TEXT("base.specialization.flight-operations");
+	Base.Specialization.Score = 100;
+	Base.Specialization.SecondaryScore = 40;
+	Base.Specialization.BenefitMetricId = TEXT("base.specialization.craft-berths");
+	Base.Specialization.BenefitValue = 2;
+	Base.Specialization.bSpecialized = true;
 	Base.bCanIncreaseSignalWatch = false;
 	Base.SignalWatchIncreaseUnavailableReasonCode =
 		TEXT("signal_watch_channel_capacity_exceeded");
@@ -1895,6 +1901,9 @@ bool FUEGTStrategicRuntimePresentationTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("French Slate localizes the Relay Weave queue-pressure horizon"),
 			LocalizedContentLabels.Contains(
 				TEXT("LIGNE RELAIS 2/3 ACTIVE  •  1 EN ATTENTE  •  PRESSION 34%  •  FIN 18 h")));
+		TestTrue(TEXT("French Slate localizes the derived base specialization card"),
+			LocalizedContentLabels.Contains(
+				TEXT("SPÉCIALISATION DE BASE  •  OPÉRATIONS AÉRIENNES  •  INDICE 100/100  •  POSTES 2")));
 		TestTrue(TEXT("French Slate localizes the legacy storage summary"),
 			LocalizedContentLabels.Contains(TEXT("STOCKAGE  1 TYPES  •  RÈGLES HÉRITÉES ILLIMITÉES")));
 		TestTrue(TEXT("French Slate localizes inventory item names"),
