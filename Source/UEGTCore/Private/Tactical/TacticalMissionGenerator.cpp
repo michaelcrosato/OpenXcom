@@ -864,6 +864,8 @@ bool FTacticalMissionGenerator::ValidateBattle(
 			const int32 ExpectedBondedMorale = FMath::Clamp(
 				ExpectedResolve + MentorshipBonus + BondMoraleBonus, 0, 100);
 			TSet<FName> SeenWeaponIds;
+			int64 TacticalLoadoutCount = static_cast<int64>(Unit.WeaponStates.Num())
+				+ static_cast<int64>(Unit.EjectedMagazines.Num());
 			bool bLoadoutValid = Unit.WeaponStates.Num() <= 16 && Unit.CarriedItems.Num() <= 16
 				&& Unit.EjectedMagazines.Num() <= 16;
 			for (const FTacticalWeaponState& WeaponState : Unit.WeaponStates)
@@ -892,8 +894,13 @@ bool FTacticalMissionGenerator::ValidateBattle(
 			{
 				bLoadoutValid &= Rules.Items.Contains(Stack.ItemId) && Stack.Quantity > 0
 					&& !SeenCarriedItemIds.Contains(Stack.ItemId);
+				if (Stack.Quantity > 0)
+				{
+					TacticalLoadoutCount += Stack.Quantity;
+				}
 				SeenCarriedItemIds.Add(Stack.ItemId);
 			}
+			bLoadoutValid &= TacticalLoadoutCount <= 16;
 			if (Person == nullptr || !Operation->AgentIds.Contains(Unit.PersonnelId)
 				|| PlayerPersonnelIds.Contains(Unit.PersonnelId)
 				|| !bLoadoutValid

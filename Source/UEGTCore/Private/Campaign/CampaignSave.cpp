@@ -3246,7 +3246,7 @@ namespace CampaignSavePrivate
 
 				TSet<FGuid> SeenUnitIds;
 				TSet<int32> OccupiedCells;
-				TSet<FGuid> PlayerPersonnelIds;
+			TSet<FGuid> PlayerPersonnelIds;
 				for (const FTacticalUnitState& Unit : Battle.Units)
 				{
 					const bool bInBounds = Battle.IsWithinGrid(Unit.X, Unit.Y, Unit.Z);
@@ -3254,6 +3254,8 @@ namespace CampaignSavePrivate
 					const bool bKnownTeam = Unit.Team == ETacticalTeam::Player || Unit.Team == ETacticalTeam::Adversary;
 					const bool bKnownStance = Unit.Stance == ETacticalStance::Standing || Unit.Stance == ETacticalStance::Crouched;
 					TSet<FName> WeaponItemIds;
+					int64 TacticalLoadoutCount = static_cast<int64>(Unit.WeaponStates.Num())
+						+ static_cast<int64>(Unit.EjectedMagazines.Num());
 					bool bLoadoutValid = Unit.WeaponStates.Num() <= 16 && Unit.CarriedItems.Num() <= 16
 						&& Unit.EjectedMagazines.Num() <= 16;
 					for (const FTacticalWeaponState& WeaponState : Unit.WeaponStates)
@@ -3268,8 +3270,13 @@ namespace CampaignSavePrivate
 					{
 						bLoadoutValid &= FContentPackageResolver::IsValidPackageId(Stack.ItemId)
 							&& !CarriedItemIds.Contains(Stack.ItemId) && Stack.Quantity > 0;
+						if (Stack.Quantity > 0)
+						{
+							TacticalLoadoutCount += Stack.Quantity;
+						}
 						CarriedItemIds.Add(Stack.ItemId);
 					}
+					bLoadoutValid &= TacticalLoadoutCount <= 16;
 					for (const FTacticalMagazineState& Magazine : Unit.EjectedMagazines)
 					{
 						bLoadoutValid &= FContentPackageResolver::IsValidPackageId(Magazine.WeaponItemId)

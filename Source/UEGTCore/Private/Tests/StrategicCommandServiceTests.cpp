@@ -13910,6 +13910,23 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 				}));
 		}
 
+		FTacticalBattleState InvalidPlayerLoadout = FirstBattle;
+		FTacticalUnitState* InvalidLoadoutUnit = InvalidPlayerLoadout.Units.FindByPredicate(
+			[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+		if (InvalidLoadoutUnit != nullptr)
+		{
+			InvalidLoadoutUnit->CarriedItems.Add({ TEXT("item.service-rifle"), 17 });
+			TArray<FTacticalGenerationDiagnostic> InvalidLoadoutDiagnostics;
+			TestFalse(TEXT("Tactical carried quantities cannot exceed the personnel loadout capacity"),
+				FTacticalMissionGenerator::ValidateBattle(
+					InvalidPlayerLoadout, First, Rules, InvalidLoadoutDiagnostics));
+			TestTrue(TEXT("Tactical loadout overflow has a stable player-unit diagnostic"), InvalidLoadoutDiagnostics.ContainsByPredicate(
+				[](const FTacticalGenerationDiagnostic& Diagnostic)
+				{
+					return Diagnostic.Code == FName(TEXT("invalid_tactical_player_unit"));
+				}));
+		}
+
 		FResolvedRuleSet RulesWithAlternateAdversary = Rules;
 		FTacticalUnitRule AlternateAdversary = Rules.TacticalUnits.FindChecked(
 			FirstBattle.Units.FindByPredicate(
@@ -14060,6 +14077,21 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("Save validation rejects tactical player identity drift"), InvalidPlayerIdentityValidation.bSucceeded);
 		TestTrue(TEXT("Tactical player identity drift has a stable diagnostic"),
 			InvalidPlayerIdentityValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
+	}
+	FCampaignSaveEnvelope InvalidLoadoutEnvelope = BattleWrite.Envelope;
+	FTacticalUnitState* InvalidSavedLoadout = InvalidLoadoutEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
+		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+	if (InvalidSavedLoadout != nullptr)
+	{
+		InvalidSavedLoadout->CarriedItems.Add({ TEXT("item.service-rifle"), 17 });
+		InvalidLoadoutEnvelope.Header.SaveChecksum =
+			FCampaignSaveCodec::ComputeEnvelopeChecksum(InvalidLoadoutEnvelope);
+		const FCampaignSaveValidationResult InvalidLoadoutValidation = FCampaignSaveCodec::Validate(
+			InvalidLoadoutEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects tactical carried quantities beyond loadout capacity"),
+			InvalidLoadoutValidation.bSucceeded);
+		TestTrue(TEXT("Saved tactical loadout overflow has a stable unit diagnostic"),
+			InvalidLoadoutValidation.HasDiagnostic(TEXT("invalid_tactical_unit")));
 	}
 	FCampaignSaveEnvelope InvalidWeatherEnvelope = BattleWrite.Envelope;
 	InvalidWeatherEnvelope.State.TacticalBattles[0].WindDirection = ETacticalWindDirection::Calm;
