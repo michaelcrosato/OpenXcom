@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, craft-state safeguards, and personnel-integrity safeguards expose one thousand five hundred eighty-seven localized keys"),
-		Loaded.Catalog.Entries.Num(), 1587);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, craft-state safeguards, personnel-integrity safeguards, and control safeguards expose one thousand five hundred ninety-seven localized keys"),
+		Loaded.Catalog.Entries.Num(), 1597);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1587);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1597);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1573,6 +1573,46 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("personnel_squad_bond_overflow"), TEXT("Raw squad-bond-overflow diagnostic"), TEXT("ja-JP")),
 		FString(TEXT("生存している人員ペアに共有勝利をこれ以上加えられません。")));
+	TestEqual(TEXT("Exact French research-project diagnostics preserve saved state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_research_project"), TEXT("Raw research-project-state diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Le projet de recherche possède un état sauvegardé invalide.")));
+	TestEqual(TEXT("Exact German simulation-config diagnostics preserve configuration identity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_simulation_config"), TEXT("Raw simulation-config diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Simulationseinstellungen der Kampagne enthalten einen ungültigen Wert.")));
+	TestEqual(TEXT("Exact Spanish staff-assignment diagnostics preserve bounded inputs"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_staff_assignment"), TEXT("Raw staff-assignment diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La asignación de personal contiene un valor no válido.")));
+	TestEqual(TEXT("Exact Japanese time-advance diagnostics preserve the usable-clock gate"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_time_advance"), TEXT("Raw time-advance diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("時間コマンドは使用可能なタイムスタンプから正の速度を要求する必要があります。")));
+	TestEqual(TEXT("Exact French time-advance-failed diagnostics preserve slice execution"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("time_advance_failed"), TEXT("Raw time-advance-failed diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("L'horloge stratégique n'a pas pu exécuter une tranche de simulation.")));
+	TestEqual(TEXT("Exact German training-focus diagnostics preserve supported choices"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_training_focus"), TEXT("Raw training-focus diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Der ausgewählte Ausbildungsschwerpunkt des Personals wird nicht unterstützt.")));
+	TestEqual(TEXT("Exact Spanish memorial-record diagnostics preserve saved data"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_memorial_record"), TEXT("Raw memorial-record diagnostic"), TEXT("es-ES")),
+		FString(TEXT("El memorial contiene datos guardados no válidos.")));
+	TestEqual(TEXT("Exact Japanese recruitment-order diagnostics preserve saved transit state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_recruitment_order"), TEXT("Raw recruitment-order diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("採用命令の保存された識別情報、役割、基地、または移動時間が無効です。")));
+	TestEqual(TEXT("Exact French recruitment-order-id diagnostics preserve uniqueness"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_recruitment_order_id"), TEXT("Raw recruitment-order-id diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("L'identifiant de l'ordre de recrutement doit être valide et unique.")));
+	TestEqual(TEXT("Exact German sortie-fuel diagnostics preserve minimum and current limits"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_sortie_fuel"), TEXT("Raw sortie-fuel diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Treibstoffreservierung für den Einsatz muss die Mindest- und aktuellen Treibstoffgrenzen einhalten.")));
 	TestEqual(TEXT("Exact French economy diagnostics preserve the numeric boundary"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("economy_overflow"), TEXT("Raw economy-overflow diagnostic"), TEXT("fr-FR")),

@@ -5440,6 +5440,56 @@
       "translations": { "en": "The surviving personnel pair cannot accept another shared victory.", "fr": "Le duo de membres du personnel survivants ne peut pas recevoir une victoire partagée supplémentaire.", "de": "Das überlebende Personalpaar kann keinen weiteren gemeinsamen Sieg aufnehmen.", "es": "La pareja de personal superviviente no puede aceptar otra victoria compartida.", "ja": "生存している人員ペアに共有勝利をこれ以上加えられません。" }
     },
     {
+      "key": "diagnostic.invalid-research-project",
+      "source": "The research project has invalid saved state.",
+      "translations": { "en": "The research project has invalid saved state.", "fr": "Le projet de recherche possède un état sauvegardé invalide.", "de": "Das Forschungsprojekt weist einen ungültigen gespeicherten Zustand auf.", "es": "El proyecto de investigación tiene un estado guardado no válido.", "ja": "研究プロジェクトの保存状態が無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-simulation-config",
+      "source": "Campaign simulation settings contain an invalid value.",
+      "translations": { "en": "Campaign simulation settings contain an invalid value.", "fr": "Les paramètres de simulation de campagne contiennent une valeur invalide.", "de": "Die Simulationseinstellungen der Kampagne enthalten einen ungültigen Wert.", "es": "La configuración de simulación de campaña contiene un valor no válido.", "ja": "キャンペーンのシミュレーション設定に無効な値があります。" }
+    },
+    {
+      "key": "diagnostic.invalid-staff-assignment",
+      "source": "The staff assignment contains an invalid value.",
+      "translations": { "en": "The staff assignment contains an invalid value.", "fr": "L'affectation du personnel contient une valeur invalide.", "de": "Die Personalzuweisung enthält einen ungültigen Wert.", "es": "La asignación de personal contiene un valor no válido.", "ja": "スタッフ配属に無効な値があります。" }
+    },
+    {
+      "key": "diagnostic.invalid-time-advance",
+      "source": "The time command must request a positive rate from a usable timestamp.",
+      "translations": { "en": "The time command must request a positive rate from a usable timestamp.", "fr": "La commande temporelle doit demander une cadence positive depuis un horodatage utilisable.", "de": "Der Zeitbefehl muss eine positive Rate ab einem nutzbaren Zeitstempel anfordern.", "es": "El comando de tiempo debe solicitar una cadencia positiva desde una marca de tiempo válida.", "ja": "時間コマンドは使用可能なタイムスタンプから正の速度を要求する必要があります。" }
+    },
+    {
+      "key": "diagnostic.time-advance-failed",
+      "source": "The strategic clock could not execute a simulation slice.",
+      "translations": { "en": "The strategic clock could not execute a simulation slice.", "fr": "L'horloge stratégique n'a pas pu exécuter une tranche de simulation.", "de": "Die strategische Uhr konnte keinen Simulationsabschnitt ausführen.", "es": "El reloj estratégico no pudo ejecutar un intervalo de simulación.", "ja": "戦略時計でシミュレーション区間を実行できませんでした。" }
+    },
+    {
+      "key": "diagnostic.invalid-training-focus",
+      "source": "The selected personnel training focus is unsupported.",
+      "translations": { "en": "The selected personnel training focus is unsupported.", "fr": "L'orientation de formation du personnel sélectionnée n'est pas prise en charge.", "de": "Der ausgewählte Ausbildungsschwerpunkt des Personals wird nicht unterstützt.", "es": "El enfoque de entrenamiento del personal seleccionado no está admitido.", "ja": "選択した人員訓練の方針はサポートされていません。" }
+    },
+    {
+      "key": "diagnostic.invalid-memorial-record",
+      "source": "The memorial record has invalid saved data.",
+      "translations": { "en": "The memorial record has invalid saved data.", "fr": "Le mémorial contient des données sauvegardées invalides.", "de": "Das Gedenkarchiv enthält ungültige gespeicherte Daten.", "es": "El memorial contiene datos guardados no válidos.", "ja": "慰霊記録の保存データが無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-recruitment-order",
+      "source": "The recruitment order has invalid saved identity, role, base, or transit time.",
+      "translations": { "en": "The recruitment order has invalid saved identity, role, base, or transit time.", "fr": "L'ordre de recrutement possède une identité, un rôle, une base ou un temps de transit sauvegardés invalides.", "de": "Der Rekrutierungsauftrag weist eine ungültige gespeicherte Identität, Rolle, Basis oder Transitzeit auf.", "es": "La orden de reclutamiento tiene una identidad, rol, base o tiempo de tránsito guardados no válidos.", "ja": "採用命令の保存された識別情報、役割、基地、または移動時間が無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-recruitment-order-id",
+      "source": "Recruitment order ID must be valid and unique.",
+      "translations": { "en": "Recruitment order ID must be valid and unique.", "fr": "L'identifiant de l'ordre de recrutement doit être valide et unique.", "de": "Die ID des Rekrutierungsauftrags muss gültig und eindeutig sein.", "es": "El identificador de la orden de reclutamiento debe ser válido y único.", "ja": "採用命令IDは有効かつ一意でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-sortie-fuel",
+      "source": "The sortie fuel reservation must meet the minimum and current-fuel limits.",
+      "translations": { "en": "The sortie fuel reservation must meet the minimum and current-fuel limits.", "fr": "La réserve de carburant de sortie doit respecter les limites minimales et de carburant actuel.", "de": "Die Treibstoffreservierung für den Einsatz muss die Mindest- und aktuellen Treibstoffgrenzen einhalten.", "es": "La reserva de combustible de la salida debe respetar los límites mínimos y de combustible actual.", "ja": "出撃の燃料予約は、最低量と現在の燃料上限を満たす必要があります。" }
+    },
+    {
       "key": "diagnostic.storage-capacity-exceeded",
       "source": "Free storage capacity before completing this order.",
       "translations": { "en": "Free storage capacity before completing this order.", "fr": "Libérez de la capacité de stockage avant de terminer cette commande.", "de": "Schaffen Sie Lagerkapazität, bevor Sie diesen Auftrag abschließen.", "es": "Libera capacidad de almacenamiento antes de completar esta orden.", "ja": "この命令を完了する前に保管容量を空けてください。" }
