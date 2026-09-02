@@ -33,7 +33,7 @@ void FDeterministicRandomStream::Initialize(const int64 Seed)
 
 bool FDeterministicRandomStream::IsValid() const
 {
-	return State != 0 && DrawCount >= 0;
+	return State != 0 && DrawCount >= 0 && DrawCount < MAX_int64;
 }
 
 uint64 FDeterministicRandomStream::GetStateForSave() const
@@ -46,7 +46,7 @@ bool FDeterministicRandomStream::RestoreFromSave(
 	const int64 SavedDrawCount,
 	const uint64 SavedState)
 {
-	if (SavedDrawCount < 0 || SavedState == 0)
+	if (SavedDrawCount < 0 || SavedDrawCount >= MAX_int64 || SavedState == 0)
 	{
 		return false;
 	}

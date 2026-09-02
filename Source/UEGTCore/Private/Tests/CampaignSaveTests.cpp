@@ -1264,6 +1264,10 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	const FCampaignSaveValidationResult ExhaustedMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("Exhausted adversary mission serial fails validation"), ExhaustedMissionSerialValidation.bSucceeded);
 	TestTrue(TEXT("Exhausted adversary mission serial is diagnosed"), ExhaustedMissionSerialValidation.HasDiagnostic(TEXT("invalid_adversary_state")));
+	Invalid.State.SimulationRandom.DrawCount = MAX_int64;
+	const FCampaignSaveValidationResult ExhaustedRandomValidation = FCampaignSaveCodec::Validate(Invalid);
+	TestFalse(TEXT("Exhausted random draw count fails validation"), ExhaustedRandomValidation.bSucceeded);
+	TestTrue(TEXT("Exhausted random draw count is diagnosed"), ExhaustedRandomValidation.HasDiagnostic(TEXT("invalid_random_state")));
 
 	const FCampaignSaveReadResult Malformed = FCampaignSaveCodec::Deserialize(TEXT("{broken"));
 	TestFalse(TEXT("Malformed JSON is rejected"), Malformed.bSucceeded);

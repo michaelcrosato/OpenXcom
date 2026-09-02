@@ -93,6 +93,28 @@ bool FDeterministicRandomStateTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FDeterministicRandomBoundaryTest,
+	"UEGT.Core.Determinism.Boundaries",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FDeterministicRandomBoundaryTest::RunTest(const FString& Parameters)
+{
+	FDeterministicRandomStream Stream(7);
+	const uint64 ValidState = Stream.GetStateForSave();
+	Stream.DrawCount = MAX_int64;
+	TestFalse(TEXT("A stream at the terminal draw count is invalid"), Stream.IsValid());
+
+	FDeterministicRandomStream Restored;
+	TestFalse(TEXT("A save at the terminal draw count cannot be restored"),
+		Restored.RestoreFromSave(7, MAX_int64, ValidState));
+	TestTrue(TEXT("A save with one draw remaining can be restored"),
+		Restored.RestoreFromSave(7, MAX_int64 - 1, ValidState));
+	TestTrue(TEXT("A restored stream with one draw remaining is valid"), Restored.IsValid());
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FDeterministicRandomProbabilityTest,
 	"UEGT.Core.Determinism.Probability",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
