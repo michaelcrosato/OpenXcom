@@ -351,6 +351,24 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Transport cargo capacity is available to recovery UI"), Snapshot.CargoCapacity, 20);
 	TestEqual(TEXT("Control progress is exposed"), Snapshot.Objectives[0].PlayerInteractions, 1);
 
+	FCampaignState InvalidPositionCampaign = Fixture.Campaign;
+	FTacticalUnitState* InvalidPositionPlayer = InvalidPositionCampaign.TacticalBattles[0].Units.FindByPredicate(
+		[&Fixture](const FTacticalUnitState& Unit) { return Unit.UnitId == Fixture.PlayerUnitId; });
+	TestNotNull(TEXT("HUD boundary fixture has a selected player"), InvalidPositionPlayer);
+	if (InvalidPositionPlayer != nullptr)
+	{
+		InvalidPositionPlayer->X = MIN_int32;
+		const FTacticalHudSnapshot InvalidPositionSnapshot = FTacticalPresentationService::BuildHudSnapshot(
+			InvalidPositionCampaign.TacticalBattles[0], InvalidPositionCampaign, Fixture.Rules, Query);
+		const FTacticalHudActionAvailability* InvalidPositionMove = InvalidPositionSnapshot.FindAction(
+			ETacticalHudActionType::Move);
+		TestTrue(TEXT("HUD remains renderable when a selected player is outside the battlefield"),
+			InvalidPositionSnapshot.bSucceeded);
+		TestTrue(TEXT("HUD disables actions for an out-of-grid selected player"),
+			InvalidPositionMove != nullptr && !InvalidPositionMove->bAvailable
+			&& InvalidPositionMove->UnavailableReasonCode == FName(TEXT("invalid_tactical_unit")));
+	}
+
 	FCampaignState MentorshipCampaign = Fixture.Campaign;
 	MentorshipCampaign.Personnel[0].Missions = 20;
 	MentorshipCampaign.Personnel[0].Rank = 4;

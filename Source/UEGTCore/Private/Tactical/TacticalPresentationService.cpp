@@ -58,6 +58,23 @@ namespace TacticalPresentationPrivate
 			[&OperationId](const FTacticalOperationState& Operation) { return Operation.OperationId == OperationId; });
 	}
 
+	int32 ManhattanDistance(
+		const int32 FromX,
+		const int32 FromY,
+		const int32 FromZ,
+		const int32 ToX,
+		const int32 ToY,
+		const int32 ToZ)
+	{
+		const int64 DeltaX = static_cast<int64>(FromX) - ToX;
+		const int64 DeltaY = static_cast<int64>(FromY) - ToY;
+		const int64 DeltaZ = static_cast<int64>(FromZ) - ToZ;
+		const int64 AbsX = DeltaX < 0 ? -DeltaX : DeltaX;
+		const int64 AbsY = DeltaY < 0 ? -DeltaY : DeltaY;
+		const int64 AbsZ = DeltaZ < 0 ? -DeltaZ : DeltaZ;
+		return static_cast<int32>(FMath::Min<int64>(MAX_int32, AbsX + AbsY + AbsZ));
+	}
+
 	int32 FindItemQuantity(const TArray<FInventoryStack>& Inventory, const FName ItemId)
 	{
 		const FInventoryStack* Stack = Inventory.FindByPredicate(
@@ -246,6 +263,11 @@ namespace TacticalPresentationPrivate
 		if (Unit->CurrentHealth <= 0 || Unit->bExtracted)
 		{
 			SetUnavailable(Action, TEXT("invalid_tactical_unit"), TEXT("The selected unit is incapacitated or extracted."));
+			return false;
+		}
+		if (!Battle.IsWithinGrid(Unit->X, Unit->Y, Unit->Z))
+		{
+			SetUnavailable(Action, TEXT("invalid_tactical_unit"), TEXT("The selected unit is outside the battlefield."));
 			return false;
 		}
 		if (Battle.Phase == ETacticalBattlePhase::Deployment)
@@ -627,6 +649,8 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 			SelectedUnit = &Unit;
 		}
 	}
+	const bool bSelectedUnitOnGrid = SelectedUnit != nullptr
+		&& Battle.IsWithinGrid(SelectedUnit->X, SelectedUnit->Y, SelectedUnit->Z);
 	FGuid PreviousLastKnownUnitId;
 	bool bHasPreviousLastKnownUnitId = false;
 	for (const FTacticalUnitMemoryState& Memory : Battle.PlayerLastKnownAdversaries)
@@ -781,7 +805,7 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 			Query.HoveredZ);
 	}
 	const FItemRule* SelectedDevice = Rules.Items.Find(Snapshot.EffectiveDeviceItemId);
-	if (SelectedUnit != nullptr && Snapshot.Hover.bCellVisible
+	if (SelectedUnit != nullptr && bSelectedUnitOnGrid && Snapshot.Hover.bCellVisible
 		&& SelectedDevice != nullptr && SelectedDevice->HasTacticalThrowArc())
 	{
 		Snapshot.Hover.bHasDeviceTrajectory = true;
@@ -1031,9 +1055,9 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 			const FTacticalTerrainRule* Terrain = Rules.TacticalTerrains.Find(Cell.TerrainRuleId);
 			Door.bRequestedDoorOpen = !Cell.bDoorOpen;
 			Door.ActionPointCost = Terrain != nullptr ? Terrain->DoorActionPointCost : 0;
-			const int32 Distance = FMath::Abs(Query.HoveredX - SelectedUnit->X)
-				+ FMath::Abs(Query.HoveredY - SelectedUnit->Y)
-				+ FMath::Abs(Query.HoveredZ - SelectedUnit->Z);
+			const int32 Distance = ManhattanDistance(
+				Query.HoveredX, Query.HoveredY, Query.HoveredZ,
+				SelectedUnit->X, SelectedUnit->Y, SelectedUnit->Z);
 			const bool bOccupied = Battle.Units.ContainsByPredicate(
 				[&Query](const FTacticalUnitState& Unit)
 				{
@@ -1129,13 +1153,13 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 				return Objective.ObjectiveId == Query.HoveredObjectiveId;
 			});
 	}
-	else if (SelectedUnit != nullptr)
+	else if (bSelectedUnitOnGrid)
 	{
 		for (const FTacticalObjectiveState& Objective : Battle.Objectives)
 		{
-			const int32 Distance = FMath::Abs(Objective.X - SelectedUnit->X)
-				+ FMath::Abs(Objective.Y - SelectedUnit->Y)
-				+ FMath::Abs(Objective.Z - SelectedUnit->Z);
+			const int32 Distance = ManhattanDistance(
+				Objective.X, Objective.Y, Objective.Z,
+				SelectedUnit->X, SelectedUnit->Y, SelectedUnit->Z);
 			if (Objective.Status == ETacticalObjectiveStatus::Active && Distance <= 1
 				&& (SelectedObjective == nullptr || Objective.ObjectiveId.LexicalLess(SelectedObjective->ObjectiveId)))
 			{
@@ -1160,9 +1184,9 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 		}
 		else
 		{
-			const int32 Distance = FMath::Abs(SelectedObjective->X - SelectedUnit->X)
-				+ FMath::Abs(SelectedObjective->Y - SelectedUnit->Y)
-				+ FMath::Abs(SelectedObjective->Z - SelectedUnit->Z);
+			const int32 Distance = ManhattanDistance(
+				SelectedObjective->X, SelectedObjective->Y, SelectedObjective->Z,
+				SelectedUnit->X, SelectedUnit->Y, SelectedUnit->Z);
 			if (SelectedObjective->Status != ETacticalObjectiveStatus::Active)
 			{
 				SetUnavailable(ObjectiveAction, TEXT("tactical_objective_inactive"), TEXT("The selected objective is no longer active."));
