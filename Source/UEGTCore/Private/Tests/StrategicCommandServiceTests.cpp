@@ -13040,6 +13040,38 @@ bool FStrategicTacticalBaseDefenseTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("Migrated completed base-defense save validates in the current format"),
 				FCampaignSaveCodec::Validate(MigratedCompletedPhase.Envelope, MakePackages()).bSucceeded);
 		}
+
+		FCampaignSaveEnvelope LegacyResolvedActive = CompletedWrite.Envelope;
+		LegacyResolvedActive.Header.FormatVersion = FCampaignSaveCodec::CurrentFormatVersion - 1;
+		LegacyResolvedActive.State.TacticalBattles[0].Objectives[0].Status = ETacticalObjectiveStatus::Active;
+		LegacyResolvedActive.State.TacticalBattles[0].Objectives[0].CompletedInteractions = 0;
+		LegacyResolvedActive.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(LegacyResolvedActive);
+		const int32 RequiredInteractions = LegacyResolvedActive.State.TacticalBattles[0].Objectives[0].RequiredInteractions;
+		FString LegacyResolvedActiveJson = CompletedWrite.Json.Replace(
+			*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
+			*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion - 1));
+		LegacyResolvedActiveJson = LegacyResolvedActiveJson.Replace(
+			*FString::Printf(TEXT("\"completedInteractions\":%d"), RequiredInteractions),
+			TEXT("\"completedInteractions\":0"));
+		LegacyResolvedActiveJson = LegacyResolvedActiveJson.Replace(
+			TEXT("\"status\":\"completed\""), TEXT("\"status\":\"active\""));
+		LegacyResolvedActiveJson = LegacyResolvedActiveJson.Replace(
+			*CompletedWrite.Envelope.Header.SaveChecksum,
+			*LegacyResolvedActive.Header.SaveChecksum);
+		const FCampaignSaveReadResult MigratedResolvedActive = FCampaignSaveCodec::Deserialize(
+			LegacyResolvedActiveJson, MakePackages());
+		TestTrue(TEXT("Legacy resolved/active base-defense phase migrates successfully"),
+			MigratedResolvedActive.bSucceeded && MigratedResolvedActive.bMigrated);
+		if (MigratedResolvedActive.Envelope.State.TacticalBattles.Num() == 1)
+		{
+			const FTacticalBattleState& MigratedBattle = MigratedResolvedActive.Envelope.State.TacticalBattles[0];
+			TestTrue(TEXT("Legacy resolved/active base-defense objective becomes failed"),
+				MigratedBattle.Phase == ETacticalBattlePhase::Resolved
+				&& MigratedBattle.Objectives.Num() == 1
+				&& MigratedBattle.Objectives[0].Status == ETacticalObjectiveStatus::Failed);
+			TestTrue(TEXT("Migrated resolved/active base-defense save validates in the current format"),
+				FCampaignSaveCodec::Validate(MigratedResolvedActive.Envelope, MakePackages()).bSucceeded);
+		}
 	}
 
 	const FDateTime SaveTime(2026, 8, 30, 18, 30, 0);

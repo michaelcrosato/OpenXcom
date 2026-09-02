@@ -451,7 +451,7 @@ namespace CampaignSavePrivate
 	{
 		for (FTacticalBattleState& Battle : State.TacticalBattles)
 		{
-			if (Battle.bRequiresExtraction || Battle.Phase == ETacticalBattlePhase::Resolved)
+			if (Battle.bRequiresExtraction)
 			{
 				continue;
 			}
@@ -460,7 +460,7 @@ namespace CampaignSavePrivate
 				{
 					return Objective.Status != ETacticalObjectiveStatus::Active;
 				});
-			if (bHasTerminalObjective)
+			if (bHasTerminalObjective || Battle.Phase == ETacticalBattlePhase::Resolved)
 			{
 				for (FTacticalObjectiveState& Objective : Battle.Objectives)
 				{
