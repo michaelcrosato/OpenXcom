@@ -2710,6 +2710,11 @@
       "translations": { "en": "{0} scientists • {1} • lab {2}", "fr": "{0} scientifiques • {1} • labo {2}", "de": "{0} Wissenschaftler • {1} • Labor {2}", "es": "{0} científicos • {1} • laboratorio {2}", "ja": "科学者 {0} 名 • {1} • ラボ {2}" }
     },
     {
+      "key": "strategic.research-rate-format",
+      "source": "+{0}% RESEARCH RATE",
+      "translations": { "en": "+{0}% RESEARCH RATE", "fr": "+{0}% VITESSE DE RECHERCHE", "de": "+{0}% FORSCHUNGSTEMPO", "es": "+{0}% RITMO DE INVESTIGACIÓN", "ja": "+{0}% 研究速度" }
+    },
+    {
       "key": "strategic.research-active-no-lab-format",
       "source": "{0} scientists • {1}",
       "translations": { "en": "{0} scientists • {1}", "fr": "{0} scientifiques • {1}", "de": "{0} Wissenschaftler • {1}", "es": "{0} científicos • {1}", "ja": "科学者 {0} 名 • {1}" }
@@ -4515,6 +4520,11 @@
       "translations": { "en": "ACTIVE CONSEQUENCE  •  +{0} {1}", "fr": "CONSÉQUENCE ACTIVE  •  +{0} {1}", "de": "AKTIVE FOLGE  •  +{0} {1}", "es": "CONSECUENCIA ACTIVA  •  +{0} {1}", "ja": "有効な効果  •  +{0} {1}" }
     },
     {
+      "key": "strategic.base-specialization-rate-operational-format",
+      "source": "ACTIVE CONSEQUENCE  •  +{0}% {1}",
+      "translations": { "en": "ACTIVE CONSEQUENCE  •  +{0}% {1}", "fr": "CONSÉQUENCE ACTIVE  •  +{0}% {1}", "de": "AKTIVE FOLGE  •  +{0}% {1}", "es": "CONSECUENCIA ACTIVA  •  +{0}% {1}", "ja": "有効な効果  •  +{0}% {1}" }
+    },
+    {
       "key": "strategic.base-specialization-name-integrated",
       "source": "INTEGRATED COMMAND",
       "translations": { "en": "INTEGRATED COMMAND", "fr": "COMMANDE INTÉGRÉE", "de": "INTEGRIERTE FÜHRUNG", "es": "MANDO INTEGRADO", "ja": "統合指揮" }
@@ -4578,6 +4588,11 @@
       "key": "strategic.base-specialization-metric-relay",
       "source": "RELAY CHANNEL",
       "translations": { "en": "RELAY CHANNEL", "fr": "CANAL RELAIS", "de": "RELAISKANAL", "es": "CANAL RELÉ", "ja": "中継回線" }
+    },
+    {
+      "key": "strategic.base-specialization-metric-research-rate",
+      "source": "RESEARCH RATE",
+      "translations": { "en": "RESEARCH RATE", "fr": "VITESSE DE RECHERCHE", "de": "FORSCHUNGSTEMPO", "es": "RITMO DE INVESTIGACIÓN", "ja": "研究速度" }
     },
     {
       "key": "strategic.facility-empty-cell-format",

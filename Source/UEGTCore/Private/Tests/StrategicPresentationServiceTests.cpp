@@ -282,11 +282,17 @@ bool FStrategicBaseSpecializationProjectionTest::RunTest(const FString& Paramete
 		&& Signal.Score == 70
 		&& Signal.BenefitMetricId == FName(TEXT("base.specialization.detection-strength"))
 		&& Signal.BenefitValue == 70
+		&& Signal.OperationalBenefitMetricId
+			== FName(TEXT("base.specialization.relay-channels"))
+		&& Signal.OperationalBenefitValue == 1
 		&& Research.bSpecialized
 		&& Research.SpecializationId == FName(TEXT("base.specialization.research-enclave"))
 		&& Research.Score == 60
 		&& Research.BenefitMetricId == FName(TEXT("base.specialization.scientist-capacity"))
 		&& Research.BenefitValue == 6
+		&& Research.OperationalBenefitMetricId
+			== FName(TEXT("base.specialization.research-rate"))
+		&& Research.OperationalBenefitValue == 20
 		&& Fabrication.bSpecialized
 		&& Fabrication.SpecializationId == FName(TEXT("base.specialization.fabrication-works"))
 		&& Fabrication.Score == 60
@@ -312,6 +318,40 @@ bool FStrategicBaseSpecializationProjectionTest::RunTest(const FString& Paramete
 			== FName(TEXT("base.specialization.integrated-command"))
 		&& DamagedSignal.Score == 35
 		&& DamagedSignal.SecondaryScore == 0);
+	FCampaignState ResearchCampaign;
+	FStrategicBaseState& ResearchBase = ResearchCampaign.Bases.AddDefaulted_GetRef();
+	ResearchBase.BaseId = FGuid(0x5a520001, 0x5a520002, 0x5a520003, 0x5a520004);
+	ResearchBase.Name = TEXT("Research Station");
+	FBaseFacilityState& ResearchFacility = ResearchBase.Facilities.AddDefaulted_GetRef();
+	ResearchFacility.InstanceId = FGuid(0x5a520011, 0x5a520012, 0x5a520013, 0x5a520014);
+	ResearchFacility.FacilityId = TEXT("facility.test-specialization-research");
+	FResearchRule ResearchRule;
+	ResearchRule.Identity.RuleId = TEXT("research.test-specialization-rate");
+	ResearchRule.DisplayName = TEXT("Specialization Rate Study");
+	ResearchRule.Effort = 2;
+	ResearchRule.RequiredFacilityIds.Add(ResearchFacility.FacilityId);
+	Rules.Research.Add(ResearchRule.Identity.RuleId, ResearchRule);
+	FResearchProjectState& ResearchProject = ResearchCampaign.ResearchProjects.AddDefaulted_GetRef();
+	ResearchProject.ResearchId = ResearchRule.Identity.RuleId;
+	ResearchProject.BaseId = ResearchBase.BaseId;
+	ResearchProject.AssignedScientists = 1;
+	const FStrategicDashboardSnapshot ResearchSnapshot =
+		FStrategicPresentationService::BuildDashboard(ResearchCampaign, Rules, {});
+	const FStrategicProjectView* ResearchProjectView = ResearchSnapshot.Projects.FindByPredicate(
+		[](const FStrategicProjectView& Project)
+		{
+			return Project.Type == EStrategicProjectType::Research;
+		});
+	TestTrue(TEXT("Research Enclave exposes its derived throughput in the read model and ETA"),
+		ResearchProjectView != nullptr
+		&& ResearchSnapshot.Bases.Num() == 1
+		&& ResearchSnapshot.Bases[0].Specialization.bSpecialized
+		&& ResearchSnapshot.Bases[0].Specialization.SpecializationId
+			== FName(TEXT("base.specialization.research-enclave"))
+		&& ResearchSnapshot.Bases[0].Specialization.OperationalBenefitValue == 20
+		&& ResearchProjectView->ResearchRatePercent == 120
+		&& !ResearchProjectView->bPaused
+		&& ResearchProjectView->RemainingSeconds == 6000);
 	return true;
 }
 

@@ -27,7 +27,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
 	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, and base specialization expose one thousand four hundred sixty-nine localized keys"),
-		Loaded.Catalog.Entries.Num(), 1469);
+		Loaded.Catalog.Entries.Num(), 1472);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -605,6 +605,16 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 			*Loaded.Catalog.Resolve(TEXT("strategic.base-specialization-operational-format"), TEXT("fallback"), TEXT("fr")),
 			{ TEXT("1"), TEXT("CANAL RELAIS") }),
 		FString(TEXT("CONSÉQUENCE ACTIVE  •  +1 CANAL RELAIS")));
+	TestEqual(TEXT("French Research Enclave consequence preserves its percentage rate"),
+		FString::Format(
+			*Loaded.Catalog.Resolve(TEXT("strategic.base-specialization-rate-operational-format"), TEXT("fallback"), TEXT("fr")),
+			{ TEXT("20"), TEXT("VITESSE DE RECHERCHE") }),
+		FString(TEXT("CONSÉQUENCE ACTIVE  •  +20% VITESSE DE RECHERCHE")));
+	TestEqual(TEXT("French research project detail preserves the derived rate"),
+		FString::Format(
+			*Loaded.Catalog.Resolve(TEXT("strategic.research-rate-format"), TEXT("fallback"), TEXT("fr")),
+			{ TEXT("20") }),
+		FString(TEXT("+20% VITESSE DE RECHERCHE")));
 	TestEqual(TEXT("French Signal Watch summary preserves specialization and staffed channel components"),
 		FString::Format(
 			*Loaded.Catalog.Resolve(TEXT("strategic.signal-watch-specialization-summary-format"), TEXT("fallback"), TEXT("fr")),
@@ -1119,7 +1129,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1469);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1472);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),

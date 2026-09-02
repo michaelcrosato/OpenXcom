@@ -78,7 +78,9 @@ namespace StrategicCommandServicePrivate
 				TEXT("base.specialization.research-enclave"),
 				TEXT("base.specialization.scientist-capacity"),
 				NormalizeBaseSpecializationCapacity(FacilityScientistCapacity, 10),
-				FMath::Max<int64>(0, FacilityScientistCapacity)
+				FMath::Max<int64>(0, FacilityScientistCapacity),
+				TEXT("base.specialization.research-rate"),
+				20
 			},
 			{
 				TEXT("base.specialization.fabrication-works"),
@@ -6776,6 +6778,23 @@ FStrategicBaseSpecializationView FStrategicCommandService::EvaluateBaseSpecializ
 	return EvaluateBaseInfrastructure(State, Rules, Base.BaseId).Specialization;
 }
 
+int32 FStrategicCommandService::EvaluateBaseResearchRatePercent(
+	const FStrategicBaseState& Base,
+	const FResolvedRuleSet& Rules)
+{
+	const FStrategicBaseSpecializationView Specialization =
+		EvaluateBaseSpecialization(Base, Rules);
+	if (!Specialization.bSpecialized
+		|| Specialization.OperationalBenefitMetricId
+			!= FName(TEXT("base.specialization.research-rate"))
+		|| Specialization.OperationalBenefitValue <= 0)
+	{
+		return 100;
+	}
+	return static_cast<int32>(FMath::Clamp<int64>(
+		100 + Specialization.OperationalBenefitValue, 100, 300));
+}
+
 FBaseStorageEvaluation FStrategicCommandService::EvaluateBaseStorage(
 	const FCampaignState& State,
 	const FResolvedRuleSet& Rules,
@@ -10386,6 +10405,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	static_cast<void>(ValidatedMonthlyOutgoings);
+	constexpr int32 MaximumResearchRatePercent = 300;
 	for (const FResearchProjectState& Project : State.ResearchProjects)
 	{
 		const FResearchRule* Research = Rules.Research.Find(Project.ResearchId);
@@ -10399,8 +10419,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		const int32 EffectiveScientists = HasOperationalResearchFacilities(*ResearchBase, Rules, *Research)
 			? Project.AssignedScientists : 0;
 		int64 MaximumAdditionalWork = 0;
+		int64 ScaledMaximumAdditionalWork = 0;
 		if (!TryMultiplyNonNegative(EffectiveScientists, RequestedSeconds, MaximumAdditionalWork)
-			|| Project.AccumulatedWorkSeconds > MAX_int64 - MaximumAdditionalWork)
+			|| !TryMultiplyNonNegative(MaximumAdditionalWork, MaximumResearchRatePercent,
+				ScaledMaximumAdditionalWork)
+			|| (ScaledMaximumAdditionalWork / 100) > MAX_int64 - Project.AccumulatedWorkSeconds)
 		{
 			AddError(Result, TEXT("research_progress_overflow"), TEXT("Research progress would exceed the campaign numeric range."));
 			return Result;
@@ -10552,9 +10575,13 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 					continue;
 				}
 				int64 WorkThisSlice = 0;
+				int64 ScaledWorkThisSlice = 0;
 				int64 NewProgress = 0;
+				const int32 ResearchRatePercent =
+					FStrategicCommandService::EvaluateBaseResearchRatePercent(*ResearchBase, Rules);
 				if (!TryMultiplyNonNegative(Project.AssignedScientists, SliceSeconds, WorkThisSlice)
-					|| !TryAdd(Project.AccumulatedWorkSeconds, WorkThisSlice, NewProgress))
+					|| !TryMultiplyNonNegative(WorkThisSlice, ResearchRatePercent, ScaledWorkThisSlice)
+					|| !TryAdd(Project.AccumulatedWorkSeconds, ScaledWorkThisSlice / 100, NewProgress))
 				{
 					bSimulationFailed = true;
 					bStopRequested = true;

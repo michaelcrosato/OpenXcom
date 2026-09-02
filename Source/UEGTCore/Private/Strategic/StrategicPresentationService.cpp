@@ -2878,11 +2878,16 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			View.PauseReason = FString::Printf(TEXT("Requires operational facilities: %s."),
 				*FString::Join(View.MissingFacilityNames, TEXT(", ")));
 		}
+		View.ResearchRatePercent = !View.bPaused && ResearchBase != nullptr
+			? FStrategicCommandService::EvaluateBaseResearchRatePercent(*ResearchBase, Rules)
+			: 100;
 		const int64 Required = Rule != nullptr ? static_cast<int64>(Rule->Effort) * 3600LL : 0;
 		const int64 RemainingWork = FMath::Max<int64>(0, Required - Project.AccumulatedWorkSeconds);
 		View.Progress = Progress(Project.AccumulatedWorkSeconds, Required);
 		View.RemainingSeconds = !View.bPaused && Project.AssignedScientists > 0
-			? (RemainingWork + Project.AssignedScientists - 1) / Project.AssignedScientists
+			? (RemainingWork * 100
+				+ static_cast<int64>(Project.AssignedScientists) * View.ResearchRatePercent - 1)
+				/ (static_cast<int64>(Project.AssignedScientists) * View.ResearchRatePercent)
 			: 0;
 		View.AssignedStaff = Project.AssignedScientists;
 		const FString RequiredFacilityDetail = View.RequiredFacilityNames.IsEmpty()

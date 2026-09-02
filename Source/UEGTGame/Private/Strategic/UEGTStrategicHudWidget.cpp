@@ -321,6 +321,11 @@ namespace UEGTStrategicHudPrivate
 			return Localized(
 				TEXT("strategic.base-specialization-metric-relay"), TEXT("RELAY CHANNEL"));
 		}
+		if (BenefitMetricId == FName(TEXT("base.specialization.research-rate")))
+		{
+			return Localized(
+				TEXT("strategic.base-specialization-metric-research-rate"), TEXT("RESEARCH RATE"));
+		}
 		return BaseSpecializationMetric(BenefitMetricId);
 	}
 
@@ -347,7 +352,13 @@ namespace UEGTStrategicHudPrivate
 					TEXT("Unstaffed • lab {0}"),
 					{ RequiredFacilities });
 		}
-		const FString Duration = LocalizedDuration(Project.RemainingSeconds);
+		FString Duration = LocalizedDuration(Project.RemainingSeconds);
+		if (Project.ResearchRatePercent > 100)
+		{
+			Duration += TEXT(" • ") + LocalizedFormat(
+				TEXT("strategic.research-rate-format"), TEXT("+{0}% RESEARCH RATE"),
+				{ FString::FromInt(Project.ResearchRatePercent - 100) });
+		}
 		return RequiredFacilities.IsEmpty()
 			? LocalizedFormat(
 				TEXT("strategic.research-active-no-lab-format"),
@@ -2512,18 +2523,24 @@ void UUEGTStrategicHudWidget::AppendBaseSpecialization(
 			});
 	if (Base.Specialization.OperationalBenefitValue > 0)
 	{
-		Summary += TEXT("\n") + LocalizedFormat(
-			TEXT("strategic.base-specialization-operational-format"),
-			TEXT("ACTIVE CONSEQUENCE  •  +{0} {1}"),
-			{
-				LexToString(Base.Specialization.OperationalBenefitValue),
-				BaseSpecializationOperationalMetric(
-					Base.Specialization.OperationalBenefitMetricId)
-			});
+			const bool bPercentageBenefit = Base.Specialization.OperationalBenefitMetricId
+				== FName(TEXT("base.specialization.research-rate"));
+			Summary += TEXT("\n") + LocalizedFormat(
+				bPercentageBenefit
+					? TEXT("strategic.base-specialization-rate-operational-format")
+					: TEXT("strategic.base-specialization-operational-format"),
+				bPercentageBenefit
+					? TEXT("ACTIVE CONSEQUENCE  •  +{0}% {1}")
+					: TEXT("ACTIVE CONSEQUENCE  •  +{0} {1}"),
+				{
+					LexToString(Base.Specialization.OperationalBenefitValue),
+					BaseSpecializationOperationalMetric(
+						Base.Specialization.OperationalBenefitMetricId)
+				});
 	}
 	const FString Guidance = Localized(
 		TEXT("strategic.base-specialization-guidance"),
-		TEXT("Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel; other profiles add no separate effect."));
+		TEXT("Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel, while a Research Enclave profile increases research throughput by 20%; other profiles add no separate effect."));
 	RenderedDynamicLabels.Add(Summary);
 	LeftBox->AddSlot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
 	[

@@ -925,6 +925,80 @@ bool FStrategicResearchWorkflowTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicResearchSpecializationBenefitTest,
+	"UEGT.Core.StrategicCommands.ResearchSpecializationBenefit",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicResearchSpecializationBenefitTest::RunTest(const FString& Parameters)
+{
+	FResolvedRuleSet Rules;
+	FFacilityRule ResearchLab;
+	ResearchLab.Identity.RuleId = TEXT("facility.test-research-enclave");
+	ResearchLab.DisplayName = TEXT("Research Enclave Laboratory");
+	ResearchLab.ScientistCapacity = 6;
+	ResearchLab.MaxIntegrity = 100;
+	Rules.Facilities.Add(ResearchLab.Identity.RuleId, ResearchLab);
+	FResearchRule Research;
+	Research.Identity.RuleId = TEXT("research.test-enclave-rate");
+	Research.DisplayName = TEXT("Enclave Rate Study");
+	Research.Effort = 2;
+	Research.RequiredFacilityIds.Add(ResearchLab.Identity.RuleId);
+	Rules.Research.Add(Research.Identity.RuleId, Research);
+
+	FCampaignState State;
+	State.Funds = 1000;
+	FStrategicBaseState& Base = State.Bases.AddDefaulted_GetRef();
+	Base.BaseId = FGuid(0x5a530001, 0x5a530002, 0x5a530003, 0x5a530004);
+	Base.Name = TEXT("Enclave Station");
+	FBaseFacilityState& InstalledLab = Base.Facilities.AddDefaulted_GetRef();
+	InstalledLab.InstanceId = FGuid(0x5a530011, 0x5a530012, 0x5a530013, 0x5a530014);
+	InstalledLab.FacilityId = ResearchLab.Identity.RuleId;
+
+	const uint64 InitialRandomState = State.SimulationRandom.GetStateForSave();
+	const FStrategicBaseSpecializationView Specialization =
+		FStrategicCommandService::EvaluateBaseSpecialization(Base, Rules);
+	TestTrue(TEXT("Research Enclave specialization exposes its 20 percent throughput consequence"),
+		Specialization.bSpecialized
+		&& Specialization.SpecializationId
+			== FName(TEXT("base.specialization.research-enclave"))
+		&& Specialization.OperationalBenefitMetricId
+			== FName(TEXT("base.specialization.research-rate"))
+		&& Specialization.OperationalBenefitValue == 20
+		&& FStrategicCommandService::EvaluateBaseResearchRatePercent(Base, Rules) == 120);
+
+	FStartResearchCommand Start;
+	Start.ExpectedSequence = State.CommandSequence;
+	Start.BaseId = Base.BaseId;
+	Start.ResearchId = Research.Identity.RuleId;
+	const FStrategicCommandResult Started =
+		FStrategicCommandService::Execute(State, Rules, Start);
+	TestTrue(TEXT("Specialized research starts on the operational enclave facility"),
+		Started.bAccepted && State.ResearchProjects.Num() == 1);
+
+	FSetResearchStaffCommand Staff;
+	Staff.ExpectedSequence = State.CommandSequence;
+	Staff.ResearchId = Research.Identity.RuleId;
+	Staff.AssignedScientists = 1;
+	const FStrategicCommandResult Staffed =
+		FStrategicCommandService::Execute(State, Rules, Staff);
+	TestTrue(TEXT("Specialized research accepts one scientist"), Staffed.bAccepted);
+
+	FAdvanceStrategicTimeCommand Advance;
+	Advance.ExpectedSequence = State.CommandSequence;
+	Advance.Rate = EStrategicTimeRate::OneHour;
+	const FStrategicCommandResult Advanced =
+		FStrategicCommandService::Execute(State, Rules, Advance);
+	TestTrue(TEXT("Research throughput advances by exactly 120 percent over one hour"),
+		Advanced.bAccepted
+		&& Advanced.ExecutedSlices == 720
+		&& State.StrategicTime.Utc == FDateTime(2035, 1, 1, 13, 0, 0)
+		&& State.ResearchProjects.Num() == 1
+		&& State.ResearchProjects[0].AccumulatedWorkSeconds == 4320
+		&& State.SimulationRandom.GetStateForSave() == InitialRandomState);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicMonthlyFinanceTest,
 	"UEGT.Core.StrategicCommands.MonthlyFinances",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
