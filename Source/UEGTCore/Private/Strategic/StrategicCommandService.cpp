@@ -2152,6 +2152,17 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool TrySubtract(const int64 Left, const int64 Right, int64& OutValue)
+	{
+		if ((Right > 0 && Left < MIN_int64 + Right)
+			|| (Right < 0 && Left > MAX_int64 + Right))
+		{
+			return false;
+		}
+		OutValue = Left - Right;
+		return true;
+	}
+
 	bool TryMultiplyNonNegative(const int64 Left, const int64 Right, int64& OutValue)
 	{
 		if (Left < 0 || Right < 0 || (Right != 0 && Left > MAX_int64 / Right))
@@ -6109,8 +6120,14 @@ FRegionalCharterEvaluation FStrategicCommandService::EvaluateRegionalCharter(
 			TEXT("The Resilience Charter funding projection could not be represented safely."));
 		return Reject();
 	}
-	Evaluation.MonthlyFundingDelta =
-		Evaluation.ProjectedMonthlyFunding - Mandate->CurrentMonthlyFunding;
+	if (!TrySubtract(
+			Evaluation.ProjectedMonthlyFunding, Mandate->CurrentMonthlyFunding,
+			Evaluation.MonthlyFundingDelta))
+	{
+		AddError(Validation, TEXT("financial_overflow"),
+			TEXT("The Resilience Charter funding delta exceeds the campaign numeric range."));
+		return Reject();
+	}
 	Evaluation.bAllowed = true;
 	return Evaluation;
 }
@@ -6223,8 +6240,14 @@ FHorizonCompactEvaluation FStrategicCommandService::EvaluateHorizonCompact(
 		}
 		Evaluation.ProjectedMonthlyFunding = UpdatedProjection;
 	}
-	Evaluation.MonthlyFundingDelta =
-		Evaluation.ProjectedMonthlyFunding - Evaluation.CurrentMonthlyFunding;
+	if (!TrySubtract(
+			Evaluation.ProjectedMonthlyFunding, Evaluation.CurrentMonthlyFunding,
+			Evaluation.MonthlyFundingDelta))
+	{
+		AddError(Validation, TEXT("financial_overflow"),
+			TEXT("The Horizon Compact funding delta exceeds the campaign numeric range."));
+		return Reject();
+	}
 	Evaluation.bAllowed = true;
 	return Evaluation;
 }
@@ -6365,24 +6388,38 @@ FReciprocalAidEvaluation FStrategicCommandService::EvaluateReciprocalAid(
 	Evaluation.DonorProjectedPressure += Evaluation.PressureTransfer;
 	int64 ProjectedTargetFunding = 0;
 	int64 ProjectedDonorFunding = 0;
+	int64 TargetFundingDelta = 0;
+	int64 DonorFundingDelta = 0;
 	int64 FundingAfterTarget = 0;
 	if (!CalculateRegionalFundingContribution(ProjectedTarget, Config, true, ProjectedTargetFunding)
 		|| !CalculateRegionalFundingContribution(ProjectedDonor, Config, true, ProjectedDonorFunding)
+		|| !TrySubtract(
+			ProjectedTargetFunding, TargetMandate->CurrentMonthlyFunding,
+			TargetFundingDelta)
+		|| !TrySubtract(
+			ProjectedDonorFunding, DonorMandate->CurrentMonthlyFunding,
+			DonorFundingDelta)
 		|| !TryAdd(
 			State.MonthlyFunding,
-			ProjectedTargetFunding - TargetMandate->CurrentMonthlyFunding,
+			TargetFundingDelta,
 			FundingAfterTarget)
 		|| !TryAdd(
 			FundingAfterTarget,
-			ProjectedDonorFunding - DonorMandate->CurrentMonthlyFunding,
+			DonorFundingDelta,
 			Evaluation.ProjectedMonthlyFunding))
 	{
 		AddError(Validation, TEXT("financial_overflow"),
 			TEXT("The Reciprocal Aid funding projection exceeds the campaign numeric range."));
 		return Reject();
 	}
-	Evaluation.MonthlyFundingDelta =
-		Evaluation.ProjectedMonthlyFunding - Evaluation.CurrentMonthlyFunding;
+	if (!TrySubtract(
+			Evaluation.ProjectedMonthlyFunding, Evaluation.CurrentMonthlyFunding,
+			Evaluation.MonthlyFundingDelta))
+	{
+		AddError(Validation, TEXT("financial_overflow"),
+			TEXT("The Reciprocal Aid funding delta exceeds the campaign numeric range."));
+		return Reject();
+	}
 	Evaluation.bAllowed = true;
 	return Evaluation;
 }
@@ -6451,19 +6488,28 @@ FHorizonCompactRestorationEvaluation FStrategicCommandService::EvaluateHorizonCo
 	FRegionalMandateState ProjectedMandate = *Mandate;
 	ProjectedMandate.bHorizonCompactMemberWithdrawn = false;
 	int64 ProjectedContribution = 0;
+	int64 FundingDelta = 0;
 	if (!CalculateRegionalFundingContribution(
 			ProjectedMandate, Config, true, ProjectedContribution)
+		|| !TrySubtract(
+			ProjectedContribution, Mandate->CurrentMonthlyFunding, FundingDelta)
 		|| !TryAdd(
 			State.MonthlyFunding,
-			ProjectedContribution - Mandate->CurrentMonthlyFunding,
+			FundingDelta,
 			Evaluation.ProjectedMonthlyFunding))
 	{
 		AddError(Validation, TEXT("financial_overflow"),
 			TEXT("Compact restoration funding exceeds the campaign numeric range."));
 		return Reject();
 	}
-	Evaluation.MonthlyFundingDelta =
-		Evaluation.ProjectedMonthlyFunding - Evaluation.CurrentMonthlyFunding;
+	if (!TrySubtract(
+			Evaluation.ProjectedMonthlyFunding, Evaluation.CurrentMonthlyFunding,
+			Evaluation.MonthlyFundingDelta))
+	{
+		AddError(Validation, TEXT("financial_overflow"),
+			TEXT("Compact restoration funding delta exceeds the campaign numeric range."));
+		return Reject();
+	}
 	Evaluation.bAllowed = true;
 	return Evaluation;
 }
@@ -6609,11 +6655,15 @@ FHorizonCompactEmergencyVoteEvaluation FStrategicCommandService::EvaluateHorizon
 	FRegionalMandateState ProjectedTarget = *TargetMandate;
 	ProjectedTarget.Support = Evaluation.TargetProjectedSupport;
 	int64 ProjectedTargetFunding = 0;
+	int64 TargetFundingDelta = 0;
 	if (!CalculateRegionalFundingContribution(
 			ProjectedTarget, Config, true, ProjectedTargetFunding)
+		|| !TrySubtract(
+			ProjectedTargetFunding, TargetMandate->CurrentMonthlyFunding,
+			TargetFundingDelta)
 		|| !TryAdd(
 			State.MonthlyFunding,
-			ProjectedTargetFunding - TargetMandate->CurrentMonthlyFunding,
+			TargetFundingDelta,
 			Evaluation.ProjectedMonthlyFunding))
 	{
 		AddError(Validation, TEXT("financial_overflow"),
@@ -6632,11 +6682,15 @@ FHorizonCompactEmergencyVoteEvaluation FStrategicCommandService::EvaluateHorizon
 		FRegionalMandateState ProjectedVoter = *Mandate;
 		ProjectedVoter.Support -= Evaluation.VoterSupportCost;
 		int64 ProjectedVoterFunding = 0;
+		int64 VoterFundingDelta = 0;
 		if (!CalculateRegionalFundingContribution(
 				ProjectedVoter, Config, true, ProjectedVoterFunding)
+			|| !TrySubtract(
+				ProjectedVoterFunding, Mandate->CurrentMonthlyFunding,
+				VoterFundingDelta)
 			|| !TryAdd(
 				Evaluation.ProjectedMonthlyFunding,
-				ProjectedVoterFunding - Mandate->CurrentMonthlyFunding,
+				VoterFundingDelta,
 				Evaluation.ProjectedMonthlyFunding))
 		{
 			AddError(Validation, TEXT("financial_overflow"),
@@ -6644,8 +6698,14 @@ FHorizonCompactEmergencyVoteEvaluation FStrategicCommandService::EvaluateHorizon
 			return Reject();
 		}
 	}
-	Evaluation.MonthlyFundingDelta =
-		Evaluation.ProjectedMonthlyFunding - Evaluation.CurrentMonthlyFunding;
+	if (!TrySubtract(
+			Evaluation.ProjectedMonthlyFunding, Evaluation.CurrentMonthlyFunding,
+			Evaluation.MonthlyFundingDelta))
+	{
+		AddError(Validation, TEXT("financial_overflow"),
+			TEXT("Emergency solidarity funding delta exceeds the campaign numeric range."));
+		return Reject();
+	}
 	Evaluation.bAllowed = true;
 	return Evaluation;
 }

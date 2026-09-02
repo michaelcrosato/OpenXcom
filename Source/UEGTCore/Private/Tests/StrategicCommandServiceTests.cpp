@@ -20209,6 +20209,17 @@ bool FStrategicRegionalCharterTest::RunTest(const FString& Parameters)
 		&& Preview.ProjectedMonthlyFunding == 90000
 		&& Preview.MonthlyFundingDelta == -10000);
 
+	FCampaignState ExtremeFunding = Initial;
+	ExtremeFunding.RegionalMandates[0].CurrentMonthlyFunding = MIN_int64;
+	const FRegionalCharterEvaluation ExtremeFundingPreview =
+		FStrategicCommandService::EvaluateRegionalCharter(
+			ExtremeFunding, Config, Sign);
+	TestTrue(TEXT("Charter funding rejects an unrepresentable monthly delta"),
+		!ExtremeFundingPreview.bAllowed
+		&& ExtremeFundingPreview.Diagnostics.Num() == 1
+		&& ExtremeFundingPreview.Diagnostics[0].Code
+			== FName(TEXT("financial_overflow")));
+
 	FSignRegionalCharterCommand LowSupport = Sign;
 	LowSupport.RegionId = TEXT("region.north-atlantic");
 	const FRegionalCharterEvaluation LowSupportPreview =
