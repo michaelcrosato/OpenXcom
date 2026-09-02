@@ -1869,6 +1869,30 @@ bool FStrategicMutualAidConvoyTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Dispatch consumes no deterministic random draws"),
 		State.SimulationRandom.DrawCount, DrawsBeforeDispatch);
 
+	if (State.MutualAidConvoys.Num() == 1)
+	{
+		FCampaignState InvalidDirectRouteState = State;
+		InvalidDirectRouteState.MutualAidConvoys[0].CurrentLegOriginBaseId = TestBaseId;
+		const FCampaignSaveValidationResult InvalidDirectRouteSave = FCampaignSaveCodec::Validate(
+			FCampaignSaveCodec::CreateNew(
+				InvalidDirectRouteState,
+				MakePackages(),
+				TEXT("0.7.0-invalid-direct-route-origin"),
+				InvalidDirectRouteState.StrategicTime.Utc,
+				FGuid(0xa1d00011, 0xa1d00012, 0xa1d00013, 0xa1d00014)),
+			MakePackages());
+		TestFalse(TEXT("Direct convoys reject an explicit current origin without a relay waypoint in saves"), InvalidDirectRouteSave.bSucceeded);
+		TestTrue(TEXT("Invalid direct-route origin is diagnosed in saves"), InvalidDirectRouteSave.HasDiagnostic(TEXT("invalid_mutual_aid_convoy")));
+
+		FAdvanceStrategicTimeCommand InvalidDirectRouteAdvance;
+		InvalidDirectRouteAdvance.ExpectedSequence = InvalidDirectRouteState.CommandSequence;
+		InvalidDirectRouteAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+		const FStrategicCommandResult InvalidDirectRouteCommand = FStrategicCommandService::Execute(
+			InvalidDirectRouteState, Rules, Config, InvalidDirectRouteAdvance);
+		TestFalse(TEXT("Direct convoys reject an explicit current origin without a relay waypoint in commands"), InvalidDirectRouteCommand.bAccepted);
+		TestTrue(TEXT("Invalid direct-route origin is diagnosed by commands"), InvalidDirectRouteCommand.HasDiagnostic(TEXT("invalid_mutual_aid_convoy")));
+	}
+
 	FCampaignState Replay = BeforeDispatch;
 	const FStrategicCommandResult ReplayDispatch =
 		FStrategicCommandService::Execute(Replay, Rules, Config, Dispatch);

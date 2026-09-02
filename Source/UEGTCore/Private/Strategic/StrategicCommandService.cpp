@@ -968,7 +968,9 @@ namespace StrategicCommandServicePrivate
 
 		if (!Convoy.RelayWaypointBaseId.IsValid())
 		{
-			return Convoy.OnwardRoutePolicy == EMutualAidRoutePolicy::OpenRelay
+			return (!Convoy.CurrentLegOriginBaseId.IsValid()
+				|| Convoy.CurrentLegOriginBaseId != Convoy.SourceBaseId)
+				&& Convoy.OnwardRoutePolicy == EMutualAidRoutePolicy::OpenRelay
 				&& Convoy.OnwardTotalTransitSeconds == 0
 				&& Convoy.OnwardRoutePressure == 0
 				&& Convoy.bOnwardInterdictionResolved

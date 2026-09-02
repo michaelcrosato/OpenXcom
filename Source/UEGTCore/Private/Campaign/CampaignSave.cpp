@@ -2388,8 +2388,8 @@ namespace CampaignSavePrivate
 					const bool bWaypointStateValid = Header.FormatVersion < 40
 						? bNeutralWaypointState
 						: (SeenBases.Contains(CurrentLegOriginBaseId)
-							&& CurrentLegOriginBaseId != Convoy.DestinationBaseId
-							&& (Convoy.RelayWaypointBaseId.IsValid()
+								&& CurrentLegOriginBaseId != Convoy.DestinationBaseId
+								&& (Convoy.RelayWaypointBaseId.IsValid()
 								? (CurrentLegOriginBaseId == Convoy.SourceBaseId
 									&& SeenBases.Contains(Convoy.RelayWaypointBaseId)
 									&& Convoy.RelayWaypointBaseId != Convoy.SourceBaseId
@@ -2401,7 +2401,9 @@ namespace CampaignSavePrivate
 									&& Convoy.OnwardForecastInterdictionDelaySeconds > 0
 									&& Convoy.OnwardForecastInterdictionDelaySeconds
 										<= Convoy.OnwardTotalTransitSeconds / 2)
-								: (Convoy.OnwardRoutePolicy == EMutualAidRoutePolicy::OpenRelay
+								: ((!Convoy.CurrentLegOriginBaseId.IsValid()
+									|| Convoy.CurrentLegOriginBaseId != Convoy.SourceBaseId)
+									&& Convoy.OnwardRoutePolicy == EMutualAidRoutePolicy::OpenRelay
 									&& Convoy.OnwardTotalTransitSeconds == 0
 									&& Convoy.OnwardRoutePressure == 0
 									&& Convoy.bOnwardInterdictionResolved
