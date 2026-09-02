@@ -2468,10 +2468,11 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 						{
 							continue;
 						}
-						const int32 ProjectedSupport = FMath::Clamp(
-							Mandate.Support
+						const int32 ProjectedSupport = static_cast<int32>(FMath::Clamp<int64>(
+							static_cast<int64>(Mandate.Support)
 								+ MissionRule->WithdrawnCompactSupportGainOnThwarted,
-							0, 100);
+							0,
+							100));
 						if (ProjectedSupport == Mandate.Support)
 						{
 							continue;
@@ -2674,7 +2675,11 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				if (MissionRule != nullptr && MissionRule->bCreatesLandingSiteOnArrival)
 				{
 					View.bCanShadowToLanding = true;
-					View.LandingSiteThreatRating = Rule->ThreatRating + MissionRule->LandingSiteThreatBonus;
+					View.LandingSiteThreatRating = static_cast<int32>(FMath::Clamp<int64>(
+						static_cast<int64>(Rule->ThreatRating)
+							+ MissionRule->LandingSiteThreatBonus,
+						0,
+						MAX_int32));
 					View.LandingSiteLifetimeSeconds = static_cast<int64>(MissionRule->LandingSiteLifetimeHours) * 3600LL;
 					View.WreckageSiteLifetimeSeconds = static_cast<int64>(Config.WreckageSiteLifetimeHours) * 3600LL;
 				}

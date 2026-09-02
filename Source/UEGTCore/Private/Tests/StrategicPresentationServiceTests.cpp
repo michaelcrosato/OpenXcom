@@ -852,6 +852,48 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& ExtremeCoordinateRegion != nullptr
 		&& ExtremeCoordinateRegion->LongitudeMilliDegrees == MAX_int32
 		&& ExtremeCoordinateRegion->LatitudeMilliDegrees == MAX_int32);
+	FResolvedRuleSet ExtremeRuleProjectionRules = Rules;
+	ExtremeRuleProjectionRules.Contacts.FindChecked(ContactRule.Identity.RuleId).ThreatRating = MAX_int32;
+	ExtremeRuleProjectionRules.AdversaryMissions.FindChecked(Mission.Identity.RuleId).LandingSiteThreatBonus = MAX_int32;
+	const FStrategicDashboardSnapshot ExtremeRuleProjectionSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			Campaign, ExtremeRuleProjectionRules, Config);
+	const FStrategicContactView* ExtremeRuleProjectionContact =
+		ExtremeRuleProjectionSnapshot.Contacts.FindByPredicate(
+			[&VisibleContactId](const FStrategicContactView& ContactView)
+			{
+				return ContactView.ContactId == VisibleContactId;
+			});
+	TestTrue(TEXT("Dashboard clamps malformed contact threat-plus-bonus presentation arithmetic"),
+		ExtremeRuleProjectionSnapshot.bSucceeded
+		&& ExtremeRuleProjectionContact != nullptr
+		&& ExtremeRuleProjectionContact->LandingSiteThreatRating == MAX_int32);
+	FCampaignState ExtremeCounterplayCampaign = Campaign;
+	ExtremeCounterplayCampaign.bHorizonCompactRatified = true;
+	ExtremeCounterplayCampaign.RegionalMandates[0].bResilienceCharterSigned = true;
+	ExtremeCounterplayCampaign.RegionalMandates[0].bHorizonCompactMemberWithdrawn = true;
+	ExtremeCounterplayCampaign.RegionalMandates[0].Support = MAX_int32;
+	const FStrategicDashboardSnapshot ExtremeCounterplaySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			ExtremeCounterplayCampaign, Rules, Config);
+	const FStrategicContactView* ExtremeCounterplayContact =
+		ExtremeCounterplaySnapshot.Contacts.FindByPredicate(
+			[&VisibleContactId](const FStrategicContactView& ContactView)
+			{
+				return ContactView.ContactId == VisibleContactId;
+			});
+	const FStrategicCoalitionCounterplayMemberView* ExtremeRecoveryMember =
+		ExtremeCounterplayContact != nullptr
+			? ExtremeCounterplayContact->ThwartRecoveryMembers.FindByPredicate(
+				[](const FStrategicCoalitionCounterplayMemberView& Member)
+				{
+					return Member.CurrentSupport == MAX_int32;
+				})
+			: nullptr;
+	TestTrue(TEXT("Dashboard widens malformed withdrawn-member recovery arithmetic before clamping"),
+		ExtremeCounterplaySnapshot.bSucceeded
+		&& ExtremeRecoveryMember != nullptr
+		&& ExtremeRecoveryMember->ProjectedSupport == 100);
 	FResolvedRuleSet ExtremeNetRules = Rules;
 	ExtremeNetRules.Facilities.FindChecked(Operations.Identity.RuleId).MonthlyMaintenance = MAX_int32;
 	FCampaignState ExtremeNetCampaign = Campaign;
