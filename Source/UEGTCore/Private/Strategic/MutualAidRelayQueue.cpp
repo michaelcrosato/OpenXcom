@@ -2,6 +2,8 @@
 
 #include "Strategic/MutualAidRelayQueue.h"
 
+#include "Strategic/StrategicCommandService.h"
+
 namespace MutualAidRelayQueuePrivate
 {
 	bool GuidLess(const FGuid& Left, const FGuid& Right)
@@ -19,6 +21,19 @@ namespace MutualAidRelayQueuePrivate
 			return Left.C < Right.C;
 		}
 		return Left.D < Right.D;
+	}
+
+	int32 EvaluateSpecializationRelayChannelBonus(
+		const FStrategicBaseState& Base,
+		const FResolvedRuleSet& Rules)
+	{
+		const FStrategicBaseSpecializationView Specialization =
+			FStrategicCommandService::EvaluateBaseSpecialization(Base, Rules);
+		return Specialization.bSpecialized
+			&& Specialization.OperationalBenefitMetricId
+				== FName(TEXT("base.specialization.relay-channels"))
+			? FMath::Clamp<int64>(Specialization.OperationalBenefitValue, 0, MAX_int32)
+			: 0;
 	}
 
 	int64 SaturatingAdd(const int64 Left, const int64 Right)
@@ -72,6 +87,7 @@ namespace MutualAidRelayQueuePrivate
 		const FGuid& SourceBaseId,
 		const int32 FacilityRelayChannelCount,
 		const int32 SignalWatchScientistCount,
+		const int32 SpecializationRelayChannelBonus,
 		const int32 RelayChannelCount,
 		FMutualAidRelayQueueBaseView& OutBaseView,
 		TArray<FRelayJob>& Jobs,
@@ -84,9 +100,10 @@ namespace MutualAidRelayQueuePrivate
 		OutBaseView.BaseId = SourceBaseId;
 		OutBaseView.RelayChannelCount = RelayChannelCount;
 		OutBaseView.FacilityRelayChannelCount = FacilityRelayChannelCount;
+		OutBaseView.SpecializationRelayChannelBonus = SpecializationRelayChannelBonus;
 		OutBaseView.SignalWatchScientistCount = FMath::Max(0, SignalWatchScientistCount);
 		OutBaseView.SignalWatchBonusChannelCount = FMath::Max(
-			0, RelayChannelCount - FacilityRelayChannelCount);
+			0, RelayChannelCount - FacilityRelayChannelCount - SpecializationRelayChannelBonus);
 		OutBaseView.ActiveConvoyCount = ActiveCount;
 		OutBaseView.TotalConvoyCount = Jobs.Num();
 		OutBaseView.WaitingConvoyCount = FMath::Max(0, Jobs.Num() - ActiveCount);
@@ -106,9 +123,10 @@ namespace MutualAidRelayQueuePrivate
 			View.DispatchSequence = Jobs[JobIndex].DispatchSequence;
 			View.RelayChannelCount = RelayChannelCount;
 			View.FacilityRelayChannelCount = FacilityRelayChannelCount;
+			View.SpecializationRelayChannelBonus = SpecializationRelayChannelBonus;
 			View.SignalWatchScientistCount = FMath::Max(0, SignalWatchScientistCount);
 			View.SignalWatchBonusChannelCount = FMath::Max(
-				0, RelayChannelCount - FacilityRelayChannelCount);
+				0, RelayChannelCount - FacilityRelayChannelCount - SpecializationRelayChannelBonus);
 			View.ActiveConvoyCount = ActiveCount;
 			View.TotalConvoyCount = Jobs.Num();
 			View.QueuePosition = JobIndex + 1;
@@ -234,11 +252,15 @@ int32 FMutualAidRelayQueue::EvaluateRelayChannelCount(
 	const FResolvedRuleSet& Rules)
 {
 	const int32 FacilityChannels = EvaluateFacilityRelayChannelCount(Base, Rules);
+	const int32 SpecializationRelayChannelBonus =
+		MutualAidRelayQueuePrivate::EvaluateSpecializationRelayChannelBonus(Base, Rules);
 	const int32 EffectiveWatchScientists = FMath::Min(
 		FMath::Max(0, Base.SignalWatchScientists), FacilityChannels);
-	return EffectiveWatchScientists > MAX_int32 - FacilityChannels
+	const int64 TotalChannels = static_cast<int64>(FacilityChannels)
+		+ SpecializationRelayChannelBonus + EffectiveWatchScientists;
+	return TotalChannels > MAX_int32
 		? MAX_int32
-		: FacilityChannels + EffectiveWatchScientists;
+		: static_cast<int32>(TotalChannels);
 }
 
 FMutualAidRelayQueueSnapshot FMutualAidRelayQueue::Evaluate(
@@ -267,8 +289,11 @@ FMutualAidRelayQueueSnapshot FMutualAidRelayQueue::Evaluate(
 	{
 		TArray<FRelayJob> Jobs = GatherJobs(Campaign, Base->BaseId);
 		const int32 FacilityChannels = EvaluateFacilityRelayChannelCount(*Base, Rules);
+		const int32 SpecializationRelayChannelBonus =
+			MutualAidRelayQueuePrivate::EvaluateSpecializationRelayChannelBonus(*Base, Rules);
 		FMutualAidRelayQueueBaseView& BaseView = Snapshot.Bases.AddDefaulted_GetRef();
 		BuildBaseViews(Base->BaseId, FacilityChannels, Base->SignalWatchScientists,
+			SpecializationRelayChannelBonus,
 			EvaluateRelayChannelCount(*Base, Rules), BaseView, Jobs, Snapshot.Convoys);
 	}
 	return Snapshot;
@@ -298,8 +323,11 @@ FMutualAidRelayQueueView FMutualAidRelayQueue::ProjectNext(
 	Jobs.Add({ ProspectiveId, Campaign.CommandSequence + 1, JourneySeconds, true });
 	TArray<FMutualAidRelayQueueView> Views;
 	const int32 FacilityChannels = EvaluateFacilityRelayChannelCount(*Source, Rules);
+	const int32 SpecializationRelayChannelBonus =
+		MutualAidRelayQueuePrivate::EvaluateSpecializationRelayChannelBonus(*Source, Rules);
 	FMutualAidRelayQueueBaseView ProjectionBaseView;
 	BuildBaseViews(SourceBaseId, FacilityChannels, Source->SignalWatchScientists,
+		SpecializationRelayChannelBonus,
 		EvaluateRelayChannelCount(*Source, Rules), ProjectionBaseView, Jobs, Views);
 	if (const FMutualAidRelayQueueView* Found = Views.FindByPredicate(
 		[](const FMutualAidRelayQueueView& View)

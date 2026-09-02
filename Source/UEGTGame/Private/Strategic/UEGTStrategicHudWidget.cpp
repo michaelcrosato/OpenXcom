@@ -314,6 +314,16 @@ namespace UEGTStrategicHudPrivate
 			TEXT("strategic.base-specialization-metric-balanced"), TEXT("BALANCED CAPABILITIES"));
 	}
 
+	FString BaseSpecializationOperationalMetric(const FName BenefitMetricId)
+	{
+		if (BenefitMetricId == FName(TEXT("base.specialization.relay-channels")))
+		{
+			return Localized(
+				TEXT("strategic.base-specialization-metric-relay"), TEXT("RELAY CHANNEL"));
+		}
+		return BaseSpecializationMetric(BenefitMetricId);
+	}
+
 	FString LocalizedResearchProjectDetail(const FStrategicProjectView& Project)
 	{
 		if (Project.bPaused)
@@ -2483,7 +2493,7 @@ void UUEGTStrategicHudWidget::AppendBaseSpecialization(
 {
 	using namespace UEGTStrategicHudPrivate;
 	const FString Name = BaseSpecializationName(Base.Specialization.SpecializationId);
-	const FString Summary = Base.Specialization.bSpecialized
+	FString Summary = Base.Specialization.bSpecialized
 		? LocalizedFormat(
 			TEXT("strategic.base-specialization-format"),
 			TEXT("BASE SPECIALIZATION  •  {0}  •  INDEX {1}/100  •  {2} {3}"),
@@ -2500,9 +2510,20 @@ void UUEGTStrategicHudWidget::AppendBaseSpecialization(
 				Name,
 				FString::FromInt(Base.Specialization.Score)
 			});
+	if (Base.Specialization.OperationalBenefitValue > 0)
+	{
+		Summary += TEXT("\n") + LocalizedFormat(
+			TEXT("strategic.base-specialization-operational-format"),
+			TEXT("ACTIVE CONSEQUENCE  •  +{0} {1}"),
+			{
+				LexToString(Base.Specialization.OperationalBenefitValue),
+				BaseSpecializationOperationalMetric(
+					Base.Specialization.OperationalBenefitMetricId)
+			});
+	}
 	const FString Guidance = Localized(
 		TEXT("strategic.base-specialization-guidance"),
-		TEXT("Derived from operational facility output; this read-only profile updates as infrastructure is repaired or lost and grants no separate bonus."));
+		TEXT("Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel; other profiles add no separate effect."));
 	RenderedDynamicLabels.Add(Summary);
 	LeftBox->AddSlot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
 	[
@@ -2569,16 +2590,28 @@ void UUEGTStrategicHudWidget::AppendSignalWatchControls(
 		return;
 	}
 
-	const FString Summary = LocalizedFormat(
-		TEXT("strategic.signal-watch-summary-format"),
-		TEXT("SIGNAL WATCH  •  SCI {0}/{1}  •  RELAY CH {2}+{3}={4}"),
-		{
-			FString::FromInt(Base.SignalWatchScientists),
-			FString::FromInt(Base.SignalWatchMaximumScientists),
-			FString::FromInt(Base.FacilityRelayChannelCount),
-			FString::FromInt(Base.SignalWatchBonusChannelCount),
-			FString::FromInt(Base.RelayChannelCount)
-		});
+	const FString Summary = Base.SpecializationRelayChannelBonus > 0
+		? LocalizedFormat(
+			TEXT("strategic.signal-watch-specialization-summary-format"),
+			TEXT("SIGNAL WATCH  •  SCI {0}/{1}  •  RELAY CH {2}+{3}+{4}={5}"),
+			{
+				FString::FromInt(Base.SignalWatchScientists),
+				FString::FromInt(Base.SignalWatchMaximumScientists),
+				FString::FromInt(Base.FacilityRelayChannelCount),
+				FString::FromInt(Base.SpecializationRelayChannelBonus),
+				FString::FromInt(Base.SignalWatchBonusChannelCount),
+				FString::FromInt(Base.RelayChannelCount)
+			})
+		: LocalizedFormat(
+			TEXT("strategic.signal-watch-summary-format"),
+			TEXT("SIGNAL WATCH  •  SCI {0}/{1}  •  RELAY CH {2}+{3}={4}"),
+			{
+				FString::FromInt(Base.SignalWatchScientists),
+				FString::FromInt(Base.SignalWatchMaximumScientists),
+				FString::FromInt(Base.FacilityRelayChannelCount),
+				FString::FromInt(Base.SignalWatchBonusChannelCount),
+				FString::FromInt(Base.RelayChannelCount)
+			});
 	const FString Guidance = Localized(
 		TEXT("strategic.signal-watch-guidance"),
 		TEXT("Each assigned scientist activates one surge channel, capped by operational signal infrastructure, and remains unavailable to research."));

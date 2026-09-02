@@ -4506,8 +4506,13 @@
     },
     {
       "key": "strategic.base-specialization-guidance",
-      "source": "Derived from operational facility output; this read-only profile updates as infrastructure is repaired or lost and grants no separate bonus.",
-      "translations": { "en": "Derived from operational facility output; this read-only profile updates as infrastructure is repaired or lost and grants no separate bonus.", "fr": "Dérivé du rendement des installations opérationnelles ; ce profil en lecture seule évolue quand l'infrastructure est réparée ou perdue et n'accorde aucun bonus distinct.", "de": "Aus der Leistung betriebsbereiter Anlagen abgeleitet; dieses schreibgeschützte Profil ändert sich bei Reparatur oder Verlust von Infrastruktur und gewährt keinen eigenen Bonus.", "es": "Derivado del rendimiento de las instalaciones operativas; este perfil de solo lectura se actualiza al reparar o perder infraestructura y no concede una bonificación independiente.", "ja": "稼働中の施設出力から導出される読み取り専用プロファイルです。施設の修復や喪失で更新され、個別のボーナスは発生しません。" }
+      "source": "Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel; other profiles add no separate effect.",
+      "translations": { "en": "Derived from operational facility output; this profile updates as infrastructure is repaired or lost. A Signal Relay profile supplies one additional Relay Weave channel; other profiles add no separate effect.", "fr": "Dérivé du rendement des installations opérationnelles ; ce profil évolue quand l'infrastructure est réparée ou perdue. Un profil Relais signal fournit un canal Relay Weave supplémentaire ; les autres profils n'ajoutent aucun effet distinct.", "de": "Aus der Leistung betriebsbereiter Anlagen abgeleitet; dieses Profil ändert sich bei Reparatur oder Verlust von Infrastruktur. Ein Signalrelais-Profil stellt einen zusätzlichen Relay-Weave-Kanal bereit; andere Profile haben keinen eigenen Effekt.", "es": "Derivado del rendimiento de las instalaciones operativas; este perfil se actualiza al reparar o perder infraestructura. Un perfil de Relé de señal aporta un canal adicional de Relay Weave; los demás perfiles no añaden ningún efecto independiente.", "ja": "稼働中の施設出力から導出され、施設の修復や喪失で更新されます。信号リレープロファイルはRelay Weaveの中継回線を1本追加し、他のプロファイルに個別の効果はありません。" }
+    },
+    {
+      "key": "strategic.base-specialization-operational-format",
+      "source": "ACTIVE CONSEQUENCE  •  +{0} {1}",
+      "translations": { "en": "ACTIVE CONSEQUENCE  •  +{0} {1}", "fr": "CONSÉQUENCE ACTIVE  •  +{0} {1}", "de": "AKTIVE FOLGE  •  +{0} {1}", "es": "CONSECUENCIA ACTIVA  •  +{0} {1}", "ja": "有効な効果  •  +{0} {1}" }
     },
     {
       "key": "strategic.base-specialization-name-integrated",
@@ -4568,6 +4573,11 @@
       "key": "strategic.base-specialization-metric-storage",
       "source": "STORAGE",
       "translations": { "en": "STORAGE", "fr": "STOCKAGE", "de": "LAGER", "es": "ALMACÉN", "ja": "保管" }
+    },
+    {
+      "key": "strategic.base-specialization-metric-relay",
+      "source": "RELAY CHANNEL",
+      "translations": { "en": "RELAY CHANNEL", "fr": "CANAL RELAIS", "de": "RELAISKANAL", "es": "CANAL RELÉ", "ja": "中継回線" }
     },
     {
       "key": "strategic.facility-empty-cell-format",
@@ -7068,6 +7078,11 @@
       "key": "strategic.signal-watch-summary-format",
       "source": "SIGNAL WATCH  •  SCI {0}/{1}  •  RELAY CH {2}+{3}={4}",
       "translations": { "en": "SIGNAL WATCH  •  SCI {0}/{1}  •  RELAY CH {2}+{3}={4}", "fr": "VEILLE SIGNAL  •  SCI {0}/{1}  •  CANAUX RELAIS {2}+{3}={4}", "de": "SIGNALWACHE  •  FORSCH {0}/{1}  •  RELAISKANÄLE {2}+{3}={4}", "es": "GUARDIA DE SEÑAL  •  CIENT {0}/{1}  •  CANALES RELÉ {2}+{3}={4}", "ja": "信号監視  •  科学者 {0}/{1}  •  リレーCH {2}+{3}={4}" }
+    },
+    {
+      "key": "strategic.signal-watch-specialization-summary-format",
+      "source": "SIGNAL WATCH  •  SCI {0}/{1}  •  RELAY CH {2}+{3}+{4}={5}",
+      "translations": { "en": "SIGNAL WATCH  •  SCI {0}/{1}  •  RELAY CH {2}+{3}+{4}={5}", "fr": "VEILLE SIGNAL  •  SCI {0}/{1}  •  CANAUX RELAIS {2}+{3}+{4}={5}", "de": "SIGNALWACHE  •  FORSCH {0}/{1}  •  RELAISKANÄLE {2}+{3}+{4}={5}", "es": "GUARDIA DE SEÑAL  •  CIENT {0}/{1}  •  CANALES RELÉ {2}+{3}+{4}={5}", "ja": "信号監視  •  科学者 {0}/{1}  •  リレーCH {2}+{3}+{4}={5}" }
     },
     {
       "key": "strategic.signal-watch-guidance",

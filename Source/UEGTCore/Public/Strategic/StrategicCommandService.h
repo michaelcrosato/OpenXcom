@@ -2596,6 +2596,42 @@ struct UEGTCORE_API FBaseStorageEvaluation
 	TArray<FStrategicCommandDiagnostic> Diagnostics;
 };
 
+/** Read-only service profile derived from the current integrity-scaled base outputs. */
+USTRUCT(BlueprintType)
+struct UEGTCORE_API FStrategicBaseSpecializationView
+{
+	GENERATED_BODY()
+
+	/** Stable policy selected from the strongest operational capability. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	FName SpecializationId = TEXT("base.specialization.integrated-command");
+
+	/** Existing capability value normalized to a 0-100 specialization index. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int32 Score = 0;
+
+	/** Second-highest normalized capability, exposed to keep close calls explainable. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int32 SecondaryScore = 0;
+
+	/** Existing output represented by the selected specialization. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	FName BenefitMetricId = TEXT("base.specialization.balanced-capabilities");
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int64 BenefitValue = 0;
+
+	/** Save-neutral operational consequence currently supplied by the profile. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	FName OperationalBenefitMetricId = TEXT("base.specialization.no-operational-benefit");
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int64 OperationalBenefitValue = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	bool bSpecialized = false;
+};
+
 /** Mutation-free policy projection shared by dispatch validation and presentation. */
 USTRUCT(BlueprintType)
 struct UEGTCORE_API FMutualAidRouteEvaluation
@@ -3308,6 +3344,9 @@ struct UEGTCORE_API FBaseInfrastructureEvaluation
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic")
 	bool bValid = false;
 
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	FStrategicBaseSpecializationView Specialization;
+
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic")
 	FGuid BaseId;
 
@@ -3980,6 +4019,10 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
 		FGuid BaseId);
+
+	static FStrategicBaseSpecializationView EvaluateBaseSpecialization(
+		const FStrategicBaseState& Base,
+		const FResolvedRuleSet& Rules);
 
 	static FBaseStorageEvaluation EvaluateBaseStorage(
 		const FCampaignState& State,

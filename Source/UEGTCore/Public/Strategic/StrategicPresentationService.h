@@ -1085,35 +1085,6 @@ struct UEGTCORE_API FStrategicWorksCadreCharterOptionView
 	FString UnavailableReason;
 };
 
-/** Read-only service profile derived from the current integrity-scaled base outputs. */
-USTRUCT(BlueprintType)
-struct UEGTCORE_API FStrategicBaseSpecializationView
-{
-	GENERATED_BODY()
-
-	/** Stable presentation policy selected from the strongest operational capability. */
-	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
-	FName SpecializationId = TEXT("base.specialization.integrated-command");
-
-	/** Existing capability value normalized to a 0-100 specialization index. */
-	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
-	int32 Score = 0;
-
-	/** Second-highest normalized capability, exposed to keep close calls explainable. */
-	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
-	int32 SecondaryScore = 0;
-
-	/** Existing output represented by the selected specialization, not a new bonus. */
-	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
-	FName BenefitMetricId = TEXT("base.specialization.balanced-capabilities");
-
-	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
-	int64 BenefitValue = 0;
-
-	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
-	bool bSpecialized = false;
-};
-
 USTRUCT(BlueprintType)
 struct UEGTCORE_API FStrategicBaseView
 {
@@ -1160,6 +1131,10 @@ struct UEGTCORE_API FStrategicBaseView
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	int32 FacilityRelayChannelCount = 0;
+
+	/** Additional free channel supplied by a specialized Signal Relay base profile. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	int32 SpecializationRelayChannelBonus = 0;
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	int32 SignalWatchBonusChannelCount = 0;

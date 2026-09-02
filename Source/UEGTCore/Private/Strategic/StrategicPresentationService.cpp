@@ -35,81 +35,6 @@ namespace StrategicPresentationPrivate
 		return DisplayName.TrimStartAndEnd().IsEmpty() ? HumanizeId(Id) : DisplayName;
 	}
 
-	struct FBaseSpecializationCandidate
-	{
-		FName SpecializationId;
-		FName BenefitMetricId;
-		int32 Score = 0;
-		int64 BenefitValue = 0;
-	};
-
-	int32 NormalizeBaseSpecializationCapacity(const int32 Value, const int32 PointsPerUnit)
-	{
-		const int64 NonNegativeValue = FMath::Max<int64>(0, Value);
-		return static_cast<int32>(FMath::Clamp<int64>(
-			NonNegativeValue * PointsPerUnit, 0, 100));
-	}
-
-	FStrategicBaseSpecializationView BuildBaseSpecialization(
-		const FStrategicBaseView& Base)
-	{
-		TArray<FBaseSpecializationCandidate> Candidates = {
-			{
-				TEXT("base.specialization.signal-relay"),
-				TEXT("base.specialization.detection-strength"),
-				FMath::Clamp(Base.DetectionStrength, 0, 100),
-				FMath::Max<int64>(0, Base.DetectionStrength)
-			},
-			{
-				TEXT("base.specialization.research-enclave"),
-				TEXT("base.specialization.scientist-capacity"),
-				NormalizeBaseSpecializationCapacity(Base.FacilityScientistCapacity, 10),
-				FMath::Max<int64>(0, Base.FacilityScientistCapacity)
-			},
-			{
-				TEXT("base.specialization.fabrication-works"),
-				TEXT("base.specialization.engineer-capacity"),
-				NormalizeBaseSpecializationCapacity(Base.FacilityEngineerCapacity, 10),
-				FMath::Max<int64>(0, Base.FacilityEngineerCapacity)
-			},
-			{
-				TEXT("base.specialization.flight-operations"),
-				TEXT("base.specialization.craft-berths"),
-				NormalizeBaseSpecializationCapacity(Base.CraftCapacity, 50),
-				FMath::Max<int64>(0, Base.CraftCapacity)
-			},
-			{
-				TEXT("base.specialization.logistics-depot"),
-				TEXT("base.specialization.storage-capacity"),
-				static_cast<int32>(FMath::Clamp<int64>(
-					FMath::Max<int64>(0, Base.StorageCapacity) / 12, 0, 100)),
-				FMath::Max<int64>(0, Base.StorageCapacity)
-			}
-		};
-		Candidates.Sort([](
-			const FBaseSpecializationCandidate& Left,
-			const FBaseSpecializationCandidate& Right)
-		{
-			return Left.Score != Right.Score
-				? Left.Score > Right.Score
-				: Left.SpecializationId.LexicalLess(Right.SpecializationId);
-		});
-
-		FStrategicBaseSpecializationView Result;
-		const FBaseSpecializationCandidate& Primary = Candidates[0];
-		Result.Score = Primary.Score;
-		Result.SecondaryScore = Candidates[1].Score;
-		Result.bSpecialized = Result.Score >= 50
-			&& Result.Score >= Result.SecondaryScore + 10;
-		if (Result.bSpecialized)
-		{
-			Result.SpecializationId = Primary.SpecializationId;
-			Result.BenefitMetricId = Primary.BenefitMetricId;
-			Result.BenefitValue = Primary.BenefitValue;
-		}
-		return Result;
-	}
-
 	void BuildCommendationViews(
 		const TArray<FName>& SourceIds,
 		const FResolvedRuleSet& Rules,
@@ -1047,6 +972,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			View.RelayQueueWaitingConvoyCount = RelayBase->WaitingConvoyCount;
 			View.RelayQueuePressurePercent = RelayBase->QueuePressurePercent;
 			View.RelayQueueTailArrivalSeconds = RelayBase->QueueTailArrivalSeconds;
+			View.FacilityRelayChannelCount = RelayBase->FacilityRelayChannelCount;
+			View.SpecializationRelayChannelBonus = RelayBase->SpecializationRelayChannelBonus;
 		}
 		View.CraftOccupied = CraftOccupied(Campaign, Base.BaseId);
 		View.GridWidth = Config.BaseGridWidth;
@@ -1069,7 +996,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		{
 			Snapshot.Diagnostics.Add(Storage.Diagnostics[0].Message);
 		}
-		View.Specialization = StrategicPresentationPrivate::BuildBaseSpecialization(View);
+		View.Specialization = Infrastructure.Specialization;
 		FSetSignalWatchStaffCommand CurrentSignalWatch;
 		CurrentSignalWatch.ExpectedSequence = Campaign.CommandSequence;
 		CurrentSignalWatch.BaseId = Base.BaseId;

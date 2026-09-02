@@ -40,6 +40,92 @@ namespace StrategicCommandServicePrivate
 		Diagnostic.Message = MoveTemp(Message);
 	}
 
+	struct FBaseSpecializationCandidate
+	{
+		FName SpecializationId;
+		FName BenefitMetricId;
+		int32 Score = 0;
+		int64 BenefitValue = 0;
+		FName OperationalBenefitMetricId;
+		int64 OperationalBenefitValue = 0;
+	};
+
+	int32 NormalizeBaseSpecializationCapacity(const int32 Value, const int32 PointsPerUnit)
+	{
+		const int64 NonNegativeValue = FMath::Max<int64>(0, Value);
+		return static_cast<int32>(FMath::Clamp<int64>(
+			NonNegativeValue * PointsPerUnit, 0, 100));
+	}
+
+	FStrategicBaseSpecializationView BuildBaseSpecialization(
+		const int32 DetectionStrength,
+		const int32 FacilityScientistCapacity,
+		const int32 FacilityEngineerCapacity,
+		const int32 CraftCapacity,
+		const int64 StorageCapacity)
+	{
+		const int64 NonNegativeStorageCapacity = FMath::Max<int64>(0, StorageCapacity);
+		TArray<FBaseSpecializationCandidate> Candidates = {
+			{
+				TEXT("base.specialization.signal-relay"),
+				TEXT("base.specialization.detection-strength"),
+				FMath::Clamp(DetectionStrength, 0, 100),
+				FMath::Max<int64>(0, DetectionStrength),
+				TEXT("base.specialization.relay-channels"),
+				1
+			},
+			{
+				TEXT("base.specialization.research-enclave"),
+				TEXT("base.specialization.scientist-capacity"),
+				NormalizeBaseSpecializationCapacity(FacilityScientistCapacity, 10),
+				FMath::Max<int64>(0, FacilityScientistCapacity)
+			},
+			{
+				TEXT("base.specialization.fabrication-works"),
+				TEXT("base.specialization.engineer-capacity"),
+				NormalizeBaseSpecializationCapacity(FacilityEngineerCapacity, 10),
+				FMath::Max<int64>(0, FacilityEngineerCapacity)
+			},
+			{
+				TEXT("base.specialization.flight-operations"),
+				TEXT("base.specialization.craft-berths"),
+				NormalizeBaseSpecializationCapacity(CraftCapacity, 50),
+				FMath::Max<int64>(0, CraftCapacity)
+			},
+			{
+				TEXT("base.specialization.logistics-depot"),
+				TEXT("base.specialization.storage-capacity"),
+				static_cast<int32>(FMath::Clamp<int64>(
+					NonNegativeStorageCapacity / 12, 0, 100)),
+				NonNegativeStorageCapacity
+			}
+		};
+		Candidates.Sort([](
+			const FBaseSpecializationCandidate& Left,
+			const FBaseSpecializationCandidate& Right)
+		{
+			return Left.Score != Right.Score
+				? Left.Score > Right.Score
+				: Left.SpecializationId.LexicalLess(Right.SpecializationId);
+		});
+
+		FStrategicBaseSpecializationView Result;
+		const FBaseSpecializationCandidate& Primary = Candidates[0];
+		Result.Score = Primary.Score;
+		Result.SecondaryScore = Candidates[1].Score;
+		Result.bSpecialized = Result.Score >= 50
+			&& Result.Score >= Result.SecondaryScore + 10;
+		if (Result.bSpecialized)
+		{
+			Result.SpecializationId = Primary.SpecializationId;
+			Result.BenefitMetricId = Primary.BenefitMetricId;
+			Result.BenefitValue = Primary.BenefitValue;
+			Result.OperationalBenefitMetricId = Primary.OperationalBenefitMetricId;
+			Result.OperationalBenefitValue = Primary.OperationalBenefitValue;
+		}
+		return Result;
+	}
+
 	bool ValidateSequence(const FCampaignState& State, const int64 ExpectedSequence, FStrategicCommandResult& Result)
 	{
 		if (State.CommandSequence < 0 || State.CommandSequence == MAX_int64)
@@ -2053,20 +2139,13 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
-	bool ComputeBaseStorage(
-		const FCampaignState& State,
-		const FResolvedRuleSet& Rules,
+	bool ComputeBaseStorageCapacity(
 		const FStrategicBaseState& Base,
-		FBaseStorageEvaluation& OutEvaluation,
+		const FResolvedRuleSet& Rules,
+		int64& OutCapacity,
 		FStrategicCommandResult& Result)
 	{
-		OutEvaluation = FBaseStorageEvaluation();
-		OutEvaluation.BaseId = Base.BaseId;
-		for (const TPair<FName, FFacilityRule>& Pair : Rules.Facilities)
-		{
-			OutEvaluation.bEnforced |= Pair.Value.StorageCapacity > 0;
-		}
-
+		OutCapacity = 0;
 		if (!Base.Facilities.IsEmpty())
 		{
 			for (const FBaseFacilityState& Facility : Base.Facilities)
@@ -2081,7 +2160,7 @@ namespace StrategicCommandServicePrivate
 					return false;
 				}
 				const int32 Contribution = Rule->ScaleEffectByIntegrity(Rule->StorageCapacity, Facility.Damage);
-				if (!TryAdd(OutEvaluation.Capacity, Contribution, OutEvaluation.Capacity))
+				if (!TryAdd(OutCapacity, Contribution, OutCapacity))
 				{
 					AddError(Result, TEXT("invalid_storage_capacity"), FString::Printf(
 						TEXT("Base '%s' has overflowing integrity-scaled storage capacity."), *Base.Name));
@@ -2095,14 +2174,35 @@ namespace StrategicCommandServicePrivate
 			{
 				const FFacilityRule* Facility = Rules.Facilities.Find(FacilityId);
 				if (Facility == nullptr || Facility->StorageCapacity < 0 || Facility->StorageCapacity > 1000000
-					|| !TryAdd(OutEvaluation.Capacity, Facility != nullptr ? Facility->StorageCapacity : 0,
-						OutEvaluation.Capacity))
+					|| !TryAdd(OutCapacity, Facility != nullptr ? Facility->StorageCapacity : 0,
+						OutCapacity))
 				{
 					AddError(Result, TEXT("invalid_storage_capacity"), FString::Printf(
 						TEXT("Base '%s' has invalid or overflowing storage capacity."), *Base.Name));
 					return false;
 				}
 			}
+		}
+		return true;
+	}
+
+	bool ComputeBaseStorage(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicBaseState& Base,
+		FBaseStorageEvaluation& OutEvaluation,
+		FStrategicCommandResult& Result)
+	{
+		OutEvaluation = FBaseStorageEvaluation();
+		OutEvaluation.BaseId = Base.BaseId;
+		for (const TPair<FName, FFacilityRule>& Pair : Rules.Facilities)
+		{
+			OutEvaluation.bEnforced |= Pair.Value.StorageCapacity > 0;
+		}
+
+		if (!ComputeBaseStorageCapacity(Base, Rules, OutEvaluation.Capacity, Result))
+		{
+			return false;
 		}
 
 		TSet<FName> SeenItems;
@@ -6652,8 +6752,28 @@ FBaseInfrastructureEvaluation FStrategicCommandService::EvaluateBaseInfrastructu
 	}
 	Evaluation.MaximumDefenseDamage = static_cast<int32>(MaximumDefenseDamage);
 	Evaluation.ExpectedDefenseDamage = static_cast<int32>((ExpectedDefenseDamageHundredths + 50) / 100);
+	int64 StorageCapacity = 0;
+	FStrategicCommandResult SpecializationValidation;
+	if (ComputeBaseStorageCapacity(*Base, Rules, StorageCapacity, SpecializationValidation))
+	{
+		Evaluation.Specialization = BuildBaseSpecialization(
+			Evaluation.DetectionStrength,
+			Evaluation.FacilityScientistCapacity,
+			Evaluation.FacilityEngineerCapacity,
+			Evaluation.CraftCapacity,
+			StorageCapacity);
+	}
 	Evaluation.bValid = true;
 	return Evaluation;
+}
+
+FStrategicBaseSpecializationView FStrategicCommandService::EvaluateBaseSpecialization(
+	const FStrategicBaseState& Base,
+	const FResolvedRuleSet& Rules)
+{
+	FCampaignState State;
+	State.Bases.Add(Base);
+	return EvaluateBaseInfrastructure(State, Rules, Base.BaseId).Specialization;
 }
 
 FBaseStorageEvaluation FStrategicCommandService::EvaluateBaseStorage(

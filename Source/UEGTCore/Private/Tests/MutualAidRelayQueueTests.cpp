@@ -6,6 +6,7 @@
 
 #include "Algo/Reverse.h"
 #include "Misc/AutomationTest.h"
+#include "Strategic/StrategicCommandService.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMutualAidRelayQueueEvaluationTest,
@@ -71,11 +72,13 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 	const FMutualAidRelayQueueView* Third = ThreeChannels.FindConvoy(ThirdId);
 	const FMutualAidRelayQueueBaseView* SourceTelemetry =
 		ThreeChannels.FindBase(Source.BaseId);
-	TestTrue(TEXT("Integrity-scaled authored signals supply three active Relay Weave channels"),
+	TestTrue(TEXT("A specialized Signal Relay base adds one active Relay Weave channel"),
 		ThreeChannels.PolicyId == FName(TEXT("logistics.mutual-aid-relay-weave"))
 		&& First != nullptr && Second != nullptr && Third != nullptr
 		&& SourceTelemetry != nullptr && ThreeChannels.Bases.Num() == 1
-		&& First->RelayChannelCount == 3 && First->bInTransit
+		&& First->FacilityRelayChannelCount == 3
+		&& First->SpecializationRelayChannelBonus == 1
+		&& First->RelayChannelCount == 4 && First->bInTransit
 		&& First->QueuePosition == 1 && First->RelayChannelNumber == 1
 		&& Second->bInTransit && Second->QueuePosition == 2
 		&& Second->RelayChannelNumber == 2 && Second->WaitingConvoyCount == 0
@@ -83,19 +86,21 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 		&& Third->RelayChannelNumber == 3 && Third->QueuePressurePercent == 0
 		&& SourceTelemetry->ActiveConvoyCount == 3
 		&& SourceTelemetry->TotalConvoyCount == 3
+		&& SourceTelemetry->FacilityRelayChannelCount == 3
+		&& SourceTelemetry->SpecializationRelayChannelBonus == 1
 		&& SourceTelemetry->WaitingConvoyCount == 0
 		&& SourceTelemetry->QueuePressurePercent == 0
 		&& SourceTelemetry->QueueTailArrivalSeconds == int64(72) * 3600);
 
 	const FMutualAidRelayQueueView Prospective = FMutualAidRelayQueue::ProjectNext(
 		Campaign, Rules, Source.BaseId, 36 * 3600);
-	TestTrue(TEXT("The next FIFO convoy chooses the earliest available channel exactly"),
-		Prospective.bValid && Prospective.bRelayAvailable && !Prospective.bInTransit
-		&& Prospective.QueuePosition == 4 && Prospective.WaitingPosition == 1
-		&& Prospective.WaitingConvoyCount == 1 && Prospective.QueuePressurePercent == 25
-		&& Prospective.RelayChannelNumber == 2
-		&& Prospective.EstimatedWaitSeconds == 24 * 3600
-		&& Prospective.EstimatedArrivalSeconds == 60 * 3600);
+	TestTrue(TEXT("The next convoy uses the specialized channel without a FIFO hold"),
+		Prospective.bValid && Prospective.bRelayAvailable && Prospective.bInTransit
+		&& Prospective.QueuePosition == 4 && Prospective.WaitingPosition == 0
+		&& Prospective.WaitingConvoyCount == 0 && Prospective.QueuePressurePercent == 0
+		&& Prospective.RelayChannelNumber == 4
+		&& Prospective.EstimatedWaitSeconds == 0
+		&& Prospective.EstimatedArrivalSeconds == 36 * 3600);
 
 	Algo::Reverse(Campaign.MutualAidConvoys);
 	const FMutualAidRelayQueueView Reordered = FMutualAidRelayQueue::ProjectNext(
@@ -109,12 +114,14 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 	Array.Damage = 50;
 	const FMutualAidRelayQueueView Degraded = FMutualAidRelayQueue::ProjectNext(
 		Campaign, Rules, Source.BaseId, 36 * 3600);
-	TestTrue(TEXT("Progressive array damage reduces two authored channels to one"),
-		Degraded.RelayChannelCount == 2 && !Degraded.bInTransit
-		&& Degraded.WaitingConvoyCount == 2 && Degraded.QueuePressurePercent == 50
-		&& Degraded.WaitingPosition == 2
-		&& Degraded.EstimatedWaitSeconds == 72 * 3600
-		&& Degraded.EstimatedArrivalSeconds == 108 * 3600);
+	TestTrue(TEXT("Progressive array damage retains the specialized channel while reducing facility output"),
+		Degraded.FacilityRelayChannelCount == 2
+		&& Degraded.SpecializationRelayChannelBonus == 1
+		&& Degraded.RelayChannelCount == 3 && !Degraded.bInTransit
+		&& Degraded.WaitingConvoyCount == 1 && Degraded.QueuePressurePercent == 25
+		&& Degraded.WaitingPosition == 1
+		&& Degraded.EstimatedWaitSeconds == 24 * 3600
+		&& Degraded.EstimatedArrivalSeconds == 60 * 3600);
 
 	Hub.Damage = Operations.MaxIntegrity;
 	Array.Damage = LongRangeArray.MaxIntegrity;
@@ -139,8 +146,8 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 	Legacy.Bases[0].Facilities.Reset();
 	Legacy.Bases[0].BuiltFacilities = {
 		Operations.Identity.RuleId, LongRangeArray.Identity.RuleId };
-	TestEqual(TEXT("Legacy facility lists retain full-strength relay capacity"),
-		FMutualAidRelayQueue::EvaluateRelayChannelCount(Legacy.Bases[0], Rules), 3);
+	TestEqual(TEXT("Legacy facility lists retain full-strength relay capacity and specialization"),
+		FMutualAidRelayQueue::EvaluateRelayChannelCount(Legacy.Bases[0], Rules), 4);
 
 	FMutualAidConvoyState Pending = Campaign.MutualAidConvoys[0];
 	Pending.RemainingTransitSeconds = 40 * 3600;
@@ -153,6 +160,66 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 	Pending.bSignalEscort = true;
 	TestEqual(TEXT("Signal Escort removes the pending delay from queue readiness"),
 		FMutualAidRelayQueue::ProjectedJourneySeconds(Pending), int64(40) * 3600);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMutualAidRelayQueueSpecializationBenefitTest,
+	"UEGT.Core.Strategic.MutualAidRelayQueue.SpecializationBenefit",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMutualAidRelayQueueSpecializationBenefitTest::RunTest(const FString& Parameters)
+{
+	FResolvedRuleSet Rules;
+	FFacilityRule Relay;
+	Relay.Identity.RuleId = TEXT("facility.specialization-relay");
+	Relay.DisplayName = TEXT("Specialization Relay");
+	Relay.DetectionStrength = 70;
+	Relay.StorageCapacity = 0;
+	Relay.MaxIntegrity = 100;
+	Rules.Facilities.Add(Relay.Identity.RuleId, Relay);
+
+	FCampaignState Campaign;
+	Campaign.CommandSequence = 41;
+	FStrategicBaseState& Base = Campaign.Bases.AddDefaulted_GetRef();
+	Base.BaseId = FGuid(201, 202, 203, 204);
+	Base.Name = TEXT("Specialization Relay Base");
+	FBaseFacilityState& Facility = Base.Facilities.AddDefaulted_GetRef();
+	Facility.InstanceId = FGuid(205, 206, 207, 208);
+	Facility.FacilityId = Relay.Identity.RuleId;
+
+	const uint64 InitialRandomState = Campaign.SimulationRandom.GetStateForSave();
+	const int64 InitialRandomDraws = Campaign.SimulationRandom.DrawCount;
+	const FGuid InitialBaseId = Base.BaseId;
+	const int32 InitialFacilityCount = Base.Facilities.Num();
+	const FStrategicBaseSpecializationView Specialization =
+		FStrategicCommandService::EvaluateBaseSpecialization(Base, Rules);
+	const int32 FacilityChannelCount =
+		FMutualAidRelayQueue::EvaluateFacilityRelayChannelCount(Base, Rules);
+	const int32 TotalChannelCount =
+		FMutualAidRelayQueue::EvaluateRelayChannelCount(Base, Rules);
+	const FMutualAidRelayQueueSnapshot Snapshot =
+		FMutualAidRelayQueue::Evaluate(Campaign, Rules);
+	const FMutualAidRelayQueueBaseView* BaseView = Snapshot.FindBase(Base.BaseId);
+
+	TestTrue(TEXT("Signal Relay specialization supplies one authoritative Relay Weave channel"),
+		Specialization.bSpecialized
+		&& Specialization.SpecializationId == FName(TEXT("base.specialization.signal-relay"))
+		&& Specialization.OperationalBenefitMetricId
+			== FName(TEXT("base.specialization.relay-channels"))
+		&& Specialization.OperationalBenefitValue == 1
+		&& FacilityChannelCount == 2
+		&& TotalChannelCount == FacilityChannelCount + 1
+		&& BaseView != nullptr
+		&& BaseView->FacilityRelayChannelCount == FacilityChannelCount
+		&& BaseView->SpecializationRelayChannelBonus == 1
+		&& BaseView->RelayChannelCount == TotalChannelCount
+		&& BaseView->SignalWatchBonusChannelCount == 0
+		&& Campaign.Bases.Num() == 1
+		&& Base.BaseId == InitialBaseId
+		&& Base.Facilities.Num() == InitialFacilityCount
+		&& Campaign.SimulationRandom.GetStateForSave() == InitialRandomState
+		&& Campaign.SimulationRandom.DrawCount == InitialRandomDraws);
 	return true;
 }
 
@@ -474,10 +541,10 @@ bool FMutualAidSignalWatchEvaluationTest::RunTest(const FString& Parameters)
 	Array.InstanceId = FGuid(24, 25, 26, 27);
 	Array.FacilityId = RelayArray.Identity.RuleId;
 
-	TestTrue(TEXT("Signal Watch uses the original policy identity and doubles the intact facility baseline"),
+	TestTrue(TEXT("Signal Watch layers staffed surge on the Signal Relay specialization"),
 		FMutualAidRelayQueue::SignalWatchPolicyId() == FName(TEXT("logistics.signal-watch"))
 		&& FMutualAidRelayQueue::EvaluateFacilityRelayChannelCount(Source, Rules) == 2
-		&& FMutualAidRelayQueue::EvaluateRelayChannelCount(Source, Rules) == 4);
+		&& FMutualAidRelayQueue::EvaluateRelayChannelCount(Source, Rules) == 5);
 
 	for (int32 Index = 0; Index < 4; ++Index)
 	{
@@ -500,9 +567,10 @@ bool FMutualAidSignalWatchEvaluationTest::RunTest(const FString& Parameters)
 			[](const FMutualAidRelayQueueView& View)
 			{
 				return View.FacilityRelayChannelCount == 2
+					&& View.SpecializationRelayChannelBonus == 1
 					&& View.SignalWatchScientistCount == 2
 					&& View.SignalWatchBonusChannelCount == 2
-					&& View.RelayChannelCount == 4
+					&& View.RelayChannelCount == 5
 					&& View.ActiveConvoyCount == 4 && View.WaitingConvoyCount == 0
 					&& View.QueuePressurePercent == 0 && View.bInTransit;
 			}));
@@ -511,17 +579,18 @@ bool FMutualAidSignalWatchEvaluationTest::RunTest(const FString& Parameters)
 	const FMutualAidRelayQueueSnapshot Damaged = FMutualAidRelayQueue::Evaluate(Campaign, Rules);
 	TestTrue(TEXT("Damage suppresses effective surge without deleting the authored staffing commitment"),
 		FMutualAidRelayQueue::EvaluateFacilityRelayChannelCount(Source, Rules) == 1
-		&& FMutualAidRelayQueue::EvaluateRelayChannelCount(Source, Rules) == 2
+		&& FMutualAidRelayQueue::EvaluateRelayChannelCount(Source, Rules) == 3
 		&& Damaged.Convoys.Num() == 4
 		&& Damaged.Convoys.ContainsByPredicate(
 			[](const FMutualAidRelayQueueView& View)
 			{
 				return View.FacilityRelayChannelCount == 1
+					&& View.SpecializationRelayChannelBonus == 1
 					&& View.SignalWatchScientistCount == 2
 					&& View.SignalWatchBonusChannelCount == 1
-					&& View.RelayChannelCount == 2
-					&& View.ActiveConvoyCount == 2 && View.WaitingConvoyCount == 2
-					&& View.QueuePressurePercent == 50 && !View.bInTransit;
+					&& View.RelayChannelCount == 3
+					&& View.ActiveConvoyCount == 3 && View.WaitingConvoyCount == 1
+					&& View.QueuePressurePercent == 25 && !View.bInTransit;
 			}));
 
 	Array.Damage = RelayArray.MaxIntegrity;

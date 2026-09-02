@@ -37,6 +37,10 @@ struct UEGTCORE_API FMutualAidRelayQueueView
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
 	int32 FacilityRelayChannelCount = 0;
 
+	/** Additional free channel supplied by a specialized Signal Relay base profile. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 SpecializationRelayChannelBonus = 0;
+
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
 	int32 SignalWatchScientistCount = 0;
 
@@ -104,6 +108,9 @@ struct UEGTCORE_API FMutualAidRelayQueueBaseView
 	int32 FacilityRelayChannelCount = 0;
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
+	int32 SpecializationRelayChannelBonus = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
 	int32 SignalWatchScientistCount = 0;
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Logistics")
@@ -161,7 +168,7 @@ public:
 		const FStrategicBaseState& Base,
 		const FResolvedRuleSet& Rules);
 
-	/** Facility baseline plus one staffed surge channel per effective Signal Watch scientist. */
+	/** Facility baseline plus any Signal Relay specialization channel and staffed surge channels. */
 	static int32 EvaluateRelayChannelCount(
 		const FStrategicBaseState& Base,
 		const FResolvedRuleSet& Rules);
