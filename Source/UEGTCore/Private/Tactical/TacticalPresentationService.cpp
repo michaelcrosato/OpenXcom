@@ -65,6 +65,25 @@ namespace TacticalPresentationPrivate
 		return Stack != nullptr ? FMath::Max(0, Stack->Quantity) : 0;
 	}
 
+	bool CanAddInventoryStack(
+		const TArray<FInventoryStack>& Inventory,
+		const FName ItemId,
+		const int32 Quantity)
+	{
+		if (Quantity <= 0)
+		{
+			return false;
+		}
+		const FInventoryStack* Stack = Inventory.FindByPredicate(
+			[ItemId](const FInventoryStack& Entry) { return Entry.ItemId == ItemId; });
+		if (Stack == nullptr)
+		{
+			return Inventory.Num() < 64;
+		}
+		const int64 NewQuantity = static_cast<int64>(Stack->Quantity) + Quantity;
+		return NewQuantity <= MAX_int32;
+	}
+
 	int32 FindBestReserveAmmunition(
 		const FTacticalUnitState& Unit,
 		const FName WeaponItemId,
@@ -1167,12 +1186,10 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 					const int64 RewardMass = Reward != nullptr
 						? static_cast<int64>(Mission->ObjectiveRewardQuantity) * Reward->Mass
 						: MAX_int64;
-					const int32 ExistingRewardQuantity = Craft != nullptr
-						? FindItemQuantity(Craft->Cargo, Mission->ObjectiveRewardItemId)
-						: 0;
 					bCapacityAvailable = Reward != nullptr && Craft != nullptr && CraftRule != nullptr
 						&& RewardMass >= 0 && Snapshot.CargoMass <= MAX_int64 - RewardMass
-						&& ExistingRewardQuantity <= MAX_int32 - Mission->ObjectiveRewardQuantity
+						&& CanAddInventoryStack(Craft->Cargo, Mission->ObjectiveRewardItemId, Mission->ObjectiveRewardQuantity)
+						&& CanAddInventoryStack(Craft->PendingSalvage, Mission->ObjectiveRewardItemId, Mission->ObjectiveRewardQuantity)
 						&& Snapshot.CargoMass + RewardMass <= CraftRule->CargoCapacity;
 				}
 				if (!bCapacityAvailable)

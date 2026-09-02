@@ -406,6 +406,34 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 		&& !PartialReload->bAvailable
 		&& PartialReload->UnavailableReasonCode == FName(TEXT("tactical_reload_no_improvement")));
 
+	FResolvedRuleSet RecoveryRules = Fixture.Rules;
+	FTacticalMissionRule* RecoveryMission = RecoveryRules.TacticalMissions.Find(TEXT("tactical.presentation-test"));
+	TestNotNull(TEXT("Recovery capacity fixture has its mission rule"), RecoveryMission);
+	if (RecoveryMission != nullptr)
+	{
+		RecoveryMission->ObjectiveRewardItemId = FName(TEXT("item.presentation-shard"));
+		RecoveryMission->ObjectiveRewardQuantity = 1;
+	}
+	FCampaignState FullSalvageTableCampaign = Fixture.Campaign;
+	FTacticalBattleState& FullSalvageTableBattle = FullSalvageTableCampaign.TacticalBattles[0];
+	FullSalvageTableBattle.Objectives[0].Type = ETacticalObjectiveType::Recover;
+	FullSalvageTableBattle.Objectives[0].RequiredInteractions = 2;
+	FullSalvageTableBattle.Objectives[0].CompletedInteractions = 1;
+	FCraftState& FullSalvageTableCraft = FullSalvageTableCampaign.Craft[0];
+	FullSalvageTableCraft.PendingSalvage.Reset();
+	for (int32 StackIndex = 0; StackIndex < 64; ++StackIndex)
+	{
+		FullSalvageTableCraft.PendingSalvage.Add({
+			FName(FString::Printf(TEXT("item.pending-salvage-%d"), StackIndex)), 1 });
+	}
+	const FTacticalHudSnapshot FullSalvageTable = FTacticalPresentationService::BuildHudSnapshot(
+		FullSalvageTableBattle, FullSalvageTableCampaign, RecoveryRules, Query);
+	const FTacticalHudActionAvailability* FullSalvageRecovery = FullSalvageTable.FindAction(
+		ETacticalHudActionType::InteractObjective);
+	TestTrue(TEXT("Recovery preview rejects a reward when pending salvage has no free stack slot"),
+		FullSalvageRecovery != nullptr && !FullSalvageRecovery->bAvailable
+		&& FullSalvageRecovery->UnavailableReasonCode == FName(TEXT("tactical_recovery_capacity_exceeded")));
+
 	FCampaignState BaseDefenseCampaign = Fixture.Campaign;
 	const FGuid BaseId(1801, 1802, 1803, 1804);
 	const FGuid AssaultId(1901, 1902, 1903, 1904);
