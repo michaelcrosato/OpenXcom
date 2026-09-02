@@ -5380,6 +5380,66 @@
       "translations": { "en": "Strategic contact ID must be valid and unique across active contacts and sites.", "fr": "L'identifiant du contact stratégique doit être valide et unique parmi les contacts et sites actifs.", "de": "Die ID des strategischen Kontakts muss gültig und über aktive Kontakte und Orte hinweg eindeutig sein.", "es": "El identificador del contacto estratégico debe ser válido y único entre contactos y sitios activos.", "ja": "戦略コンタクトIDは有効で、アクティブなコンタクトとサイト全体で一意でなければなりません。" }
     },
     {
+      "key": "diagnostic.attribute-at-maximum",
+      "source": "The selected personnel attribute is already at its maximum.",
+      "translations": { "en": "The selected personnel attribute is already at its maximum.", "fr": "L'attribut du personnel sélectionné a déjà atteint son maximum.", "de": "Das ausgewählte Personalattribut hat bereits seinen Höchstwert erreicht.", "es": "El atributo del personal seleccionado ya está en su máximo.", "ja": "選択した人員の能力値はすでに最大です。" }
+    },
+    {
+      "key": "diagnostic.invalid-personnel-capacity",
+      "source": "The base contains invalid personnel-capacity or reserved-duty data.",
+      "translations": { "en": "The base contains invalid personnel-capacity or reserved-duty data.", "fr": "La base contient des données invalides de capacité en personnel ou de service réservé.", "de": "Die Basis enthält ungültige Daten zur Personalkapazität oder zum reservierten Dienst.", "es": "La base contiene datos no válidos de capacidad de personal o servicio reservado.", "ja": "基地の人員容量または予約勤務データが無効です。" }
+    },
+    {
+      "key": "diagnostic.invalid-personnel-cause",
+      "source": "Personnel injury or death cause must be a valid namespaced ID.",
+      "translations": { "en": "Personnel injury or death cause must be a valid namespaced ID.", "fr": "La cause de blessure ou de décès du personnel doit être un identifiant d'espace de noms valide.", "de": "Die Ursache für Verletzung oder Tod des Personals muss eine gültige ID mit Namensraum sein.", "es": "La causa de lesión o muerte del personal debe ser un identificador con espacio de nombres válido.", "ja": "人員の負傷または死亡原因は、有効な名前空間付きIDでなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-personnel-damage",
+      "source": "Personnel damage must be positive.",
+      "translations": { "en": "Personnel damage must be positive.", "fr": "Les dégâts infligés au personnel doivent être positifs.", "de": "Personalschaden muss positiv sein.", "es": "El daño al personal debe ser positivo.", "ja": "人員の損傷値は正でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-personnel-equipment",
+      "source": "The personnel loadout references invalid equipment.",
+      "translations": { "en": "The personnel loadout references invalid equipment.", "fr": "L'équipement du personnel fait référence à un équipement invalide.", "de": "Die Personalausrüstung verweist auf ungültige Ausrüstung.", "es": "El equipamiento del personal hace referencia a equipo no válido.", "ja": "人員の装備が無効な装備を参照しています。" }
+    },
+    {
+      "key": "diagnostic.invalid-personnel-id",
+      "source": "Personnel ID must be valid and unused by the roster, recruitment queue, and memorial.",
+      "translations": { "en": "Personnel ID must be valid and unused by the roster, recruitment queue, and memorial.", "fr": "L'identifiant du personnel doit être valide et inutilisé par l'effectif, la file de recrutement et le mémorial.", "de": "Die Personal-ID muss gültig und in Kader, Rekrutierungswarteschlange und Gedenkarchiv unbenutzt sein.", "es": "El identificador del personal debe ser válido y no estar en uso por la plantilla, la cola de reclutamiento o el memorial.", "ja": "人員IDは有効で、名簿、採用キュー、慰霊記録で未使用でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-personnel-name",
+      "source": "Personnel names must contain 1-64 non-whitespace characters.",
+      "translations": { "en": "Personnel names must contain 1-64 non-whitespace characters.", "fr": "Le nom du personnel doit contenir entre 1 et 64 caractères autres que des espaces.", "de": "Personalnamen müssen aus 1 bis 64 Zeichen bestehen, die keine Leerzeichen sind.", "es": "Los nombres del personal deben contener entre 1 y 64 caracteres que no sean espacios.", "ja": "人員名は空白以外の1～64文字でなければなりません。" }
+    },
+    {
+      "key": "diagnostic.invalid-personnel-role",
+      "source": "The personnel role contains invalid or unsupported values.",
+      "translations": { "en": "The personnel role contains invalid or unsupported values.", "fr": "Le rôle du personnel contient des valeurs invalides ou non prises en charge.", "de": "Die Personalrolle enthält ungültige oder nicht unterstützte Werte.", "es": "El rol del personal contiene valores no válidos o no admitidos.", "ja": "人員役割に無効またはサポートされない値があります。" }
+    },
+    {
+      "key": "diagnostic.invalid-personnel-squad-bond",
+      "source": "Personnel squad-bond data is invalid or exceeds the supported history.",
+      "translations": { "en": "Personnel squad-bond data is invalid or exceeds the supported history.", "fr": "Les données de lien d'escouade du personnel sont invalides ou dépassent l'historique pris en charge.", "de": "Die Daten zur Personal-Gruppenbindung sind ungültig oder überschreiten den unterstützten Verlauf.", "es": "Los datos de vínculo de escuadra del personal no son válidos o superan el historial admitido.", "ja": "人員分隊ボンドのデータが無効か、サポートされる履歴を超えています。" }
+    },
+    {
+      "key": "diagnostic.invalid-personnel-state",
+      "source": "Personnel has invalid saved identity, role, base, attributes, status, or timers.",
+      "translations": { "en": "Personnel has invalid saved identity, role, base, attributes, status, or timers.", "fr": "Le personnel possède une identité, un rôle, une base, des attributs, un état ou des minuteurs sauvegardés invalides.", "de": "Das Personal weist eine ungültige gespeicherte Identität, Rolle, Basis, Attribute, Status oder Zeitgeber auf.", "es": "El personal tiene una identidad, rol, base, atributos, estado o temporizadores guardados no válidos.", "ja": "人員の保存された識別情報、役割、基地、能力値、状態、またはタイマーが無効です。" }
+    },
+    {
+      "key": "diagnostic.personnel-squad-bond-capacity",
+      "source": "The campaign cannot retain additional personnel squad-bond records.",
+      "translations": { "en": "The campaign cannot retain additional personnel squad-bond records.", "fr": "La campagne ne peut pas conserver d'autres historiques de liens d'escouade du personnel.", "de": "Die Kampagne kann keine weiteren Aufzeichnungen zu Personal-Gruppenbindungen speichern.", "es": "La campaña no puede conservar más registros de vínculos de escuadra del personal.", "ja": "キャンペーンに人員分隊ボンドの記録をこれ以上保存できません。" }
+    },
+    {
+      "key": "diagnostic.personnel-squad-bond-overflow",
+      "source": "The surviving personnel pair cannot accept another shared victory.",
+      "translations": { "en": "The surviving personnel pair cannot accept another shared victory.", "fr": "Le duo de membres du personnel survivants ne peut pas recevoir une victoire partagée supplémentaire.", "de": "Das überlebende Personalpaar kann keinen weiteren gemeinsamen Sieg aufnehmen.", "es": "La pareja de personal superviviente no puede aceptar otra victoria compartida.", "ja": "生存している人員ペアに共有勝利をこれ以上加えられません。" }
+    },
+    {
       "key": "diagnostic.storage-capacity-exceeded",
       "source": "Free storage capacity before completing this order.",
       "translations": { "en": "Free storage capacity before completing this order.", "fr": "Libérez de la capacité de stockage avant de terminer cette commande.", "de": "Schaffen Sie Lagerkapazität, bevor Sie diesen Auftrag abschließen.", "es": "Libera capacidad de almacenamiento antes de completar esta orden.", "ja": "この命令を完了する前に保管容量を空けてください。" }
