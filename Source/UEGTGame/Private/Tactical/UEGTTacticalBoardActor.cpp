@@ -30,6 +30,8 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 	BlockerInstances = MakeInstances(TEXT("BlockerInstances"));
 	DoorInstances = MakeInstances(TEXT("DoorInstances"));
 	ConnectorInstances = MakeInstances(TEXT("ConnectorInstances"));
+	DeploymentInstances = MakeInstances(TEXT("DeploymentInstances"));
+	ExtractionInstances = MakeInstances(TEXT("ExtractionInstances"));
 	PlayerUnitInstances = MakeInstances(TEXT("PlayerUnitInstances"));
 	AdversaryUnitInstances = MakeInstances(TEXT("AdversaryUnitInstances"));
 	LastKnownAdversaryInstances = MakeInstances(TEXT("LastKnownAdversaryInstances"));
@@ -50,7 +52,7 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 	{
 		for (UInstancedStaticMeshComponent* Component : {
 			GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), PathInstances.Get(), HoverInstances.Get(),
-			SelectionInstances.Get() })
+			SelectionInstances.Get(), DeploymentInstances.Get(), ExtractionInstances.Get() })
 		{
 			Component->SetStaticMesh(CubeMesh.Object);
 		}
@@ -97,6 +99,8 @@ void AUEGTTacticalBoardActor::BeginPlay()
 	ConfigureMeshComponent(BlockerInstances, true);
 	ConfigureMeshComponent(DoorInstances, true);
 	ConfigureMeshComponent(ConnectorInstances, false);
+	ConfigureMeshComponent(DeploymentInstances, false);
+	ConfigureMeshComponent(ExtractionInstances, false);
 	ConfigureMeshComponent(PlayerUnitInstances, true);
 	ConfigureMeshComponent(AdversaryUnitInstances, true);
 	ConfigureMeshComponent(LastKnownAdversaryInstances, false);
@@ -197,6 +201,8 @@ void AUEGTTacticalBoardActor::ApplyPalette()
 		{ BlockerInstances, TEXT("BlockerMaterial"), FLinearColor(0.22f, 0.19f, 0.31f) },
 		{ DoorInstances, TEXT("DoorMaterial"), FLinearColor(0.08f, 0.55f, 0.62f) },
 		{ ConnectorInstances, TEXT("ConnectorMaterial"), FLinearColor(0.12f, 0.88f, 0.82f) },
+		{ DeploymentInstances, TEXT("DeploymentMaterial"), FLinearColor(0.1f, 0.82f, 0.95f) },
+		{ ExtractionInstances, TEXT("ExtractionMaterial"), FLinearColor(1.0f, 0.64f, 0.08f) },
 		{ PlayerUnitInstances, TEXT("PlayerMaterial"), Tone(PlayerColor) },
 		{ AdversaryUnitInstances, TEXT("AdversaryMaterial"), Tone(AdversaryColor) },
 		{ LastKnownAdversaryInstances, TEXT("LastKnownAdversaryMaterial"), Tone(FLinearColor(AdversaryColor.R * 0.38f, AdversaryColor.G * 0.38f, AdversaryColor.B * 0.38f)) },
@@ -458,7 +464,7 @@ void AUEGTTacticalBoardActor::AddUnitMarker(
 void AUEGTTacticalBoardActor::ClearBoard()
 {
 	for (UInstancedStaticMeshComponent* Component : {
-		GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), ConnectorInstances.Get(), PlayerUnitInstances.Get(),
+		GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), ConnectorInstances.Get(), DeploymentInstances.Get(), ExtractionInstances.Get(), PlayerUnitInstances.Get(),
 		AdversaryUnitInstances.Get(), LastKnownAdversaryInstances.Get(), ObjectiveInstances.Get(), PathInstances.Get(), HoverInstances.Get(),
 		SelectionInstances.Get(), SmokeInstances.Get(), FireInstances.Get() })
 	{
@@ -507,6 +513,14 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 		if (Cell.bIsVerticalConnector)
 		{
 			AddCellMarker(ConnectorInstances, GridCell, 9.0f, 0.28f, 0.22f);
+		}
+		if (Cell.bPlayerDeployment)
+		{
+			AddCellMarker(DeploymentInstances, GridCell, 4.0f, 0.66f, 0.02f);
+		}
+		if (Cell.bExtraction)
+		{
+			AddCellMarker(ExtractionInstances, GridCell, 7.0f, 0.66f, 0.024f);
 		}
 		if (Cell.bIsDoor && Cell.CurrentIntegrity > 0)
 		{
@@ -710,6 +724,16 @@ int32 AUEGTTacticalBoardActor::GetRenderedConnectorCount() const
 	return ConnectorInstances != nullptr ? ConnectorInstances->GetInstanceCount() : 0;
 }
 
+int32 AUEGTTacticalBoardActor::GetRenderedDeploymentCount() const
+{
+	return DeploymentInstances != nullptr ? DeploymentInstances->GetInstanceCount() : 0;
+}
+
+int32 AUEGTTacticalBoardActor::GetRenderedExtractionCount() const
+{
+	return ExtractionInstances != nullptr ? ExtractionInstances->GetInstanceCount() : 0;
+}
+
 bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const
 {
 	const UStaticMesh* GroundMesh = GroundInstances != nullptr ? GroundInstances->GetStaticMesh() : nullptr;
@@ -721,6 +745,12 @@ bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const
 	const UStaticMesh* ConnectorMesh = ConnectorInstances != nullptr
 		? ConnectorInstances->GetStaticMesh()
 		: nullptr;
+	const UStaticMesh* DeploymentMesh = DeploymentInstances != nullptr
+		? DeploymentInstances->GetStaticMesh()
+		: nullptr;
+	const UStaticMesh* ExtractionMesh = ExtractionInstances != nullptr
+		? ExtractionInstances->GetStaticMesh()
+		: nullptr;
 	const UStaticMesh* SmokeMesh = SmokeInstances != nullptr ? SmokeInstances->GetStaticMesh() : nullptr;
 	const UStaticMesh* FireMesh = FireInstances != nullptr ? FireInstances->GetStaticMesh() : nullptr;
 	return GroundMesh != nullptr
@@ -728,6 +758,8 @@ bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const
 		&& AdversaryMesh != nullptr
 		&& LastKnownMesh != nullptr
 		&& ConnectorMesh != nullptr
+		&& DeploymentMesh != nullptr
+		&& ExtractionMesh != nullptr
 		&& SmokeMesh != nullptr
 		&& FireMesh != nullptr
 		&& GroundMesh != PlayerMesh
