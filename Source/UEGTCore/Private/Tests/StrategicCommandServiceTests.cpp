@@ -15042,6 +15042,20 @@ bool FTacticalMissionGenerationCorpusTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Cell ordering corruption has a stable diagnostic"), Diagnostics.ContainsByPredicate(
 			[](const FTacticalGenerationDiagnostic& Diagnostic) { return Diagnostic.Code == FName(TEXT("invalid_tactical_cell")); }));
 	}
+	{
+		FResolvedRuleSet ExtremeRules = Rules;
+		FTacticalMissionRule* ExtremeMission = ExtremeRules.TacticalMissions.Find(TEXT("tactical.test-recovery"));
+		check(ExtremeMission != nullptr);
+		ExtremeMission->MapWidth = MAX_int32;
+		ExtremeMission->MapHeight = MAX_int32;
+		ExtremeMission->MapLevels = MAX_int32;
+		const FTacticalGenerationResult ExtremeDimensions = FTacticalMissionGenerator::Generate(
+			Campaign, ExtremeRules, Operation.OperationId);
+		TestFalse(TEXT("Tactical generation rejects extreme map dimensions before cell-count arithmetic"),
+			ExtremeDimensions.bSucceeded);
+		TestTrue(TEXT("Extreme tactical generation dimensions have a stable rule diagnostic"),
+			ExtremeDimensions.HasDiagnostic(TEXT("invalid_tactical_rules")));
+	}
 	Site.ThreatRating = 1000;
 	const FTacticalGenerationResult UnsupportedThreat = FTacticalMissionGenerator::Generate(Campaign, Rules, Operation.OperationId);
 	TestFalse(TEXT("Unsupported tactical populations fail without indexing beyond spawn capacity"), UnsupportedThreat.bSucceeded);

@@ -10,6 +10,15 @@
 
 namespace TacticalMissionGeneratorPrivate
 {
+	int64 ComputeTacticalMapCellCount(const int32 Width, const int32 Height, const int32 Levels)
+	{
+		if (Width < 8 || Width > 64 || Height < 12 || Height > 96 || Levels < 1 || Levels > 4)
+		{
+			return MAX_int64;
+		}
+		return static_cast<int64>(Width) * Height * Levels;
+	}
+
 	void AddError(TArray<FTacticalGenerationDiagnostic>& Diagnostics, const FName Code, FString Message)
 	{
 		FTacticalGenerationDiagnostic& Diagnostic = Diagnostics.AddDefaulted_GetRef();
@@ -356,7 +365,8 @@ FTacticalGenerationResult FTacticalMissionGenerator::Generate(
 		AddError(Result.Diagnostics, TEXT("invalid_tactical_rules"), TEXT("Tactical mission references an invalid floor, obstacle, connector, or adversary unit rule."));
 		return Result;
 	}
-	const int64 MapCellCount = static_cast<int64>(Mission->MapWidth) * Mission->MapHeight * Mission->MapLevels;
+	const int64 MapCellCount = ComputeTacticalMapCellCount(
+		Mission->MapWidth, Mission->MapHeight, Mission->MapLevels);
 	const int64 EnemyDeploymentCapacity = static_cast<int64>(Mission->MapWidth) * Mission->DeploymentDepth;
 	const int64 EnemyCount64 = static_cast<int64>(Mission->BaseEnemyCount)
 		+ static_cast<int64>(Mission->EnemiesPerThreat) * ThreatRating;
@@ -399,7 +409,7 @@ FTacticalGenerationResult FTacticalMissionGenerator::Generate(
 	Battle.Cargo.Sort(
 		[](const FInventoryStack& Left, const FInventoryStack& Right) { return Left.ItemId.LexicalLess(Right.ItemId); });
 
-	Battle.Cells.Reserve(Battle.Width * Battle.Height * Battle.Levels);
+	Battle.Cells.Reserve(static_cast<int32>(MapCellCount));
 	for (int32 Z = 0; Z < Battle.Levels; ++Z)
 	{
 		for (int32 Y = 0; Y < Battle.Height; ++Y)
@@ -1006,8 +1016,10 @@ bool FTacticalMissionGenerator::ValidateBattle(
 		PreviousLastKnownUnitId = Memory.UnitId;
 		bHasPreviousLastKnownUnitId = true;
 	}
-	const int32 ExpectedAdversaries = Mission->BaseEnemyCount + Mission->EnemiesPerThreat * ThreatRating;
-	if (PlayerPersonnelIds.Num() != Operation->AgentIds.Num() || AdversaryCount != ExpectedAdversaries)
+	const int64 ExpectedAdversaries = static_cast<int64>(Mission->BaseEnemyCount)
+		+ static_cast<int64>(Mission->EnemiesPerThreat) * ThreatRating;
+	if (PlayerPersonnelIds.Num() != Operation->AgentIds.Num()
+		|| static_cast<int64>(AdversaryCount) != ExpectedAdversaries)
 	{
 		AddError(OutDiagnostics, TEXT("invalid_tactical_population"), TEXT("Tactical player or adversary population does not match its operation and mission recipe."));
 		return false;
