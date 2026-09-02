@@ -16,7 +16,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FUEGTAudioSynthesisTest::RunTest(const FString& Parameters)
 {
 	const TArray<EUEGTAudioCue> Cues = FUEGTAudioSynthesisService::GetCueTypes();
-	TestEqual(TEXT("The original runtime palette publishes thirteen intentional voices"), Cues.Num(), 13);
+	TestEqual(TEXT("The original runtime palette publishes fifteen intentional voices"), Cues.Num(), 15);
 	TSet<FName> Names;
 	TSet<uint32> Fingerprints;
 	int32 AmbientCount = 0;
@@ -116,6 +116,17 @@ bool FUEGTAudioEventRoutingTest::RunTest(const FString& Parameters)
 		UUEGTAudioDirector::SelectCommandCue(Result, false), EUEGTAudioCue::DebriefFailure);
 
 	Result.Events.Reset();
+	FStrategicEvent& Impact = Result.Events.AddDefaulted_GetRef();
+	Impact.Type = EStrategicEventType::TacticalAttackResolved;
+	TestEqual(TEXT("Physical tactical attacks use a distinct impact voice"),
+		UUEGTAudioDirector::SelectCommandCue(Result, true), EUEGTAudioCue::TacticalImpact);
+	Impact.Type = EStrategicEventType::TacticalBlastResolved;
+	TestEqual(TEXT("Tactical blasts retain the impact voice"),
+		UUEGTAudioDirector::SelectCommandCue(Result, true), EUEGTAudioCue::TacticalImpact);
+	Impact.Type = EStrategicEventType::TacticalSignalProjected;
+	TestEqual(TEXT("Signal projection uses a distinct signal voice"),
+		UUEGTAudioDirector::SelectCommandCue(Result, true), EUEGTAudioCue::TacticalSignal);
+	Result.Events.Reset();
 	FStrategicEvent& Resolved = Result.Events.AddDefaulted_GetRef();
 	Resolved.Type = EStrategicEventType::TacticalBattleResolved;
 	Resolved.bSuccessful = true;
@@ -149,6 +160,8 @@ bool FUEGTAudioEventRoutingTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Tactical audio routing selects the latest authoritative event cell"),
 		UUEGTAudioDirector::TryGetLatestTacticalEventCell(TacticalResult, TacticalCell)
 		&& TacticalCell == FIntVector(6, 2, 0));
+	TestEqual(TEXT("Tactical impact routing outranks generic confirmation"),
+		UUEGTAudioDirector::SelectCommandCue(TacticalResult, true), EUEGTAudioCue::TacticalImpact);
 	FStrategicCommandResult StrategicOnlyResult;
 	FStrategicEvent StrategicEvent;
 	StrategicEvent.Type = EStrategicEventType::TimeAdvanced;

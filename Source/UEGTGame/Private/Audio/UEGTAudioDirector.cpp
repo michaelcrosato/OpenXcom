@@ -166,6 +166,13 @@ EUEGTAudioCue UUEGTAudioDirector::SelectCommandCue(
 		case EStrategicEventType::TacticalTurnEnded:
 			Select(EUEGTAudioCue::TacticalAdversaryTurn, 65);
 			break;
+		case EStrategicEventType::TacticalAttackResolved:
+		case EStrategicEventType::TacticalBlastResolved:
+			Select(EUEGTAudioCue::TacticalImpact, 72);
+			break;
+		case EStrategicEventType::TacticalSignalProjected:
+			Select(EUEGTAudioCue::TacticalSignal, 73);
+			break;
 		default:
 			break;
 		}

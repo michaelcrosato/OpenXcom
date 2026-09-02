@@ -4662,7 +4662,10 @@ void AUEGTTacticalPlayerController::PlayCommandAudio(
 		FIntVector TacticalCell;
 		if (bTacticalContext
 			&& BoardActor != nullptr
-			&& (Cue == EUEGTAudioCue::CommandAccepted || Cue == EUEGTAudioCue::CommandRejected)
+			&& (Cue == EUEGTAudioCue::CommandAccepted
+				|| Cue == EUEGTAudioCue::CommandRejected
+				|| Cue == EUEGTAudioCue::TacticalImpact
+				|| Cue == EUEGTAudioCue::TacticalSignal)
 			&& UUEGTAudioDirector::TryGetLatestTacticalEventCell(Result, TacticalCell))
 		{
 			AudioDirector->PlayCueAtLocation(

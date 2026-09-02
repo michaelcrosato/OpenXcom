@@ -78,6 +78,8 @@ TArray<EUEGTAudioCue> FUEGTAudioSynthesisService::GetCueTypes()
 	return {
 		EUEGTAudioCue::InterfaceConfirm,
 		EUEGTAudioCue::TacticalSelection,
+		EUEGTAudioCue::TacticalImpact,
+		EUEGTAudioCue::TacticalSignal,
 		EUEGTAudioCue::CommandAccepted,
 		EUEGTAudioCue::CommandRejected,
 		EUEGTAudioCue::StrategicAlert,
@@ -103,6 +105,12 @@ FUEGTAudioCueDefinition FUEGTAudioSynthesisService::GetDefinition(const EUEGTAud
 	case EUEGTAudioCue::TacticalSelection:
 		return MakeDefinition(Cue, TEXT("tactical-selection"), 140, 610.0f, 915.0f,
 			0.12f, 4.0f, 45.0f, 0.08f, 0.0f);
+	case EUEGTAudioCue::TacticalImpact:
+		return MakeDefinition(Cue, TEXT("tactical-impact"), 220, 145.0f, 220.0f,
+			0.14f, 3.0f, 95.0f, -0.12f, 0.0f);
+	case EUEGTAudioCue::TacticalSignal:
+		return MakeDefinition(Cue, TEXT("tactical-signal"), 260, 780.0f, 1170.0f,
+			0.11f, 4.0f, 110.0f, 0.24f, 0.0f);
 	case EUEGTAudioCue::CommandAccepted:
 		return MakeDefinition(Cue, TEXT("command-accepted"), 240, 520.0f, 780.0f,
 			0.18f, 6.0f, 80.0f, 0.10f, 0.0f);

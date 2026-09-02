@@ -12,6 +12,8 @@ enum class EUEGTAudioCue : uint8
 {
 	InterfaceConfirm,
 	TacticalSelection,
+	TacticalImpact,
+	TacticalSignal,
 	CommandAccepted,
 	CommandRejected,
 	StrategicAlert,
