@@ -602,6 +602,34 @@ bool FTacticalHistoricalFogDiscoveryTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FTacticalNavigationGridStateValidationTest,
+	"UEGT.Core.Tactical.Navigation.GridStateValidation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FTacticalNavigationGridStateValidationTest::RunTest(const FString& Parameters)
+{
+	using namespace TacticalPresentationTests;
+
+	FFixture Fixture;
+	FTacticalBattleState NegativeSmoke = Fixture.Campaign.TacticalBattles[0];
+	NegativeSmoke.Cells[0].Smoke = -1;
+	const FTacticalVisibilityResult NegativeSmokeVisibility = FTacticalNavigationService::ComputePlayerVisibility(
+		NegativeSmoke, Fixture.Rules);
+	TestFalse(TEXT("Navigation rejects negative persisted smoke state"), NegativeSmokeVisibility.bSucceeded);
+	TestTrue(TEXT("Negative smoke state has the shared grid diagnostic"),
+		NegativeSmokeVisibility.HasDiagnostic(TEXT("invalid_tactical_grid")));
+
+	FTacticalBattleState ExcessFire = Fixture.Campaign.TacticalBattles[0];
+	ExcessFire.Cells[0].Fire = 101;
+	const FTacticalVisibilityResult ExcessFireVisibility = FTacticalNavigationService::ComputePlayerVisibility(
+		ExcessFire, Fixture.Rules);
+	TestFalse(TEXT("Navigation rejects over-range persisted fire state"), ExcessFireVisibility.bSucceeded);
+	TestTrue(TEXT("Over-range fire state has the shared grid diagnostic"),
+		ExcessFireVisibility.HasDiagnostic(TEXT("invalid_tactical_grid")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FTacticalDebriefPresentationTest,
 	"UEGT.Core.Tactical.Presentation.DebriefCargoCasualtiesAndProgression",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

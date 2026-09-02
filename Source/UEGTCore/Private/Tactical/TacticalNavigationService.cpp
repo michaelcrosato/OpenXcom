@@ -41,6 +41,7 @@ namespace TacticalNavigationPrivate
 			if (Cell.X != WithinLayer % Battle.Width || Cell.Y != WithinLayer / Battle.Width || Cell.Z != ExpectedZ
 				|| Terrain == nullptr || Cell.CurrentIntegrity < 0
 				|| (Terrain != nullptr && Cell.CurrentIntegrity > Terrain->MaxIntegrity)
+				|| Cell.Smoke < 0 || Cell.Smoke > 100 || Cell.Fire < 0 || Cell.Fire > 100
 				|| (Cell.bDoorOpen && (Terrain == nullptr || !Terrain->IsDoor() || Cell.CurrentIntegrity <= 0)))
 			{
 				AddDiagnostic(Diagnostics, TEXT("invalid_tactical_grid"), TEXT("Tactical grid cells must be level-major row-major and reference valid terrain state."));
