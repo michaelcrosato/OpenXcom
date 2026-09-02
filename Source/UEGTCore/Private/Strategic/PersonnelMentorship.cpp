@@ -110,7 +110,9 @@ FPersonnelMentorshipView FPersonnelMentorship::Evaluate(
 	View.MentorId = Mentor->PersonnelId;
 	View.MentorDisplayName = Mentor->DisplayName;
 	View.MentorServiceHistory = MentorHistory;
-	View.MoraleBonus = MentorHistory.Band == EPersonnelServiceBand::LegacyAnchor ? 10 : 5;
+	View.MoraleBonus = MentorHistory.Band == EPersonnelServiceBand::EnduringBeacon
+		? 15
+		: (MentorHistory.Band == EPersonnelServiceBand::LegacyAnchor ? 10 : 5);
 	for (const FGuid& PersonnelId : StablePersonnelIds)
 	{
 		if (PersonnelId == Mentor->PersonnelId)

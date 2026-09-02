@@ -56,6 +56,8 @@ namespace UEGTTacticalHudPrivate
 			return Localized(TEXT("personnel.service-band-long-watch"), TEXT("LONG WATCH"));
 		case EPersonnelServiceBand::LegacyAnchor:
 			return Localized(TEXT("personnel.service-band-legacy-anchor"), TEXT("LEGACY ANCHOR"));
+		case EPersonnelServiceBand::EnduringBeacon:
+			return Localized(TEXT("personnel.service-band-enduring-beacon"), TEXT("ENDURING BEACON"));
 		default:
 			return Localized(TEXT("common.unknown"), TEXT("UNKNOWN"));
 		}
@@ -114,7 +116,7 @@ namespace UEGTTacticalHudPrivate
 	{
 		return Localized(
 			TEXT("personnel.mentorship-guidance"),
-			TEXT("Long Watch mentors grant +5 starting morale; Legacy Anchors grant +10. Only lower-band teammates receive guidance, capped at 100; selection is stable and uses no random draw."));
+			TEXT("Long Watch mentors grant +5 starting morale; Legacy Anchors grant +10; Enduring Beacons grant +15. Only lower-band teammates receive guidance, capped at 100; selection is stable and uses no random draw."));
 	}
 
 	FString PersonnelLegacyRelayLabel(const FPersonnelLegacyRelayView& Relay)
@@ -148,7 +150,7 @@ namespace UEGTTacticalHudPrivate
 	{
 		return Localized(
 			TEXT("personnel.legacy-relay-guidance"),
-			TEXT("A Legacy Anchor with a maxed doctrine relays half its authored ACC/RES/MOB/STR bonuses, rounded up. Missions then IDs select the specialist; total bonus then doctrine ID select the doctrine. No random draw."));
+			TEXT("A Legacy Anchor or higher with a maxed doctrine relays half its authored ACC/RES/MOB/STR bonuses, rounded up. Missions then IDs select the specialist; total bonus then doctrine ID select the doctrine. No random draw."));
 	}
 
 	FString PersonnelSquadBondTierLabel(const EPersonnelSquadBondTier Tier)

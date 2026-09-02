@@ -138,7 +138,8 @@ FPersonnelLegacyRelayView FPersonnelLegacyRelay::Evaluate(
 		}
 		const int32 SafeMissions = FMath::Max(0, Person->Missions);
 		const FPersonnelServiceHistoryView ServiceHistory = FPersonnelServiceHistory::Project(SafeMissions);
-		if (ServiceHistory.Band != EPersonnelServiceBand::LegacyAnchor)
+		if (static_cast<int32>(ServiceHistory.Band)
+			< static_cast<int32>(EPersonnelServiceBand::LegacyAnchor))
 		{
 			continue;
 		}

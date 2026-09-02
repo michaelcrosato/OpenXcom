@@ -56,7 +56,7 @@ bool FPersonnelLegacyRelayEvaluationTest::RunTest(const FString& Parameters)
 		{ ClearSight.Identity.RuleId, ClearSight.Identity.RuleId });
 	const FPersonnelLegacyRelayView NoRelay = FPersonnelLegacyRelay::Evaluate(
 		Campaign, Rules, { FGuid(), PreLegacyId, IncompleteLegacyId, PreLegacyId });
-	TestTrue(TEXT("Legacy Relay requires both the terminal service band and a maxed doctrine"),
+	TestTrue(TEXT("Legacy Relay requires both a late-career service band and a maxed doctrine"),
 		NoRelay.PolicyId == FName(TEXT("personnel.specialization-legacy-relay"))
 		&& !NoRelay.bHasSpecialist
 		&& !NoRelay.bActive
@@ -119,6 +119,23 @@ bool FPersonnelLegacyRelayEvaluationTest::RunTest(const FString& Parameters)
 		&& HigherMission.DoctrineId == Anchor.Identity.RuleId
 		&& HigherMission.StrengthBonus == 2
 		&& HigherMission.RecipientIds == TArray<FGuid>{ RecipientLowId, TieWinnerId });
+
+	const FGuid EnduringBeaconId(80, 1, 1, 1);
+	AddPerson(Campaign, EnduringBeaconId, TEXT("Asha North"), 40,
+		{ ClearSight.Identity.RuleId, ClearSight.Identity.RuleId, ClearSight.Identity.RuleId });
+	const FPersonnelLegacyRelayView EnduringBeacon = FPersonnelLegacyRelay::Evaluate(
+		Campaign, Rules, { TieWinnerId, HigherMissionId, EnduringBeaconId, RecipientLowId });
+	TestTrue(TEXT("Enduring Beacon remains relay-eligible and supersedes lower late-career specialists"),
+		EnduringBeacon.bHasSpecialist
+		&& EnduringBeacon.bActive
+		&& EnduringBeacon.SpecialistId == EnduringBeaconId
+		&& EnduringBeacon.SpecialistServiceHistory.Band == EPersonnelServiceBand::EnduringBeacon
+		&& EnduringBeacon.DoctrineId == ClearSight.Identity.RuleId
+		&& EnduringBeacon.AccuracyBonus == 2
+		&& EnduringBeacon.ResolveBonus == 0
+		&& EnduringBeacon.MobilityBonus == 0
+		&& EnduringBeacon.StrengthBonus == 0
+		&& EnduringBeacon.RecipientIds == TArray<FGuid>{ RecipientLowId, TieWinnerId, HigherMissionId });
 
 	const FGuid DoctrineTieId(70, 1, 1, 1);
 	AddPerson(Campaign, DoctrineTieId, TEXT("Edda Vale"), 27,

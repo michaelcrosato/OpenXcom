@@ -5805,6 +5805,11 @@
       "translations": { "en": "LEGACY ANCHOR", "fr": "PILIER D’HÉRITAGE", "de": "VERMÄCHTNISANKER", "es": "ANCLA DEL LEGADO", "ja": "継承の要" }
     },
     {
+      "key": "personnel.service-band-enduring-beacon",
+      "source": "ENDURING BEACON",
+      "translations": { "en": "ENDURING BEACON", "fr": "BALISE PERSISTANTE", "de": "DAUERLEUCHTFEUER", "es": "BALIZA PERDURABLE", "ja": "永続の灯火" }
+    },
+    {
       "key": "personnel.service-progress-format",
       "source": "SERVICE  {0}\nNEXT {1} AT {2} MISSIONS  •  {3} TO GO",
       "translations": { "en": "SERVICE  {0}\nNEXT {1} AT {2} MISSIONS  •  {3} TO GO", "fr": "SERVICE  {0}\nPROCHAIN PALIER {1} À {2} MISSIONS  •  RESTE {3}", "de": "DIENST  {0}\nNÄCHSTE STUFE {1} BEI {2} EINSÄTZEN  •  NOCH {3}", "es": "SERVICIO  {0}\nSIGUIENTE NIVEL {1} EN {2} MISIONES  •  FALTAN {3}", "ja": "勤務記録  {0}\n次段階 {1}：任務{2}回  •  あと{3}回" }
@@ -5836,8 +5841,8 @@
     },
     {
       "key": "personnel.mentorship-guidance",
-      "source": "Long Watch mentors grant +5 starting morale; Legacy Anchors grant +10. Only lower-band teammates receive guidance, capped at 100; selection is stable and uses no random draw.",
-      "translations": { "en": "Long Watch mentors grant +5 starting morale; Legacy Anchors grant +10. Only lower-band teammates receive guidance, capped at 100; selection is stable and uses no random draw.", "fr": "Les mentors Longue veille accordent +5 au moral initial ; les Piliers d’héritage accordent +10. Seuls les coéquipiers d’un palier inférieur en bénéficient, avec un plafond de 100 ; la sélection est stable et n’utilise aucun tirage aléatoire.", "de": "Mentoren der Langen Wacht gewähren +5 Startmoral, Vermächtnisanker +10. Nur Teammitglieder niedrigerer Stufen profitieren, bis maximal 100; die Auswahl ist stabil und benötigt keinen Zufallswurf.", "es": "Los mentores de Guardia larga otorgan +5 de moral inicial y las Anclas del legado +10. Solo se benefician los compañeros de nivel inferior, con un máximo de 100; la selección es estable y no usa tiradas aleatorias.", "ja": "長期監視の指導者は開始時士気を+5、継承の要は+10します。対象は下位段階の仲間のみで上限は100、選出は常に安定しランダム抽選を使いません。" }
+      "source": "Long Watch mentors grant +5 starting morale; Legacy Anchors grant +10; Enduring Beacons grant +15. Only lower-band teammates receive guidance, capped at 100; selection is stable and uses no random draw.",
+      "translations": { "en": "Long Watch mentors grant +5 starting morale; Legacy Anchors grant +10; Enduring Beacons grant +15. Only lower-band teammates receive guidance, capped at 100; selection is stable and uses no random draw.", "fr": "Les mentors Longue veille accordent +5 au moral initial ; les Piliers d’héritage +10 ; les Balises persistantes +15. Seuls les coéquipiers d’un palier inférieur en bénéficient, avec un plafond de 100 ; la sélection est stable et n’utilise aucun tirage aléatoire.", "de": "Mentoren der Langen Wacht gewähren +5 Startmoral, Vermächtnisanker +10 und Dauerleuchtfeuer +15. Nur Teammitglieder niedrigerer Stufen profitieren, bis maximal 100; die Auswahl ist stabil und benötigt keinen Zufallswurf.", "es": "Los mentores de Guardia larga otorgan +5 de moral inicial, las Anclas del legado +10 y las Balizas perdurables +15. Solo se benefician los compañeros de nivel inferior, con un máximo de 100; la selección es estable y no usa tiradas aleatorias.", "ja": "長期監視の指導者は開始時士気を+5、継承の要は+10、永続の灯火は+15します。対象は下位段階の仲間のみで上限は100、選出は常に安定しランダム抽選を使いません。" }
     },
     {
       "key": "personnel.legacy-relay-name",
@@ -5856,8 +5861,8 @@
     },
     {
       "key": "personnel.legacy-relay-guidance",
-      "source": "A Legacy Anchor with a maxed doctrine relays half its authored ACC/RES/MOB/STR bonuses, rounded up. Missions then IDs select the specialist; total bonus then doctrine ID select the doctrine. No random draw.",
-      "translations": { "en": "A Legacy Anchor with a maxed doctrine relays half its authored ACC/RES/MOB/STR bonuses, rounded up. Missions then IDs select the specialist; total bonus then doctrine ID select the doctrine. No random draw.", "fr": "Un Pilier d’héritage ayant atteint le maximum d’une doctrine transmet la moitié arrondie au supérieur de ses bonus PRÉC/RÉS/MOB/FOR. Les missions puis les identifiants choisissent le spécialiste ; le bonus total puis l’identifiant choisissent la doctrine. Aucun tirage aléatoire.", "de": "Ein Vermächtnisanker mit maximierter Doktrin überträgt die Hälfte seiner vorgesehenen PRÄZ/WIL/BEW/STÄ-Boni, aufgerundet. Einsätze und dann IDs wählen den Spezialisten; Gesamtbonus und dann Doktrin-ID wählen die Doktrin. Kein Zufallswurf.", "es": "Un Ancla del legado con una doctrina maximizada transmite la mitad redondeada hacia arriba de sus bonificaciones PRE/RES/MOV/FUE. Las misiones y luego los identificadores eligen al especialista; la bonificación total y luego el ID eligen la doctrina. Sin tirada aleatoria.", "ja": "最大まで習得したドクトリンを持つ継承の要は、設定された精度・意志・機動・筋力ボーナスの半分を切り上げて仲間へ伝えます。任務数とIDで専門家を、合計ボーナスとドクトリンIDでドクトリンを選びます。ランダム抽選はありません。" }
+      "source": "A Legacy Anchor or higher with a maxed doctrine relays half its authored ACC/RES/MOB/STR bonuses, rounded up. Missions then IDs select the specialist; total bonus then doctrine ID select the doctrine. No random draw.",
+      "translations": { "en": "A Legacy Anchor or higher with a maxed doctrine relays half its authored ACC/RES/MOB/STR bonuses, rounded up. Missions then IDs select the specialist; total bonus then doctrine ID select the doctrine. No random draw.", "fr": "Un Pilier d’héritage ou d’un palier supérieur ayant atteint le maximum d’une doctrine transmet la moitié arrondie au supérieur de ses bonus PRÉC/RÉS/MOB/FOR. Les missions puis les identifiants choisissent le spécialiste ; le bonus total puis l’identifiant choisissent la doctrine. Aucun tirage aléatoire.", "de": "Ein Vermächtnisanker oder eine höhere Stufe mit maximierter Doktrin überträgt die Hälfte seiner vorgesehenen PRÄZ/WIL/BEW/STÄ-Boni, aufgerundet. Einsätze und dann IDs wählen den Spezialisten; Gesamtbonus und dann Doktrin-ID wählen die Doktrin. Kein Zufallswurf.", "es": "Un Ancla del legado o de un nivel superior con una doctrina maximizada transmite la mitad redondeada hacia arriba de sus bonificaciones PRE/RES/MOV/FUE. Las misiones y luego los identificadores eligen al especialista; la bonificación total y luego el ID eligen la doctrina. Sin tirada aleatoria.", "ja": "継承の要またはそれ以上の段階で最大まで習得したドクトリンを持つ者は、設定された精度・意志・機動・筋力ボーナスの半分を切り上げて仲間へ伝えます。任務数とIDで専門家を、合計ボーナスとドクトリンIDでドクトリンを選びます。ランダム抽選はありません。" }
     },
     {
       "key": "personnel.squad-bond-name",

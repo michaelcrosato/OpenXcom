@@ -235,11 +235,11 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 			&& Hud->GetRenderedSectionLabels().Contains(
 				TEXT("CONSEIL DE LA VIGIE  //  ARI VENN  •  LONGUE VEILLE\nMORAL INITIAL +5  •  BÉNÉFICIAIRES DE PALIER INFÉRIEUR 1"))
 			&& Hud->GetRenderedSectionLabels().Contains(
-				TEXT("Les mentors Longue veille accordent +5 au moral initial ; les Piliers d’héritage accordent +10. Seuls les coéquipiers d’un palier inférieur en bénéficient, avec un plafond de 100 ; la sélection est stable et n’utilise aucun tirage aléatoire."))
+				TEXT("Les mentors Longue veille accordent +5 au moral initial ; les Piliers d’héritage +10 ; les Balises persistantes +15. Seuls les coéquipiers d’un palier inférieur en bénéficient, avec un plafond de 100 ; la sélection est stable et n’utilise aucun tirage aléatoire."))
 			&& Hud->GetRenderedSectionLabels().Contains(
 				TEXT("RELAIS D’HÉRITAGE  //  ARI VENN  •  VISION NETTE\nRELAIS DE TERRAIN  •  PRÉC +2  RÉS +0  MOB +0  FOR +0  •  BÉNÉFICIAIRES 1"))
 			&& Hud->GetRenderedSectionLabels().Contains(
-				TEXT("Un Pilier d’héritage ayant atteint le maximum d’une doctrine transmet la moitié arrondie au supérieur de ses bonus PRÉC/RÉS/MOB/FOR. Les missions puis les identifiants choisissent le spécialiste ; le bonus total puis l’identifiant choisissent la doctrine. Aucun tirage aléatoire.")));
+				TEXT("Un Pilier d’héritage ou d’un palier supérieur ayant atteint le maximum d’une doctrine transmet la moitié arrondie au supérieur de ses bonus PRÉC/RÉS/MOB/FOR. Les missions puis les identifiants choisissent le spécialiste ; le bonus total puis l’identifiant choisissent la doctrine. Aucun tirage aléatoire.")));
 		TestTrue(TEXT("French tactical HUD exposes exact active Field Cadence"),
 			Hud->GetRenderedSectionLabels().Contains(TEXT("CADENCE DE TERRAIN"))
 			&& Hud->GetRenderedSectionLabels().Contains(
@@ -1419,12 +1419,12 @@ bool FUEGTStrategicRuntimePresentationTest::RunTest(const FString& Parameters)
 			SalvageLabels.Contains(
 				TEXT("CONSEIL DE LA VIGIE  //  ARI WEST  •  PILIER D’HÉRITAGE\nMORAL INITIAL +10  •  BÉNÉFICIAIRES DE PALIER INFÉRIEUR 1"))
 			&& SalvageLabels.Contains(
-				TEXT("Les mentors Longue veille accordent +5 au moral initial ; les Piliers d’héritage accordent +10. Seuls les coéquipiers d’un palier inférieur en bénéficient, avec un plafond de 100 ; la sélection est stable et n’utilise aucun tirage aléatoire.")));
+				TEXT("Les mentors Longue veille accordent +5 au moral initial ; les Piliers d’héritage +10 ; les Balises persistantes +15. Seuls les coéquipiers d’un palier inférieur en bénéficient, avec un plafond de 100 ; la sélection est stable et n’utilise aucun tirage aléatoire.")));
 		TestTrue(TEXT("French fleet card exposes exact active Legacy Relay"),
 			SalvageLabels.Contains(
 				TEXT("RELAIS D’HÉRITAGE  //  ARI WEST  •  VISION NETTE\nRELAIS DE TERRAIN  •  PRÉC +2  RÉS +0  MOB +0  FOR +0  •  BÉNÉFICIAIRES 1"))
 			&& SalvageLabels.Contains(
-				TEXT("Un Pilier d’héritage ayant atteint le maximum d’une doctrine transmet la moitié arrondie au supérieur de ses bonus PRÉC/RÉS/MOB/FOR. Les missions puis les identifiants choisissent le spécialiste ; le bonus total puis l’identifiant choisissent la doctrine. Aucun tirage aléatoire.")));
+				TEXT("Un Pilier d’héritage ou d’un palier supérieur ayant atteint le maximum d’une doctrine transmet la moitié arrondie au supérieur de ses bonus PRÉC/RÉS/MOB/FOR. Les missions puis les identifiants choisissent le spécialiste ; le bonus total puis l’identifiant choisissent la doctrine. Aucun tirage aléatoire.")));
 		TestTrue(TEXT("French fleet card exposes exact active Field Cadence"),
 			SalvageLabels.Contains(TEXT("CADENCE DE TERRAIN"))
 			&& SalvageLabels.Contains(

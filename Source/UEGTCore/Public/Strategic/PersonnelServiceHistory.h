@@ -13,7 +13,8 @@ enum class EPersonnelServiceBand : uint8
 	FirstWatch,
 	FieldProven,
 	LongWatch,
-	LegacyAnchor
+	LegacyAnchor,
+	EnduringBeacon
 };
 
 /** Immutable milestone projection; no value in this view is persisted to a campaign save. */
@@ -41,6 +42,6 @@ struct UEGTCORE_API FPersonnelServiceHistoryView
 class UEGTCORE_API FPersonnelServiceHistory final
 {
 public:
-	/** Projects exact 0/5/10/20-mission bands without mutating campaign state. */
+	/** Projects exact 0/5/10/20/40-mission bands without mutating campaign state. */
 	static FPersonnelServiceHistoryView Project(int32 Missions);
 };

@@ -30,8 +30,10 @@ bool FPersonnelServiceHistoryProjectionTest::RunTest(const FString& Parameters)
 		{ 9, EPersonnelServiceBand::FieldProven, EPersonnelServiceBand::LongWatch, 10, 1, false },
 		{ 10, EPersonnelServiceBand::LongWatch, EPersonnelServiceBand::LegacyAnchor, 20, 10, false },
 		{ 19, EPersonnelServiceBand::LongWatch, EPersonnelServiceBand::LegacyAnchor, 20, 1, false },
-		{ 20, EPersonnelServiceBand::LegacyAnchor, EPersonnelServiceBand::LegacyAnchor, 20, 0, true },
-		{ 73, EPersonnelServiceBand::LegacyAnchor, EPersonnelServiceBand::LegacyAnchor, 20, 0, true }
+		{ 20, EPersonnelServiceBand::LegacyAnchor, EPersonnelServiceBand::EnduringBeacon, 40, 20, false },
+		{ 39, EPersonnelServiceBand::LegacyAnchor, EPersonnelServiceBand::EnduringBeacon, 40, 1, false },
+		{ 40, EPersonnelServiceBand::EnduringBeacon, EPersonnelServiceBand::EnduringBeacon, 40, 0, true },
+		{ 73, EPersonnelServiceBand::EnduringBeacon, EPersonnelServiceBand::EnduringBeacon, 40, 0, true }
 	};
 	for (const FExpectation& Expected : Expectations)
 	{
@@ -529,7 +531,7 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	EarlierMemorial.DisplayName = TEXT("Mara Sol");
 	EarlierMemorial.RoleId = Scientist.Identity.RuleId;
 	EarlierMemorial.Rank = 5;
-	EarlierMemorial.Missions = 20;
+	EarlierMemorial.Missions = 40;
 	EarlierMemorial.Kills = 13;
 	EarlierMemorial.DeathUtc = Campaign.StrategicTime.Utc - FTimespan::FromDays(1);
 	EarlierMemorial.CauseId = TEXT("cause.interception-loss");
@@ -1438,7 +1440,7 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& Snapshot.Memorial[0].DoctrineSelections == TArray<FName>{ FocusDoctrine.Identity.RuleId }
 		&& Snapshot.Memorial[0].Commendations.Num() == 1
 		&& Snapshot.Memorial[1].PersonnelId == EarlierMemorialId
-		&& Snapshot.Memorial[1].ServiceHistory.Band == EPersonnelServiceBand::LegacyAnchor
+		&& Snapshot.Memorial[1].ServiceHistory.Band == EPersonnelServiceBand::EnduringBeacon
 		&& Snapshot.Memorial[1].ServiceHistory.bMaximumBand);
 	FCampaignState DoctrineReadyCampaign = Campaign;
 	DoctrineReadyCampaign.Personnel[0].Status = EPersonnelStatus::Available;

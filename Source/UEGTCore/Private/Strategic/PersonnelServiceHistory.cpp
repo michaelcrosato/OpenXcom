@@ -24,11 +24,17 @@ FPersonnelServiceHistoryView FPersonnelServiceHistory::Project(const int32 Missi
 		View.NextBand = EPersonnelServiceBand::LegacyAnchor;
 		View.NextBandMissions = 20;
 	}
-	else
+	else if (SafeMissions < 40)
 	{
 		View.Band = EPersonnelServiceBand::LegacyAnchor;
-		View.NextBand = EPersonnelServiceBand::LegacyAnchor;
-		View.NextBandMissions = 20;
+		View.NextBand = EPersonnelServiceBand::EnduringBeacon;
+		View.NextBandMissions = 40;
+	}
+	else
+	{
+		View.Band = EPersonnelServiceBand::EnduringBeacon;
+		View.NextBand = EPersonnelServiceBand::EnduringBeacon;
+		View.NextBandMissions = 40;
 		View.MissionsUntilNextBand = 0;
 		View.bMaximumBand = true;
 		return View;

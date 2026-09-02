@@ -66,7 +66,7 @@ class UEGTCORE_API FPersonnelLegacyRelay final
 public:
 	static FName PolicyId();
 
-	/** Selects one 20+-mission, maxed-doctrine specialist without mutating state or rules. */
+	/** Selects one 20+-mission, maxed-doctrine specialist, including Enduring Beacons, without mutating state or rules. */
 	static FPersonnelLegacyRelayView Evaluate(
 		const FCampaignState& Campaign,
 		const FResolvedRuleSet& Rules,

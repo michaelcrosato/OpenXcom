@@ -102,6 +102,25 @@ bool FPersonnelMentorshipEvaluationTest::RunTest(const FString& Parameters)
 		&& !Legacy.RecipientIds.Contains(LegacyLowerMissionId)
 		&& !Legacy.RecipientIds.Contains(LegacyTieLoserId));
 
+	const FGuid EnduringTieWinnerId(60, 1, 1, 1);
+	const FGuid EnduringTieLoserId(70, 1, 1, 1);
+	AddPerson(Campaign, EnduringTieWinnerId, TEXT("Asha North"), 45);
+	AddPerson(Campaign, EnduringTieLoserId, TEXT("Bram Sato"), 45);
+	TArray<FGuid> EnduringRoster = LegacyRoster;
+	EnduringRoster.Append({ EnduringTieLoserId, EnduringTieWinnerId });
+	const FPersonnelMentorshipView Enduring = FPersonnelMentorship::Evaluate(Campaign, EnduringRoster);
+	TestTrue(TEXT("Enduring Beacon supersedes Legacy Anchor, grants fifteen, and never buffs equal-band peers"),
+		Enduring.bHasMentor
+		&& Enduring.bActive
+		&& Enduring.MentorId == EnduringTieWinnerId
+		&& Enduring.MentorServiceHistory.Band == EPersonnelServiceBand::EnduringBeacon
+		&& Enduring.MoraleBonus == 15
+		&& Enduring.RecipientCount == 8
+		&& Enduring.RecipientIds.Contains(LegacyLowerMissionId)
+		&& Enduring.RecipientIds.Contains(LegacyTieWinnerId)
+		&& Enduring.RecipientIds.Contains(LegacyTieLoserId)
+		&& !Enduring.RecipientIds.Contains(EnduringTieLoserId));
+
 	const FPersonnelMentorshipView Dormant = FPersonnelMentorship::Evaluate(
 		Campaign,
 		{ LegacyTieLoserId, LegacyTieWinnerId, LegacyLowerMissionId });
