@@ -231,9 +231,9 @@ namespace TacticalCombatPrivate
 				return false;
 			}
 			OutProfile.RuleId = Attacker.SourceRuleId;
-			OutProfile.MaximumRange = UnitRule->AttackRange;
-			OutProfile.AttackPower = UnitRule->AttackPower;
-			OutProfile.ActionPointCost = UnitRule->AttackActionPointCost;
+			OutProfile.MaximumRange = FMath::Clamp(UnitRule->AttackRange, 1, 64);
+			OutProfile.AttackPower = FMath::Clamp(UnitRule->AttackPower, 1, 200);
+			OutProfile.ActionPointCost = FMath::Clamp(UnitRule->AttackActionPointCost, 1, 20);
 			OutProfile.DamageType = UnitRule->AttackDamageType;
 			OutProfile.FireMode = ETacticalFireMode::Single;
 			return true;

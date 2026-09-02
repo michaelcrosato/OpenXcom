@@ -236,9 +236,11 @@ namespace TacticalAiPrivate
 		const int32 Distance = CeilDistance(
 			Cell.X, Cell.Y, Cell.Z, PrimaryTarget.X, PrimaryTarget.Y, PrimaryTarget.Z);
 		const bool bHasLineOfSight = CanSeeFrom(Battle, Rules, Cell.X, Cell.Y, Cell.Z, PrimaryTarget);
+		const int32 EffectiveAttackRange = FMath::Clamp(UnitRule.AttackRange, 1, 64);
+		const int32 EffectiveAttackActionPointCost = FMath::Clamp(UnitRule.AttackActionPointCost, 1, 20);
 		const bool bCanAttackAfterMoving = bHasLineOfSight
-			&& Distance > 0 && Distance <= UnitRule.AttackRange
-			&& RemainingActionPoints - Cell.TotalCost >= UnitRule.AttackActionPointCost;
+			&& Distance > 0 && Distance <= EffectiveAttackRange
+			&& RemainingActionPoints - Cell.TotalCost >= EffectiveAttackActionPointCost;
 		return -static_cast<int64>(Distance) * 10000
 			+ (bCanAttackAfterMoving ? 200000 : (bHasLineOfSight ? 5000 : 0))
 			+ static_cast<int64>(Cell.Z - PrimaryTarget.Z) * 250

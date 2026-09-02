@@ -15322,6 +15322,27 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 		&& AttackDecision.Goal == ETacticalAiGoal::Engage
 		&& AttackDecision.ActionType == ETacticalAiActionType::AttackUnit
 		&& AttackDecision.PerceivedHostileCount == 2 && AttackDecision.HitChance >= 25);
+	FResolvedRuleSet ExtremeAttackRules = Rules;
+	FTacticalUnitRule* ExtremeAttackScout = ExtremeAttackRules.TacticalUnits.Find(TEXT("unit.test-scout"));
+	FTacticalBattleState ExtremeAttackBattle = AttackProbe;
+	FTacticalUnitState* ExtremeAttackAi = ExtremeAttackBattle.Units.FindByPredicate(
+		[&AttackAiId](const FTacticalUnitState& Unit) { return Unit.UnitId == AttackAiId; });
+	TestTrue(TEXT("Extreme adversary attack boundary fixture resolves its unit rule"),
+		ExtremeAttackScout != nullptr && ExtremeAttackAi != nullptr);
+	if (ExtremeAttackScout != nullptr && ExtremeAttackAi != nullptr)
+	{
+		ExtremeAttackScout->AttackRange = MAX_int32;
+		ExtremeAttackScout->AttackPower = MAX_int32;
+		ExtremeAttackScout->AttackActionPointCost = MAX_int32;
+		ExtremeAttackAi->MaxActionPoints = 20;
+		ExtremeAttackAi->RemainingActionPoints = 20;
+		const FTacticalAttackPreview ExtremeAttackPreview = FTacticalCombatService::PreviewUnitAttack(
+			ExtremeAttackBattle, ProbeCampaign, ExtremeAttackRules, AttackAiId, WoundedTargetId, NAME_None);
+		TestTrue(TEXT("Extreme adversary attack fields clamp to the supported preview profile"),
+			ExtremeAttackPreview.bSucceeded && ExtremeAttackPreview.MaximumRange == 64
+			&& ExtremeAttackPreview.AttackPower == 200
+			&& ExtremeAttackPreview.ActionPointCost == 20);
+	}
 	TestEqual(TEXT("Standard AI deterministically prioritizes the equally reachable wounded target"),
 		AttackDecision.TargetUnitId, WoundedTargetId);
 	TestTrue(TEXT("Legacy tactical missions retain the authored assault posture"),
