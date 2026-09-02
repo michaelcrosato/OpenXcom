@@ -1010,6 +1010,11 @@
       "translations": { "en": "CELL {0} · {1} · L{2}", "fr": "CASE {0} · {1} · N{2}", "de": "FELD {0} · {1} · E{2}", "es": "CASILLA {0} · {1} · N{2}", "ja": "セル {0} · {1} · L{2}" }
     },
     {
+      "key": "tactical.hover-terrain-format",
+      "source": "\n{0}  •  INTEGRITY {1}  •  MOVE {2} AP  •  COVER {3}%  •  SMOKE {4}  •  FIRE {5}",
+      "translations": { "en": "\n{0}  •  INTEGRITY {1}  •  MOVE {2} AP  •  COVER {3}%  •  SMOKE {4}  •  FIRE {5}", "fr": "\n{0}  •  INTÉGRITÉ {1}  •  DÉPLACEMENT {2} PA  •  COUVERTURE {3}%  •  FUMÉE {4}  •  FEU {5}", "de": "\n{0}  •  STRUKTUR {1}  •  BEWEGUNG {2} AP  •  DECKUNG {3}%  •  RAUCH {4}  •  FEUER {5}", "es": "\n{0}  •  INTEGRIDAD {1}  •  MOVIMIENTO {2} PA  •  COBERTURA {3}%  •  HUMO {4}  •  FUEGO {5}", "ja": "\n{0}  •  耐久 {1}  •  移動 AP {2}  •  遮蔽 {3}%  •  煙 {4}  •  火災 {5}" }
+    },
+    {
       "key": "tactical.hover-unseen",
       "source": "  •  UNSEEN",
       "translations": { "en": "  •  UNSEEN", "fr": "  •  NON VUE", "de": "  •  UNGESEHEN", "es": "  •  NO VISTA", "ja": "  •  未確認" }
@@ -1703,6 +1708,51 @@
       "key": "content.item.resonance-shard.name",
       "source": "Resonance Shard",
       "translations": { "en": "Resonance Shard", "fr": "Éclat de résonance", "de": "Resonanzsplitter", "es": "Fragmento de resonancia", "ja": "共鳴片" }
+    },
+    {
+      "key": "content.terrain.slate-mesh-deck.name",
+      "source": "Slate Mesh Deck",
+      "translations": { "en": "Slate Mesh Deck", "fr": "Pont en treillis d'ardoise", "de": "Schiefergitterdeck", "es": "Cubierta de malla de pizarra", "ja": "スレートメッシュ甲板" }
+    },
+    {
+      "key": "content.terrain.prismatic-bulkhead.name",
+      "source": "Prismatic Bulkhead",
+      "translations": { "en": "Prismatic Bulkhead", "fr": "Cloison prismatique", "de": "Prismatische Schottwand", "es": "Mamparo prismático", "ja": "プリズム隔壁" }
+    },
+    {
+      "key": "content.terrain.resonance-hatch.name",
+      "source": "Resonance Hatch",
+      "translations": { "en": "Resonance Hatch", "fr": "Trappe de résonance", "de": "Resonanzluke", "es": "Escotilla de resonancia", "ja": "共鳴ハッチ" }
+    },
+    {
+      "key": "content.terrain.rime-lattice.name",
+      "source": "Rime Lattice",
+      "translations": { "en": "Rime Lattice", "fr": "Treillis de givre", "de": "Reifgitter", "es": "Celosía de escarcha", "ja": "霜の格子" }
+    },
+    {
+      "key": "content.terrain.aurora-pillar.name",
+      "source": "Aurora Pillar",
+      "translations": { "en": "Aurora Pillar", "fr": "Pilier d'aurore", "de": "Aurorapfeiler", "es": "Pilar de aurora", "ja": "オーロラ柱" }
+    },
+    {
+      "key": "content.terrain.resonance-lift.name",
+      "source": "Resonance Lift",
+      "translations": { "en": "Resonance Lift", "fr": "Ascenseur de résonance", "de": "Resonanzlift", "es": "Ascensor de resonancia", "ja": "共鳴リフト" }
+    },
+    {
+      "key": "content.terrain.cinder-ceramic-deck.name",
+      "source": "Cinder Ceramic Deck",
+      "translations": { "en": "Cinder Ceramic Deck", "fr": "Pont en céramique de braise", "de": "Aschekeramikdeck", "es": "Cubierta de cerámica de brasa", "ja": "燃え殻セラミック甲板" }
+    },
+    {
+      "key": "content.terrain.ember-lattice-pier.name",
+      "source": "Ember Lattice Pier",
+      "translations": { "en": "Ember Lattice Pier", "fr": "Appontement en treillis de braise", "de": "Glutgitterpier", "es": "Pilar de celosía de brasa", "ja": "残り火格子桟橋" }
+    },
+    {
+      "key": "content.terrain.thermal-shunt-gate.name",
+      "source": "Thermal Shunt Gate",
+      "translations": { "en": "Thermal Shunt Gate", "fr": "Porte de dérivation thermique", "de": "Thermisches Bypass-Tor", "es": "Compuerta de derivación térmica", "ja": "熱シャントゲート" }
     },
     {
       "key": "content.role.field-agent.name",

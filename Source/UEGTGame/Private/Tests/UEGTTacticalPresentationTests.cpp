@@ -205,7 +205,15 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 		Cell.Y = 1;
 		Cell.Z = 0;
 		Cell.bCurrentlyVisible = true;
+		Cell.TerrainRuleId = X == 0
+			? FName(TEXT("terrain.slate-mesh-deck"))
+			: (X == 1 ? FName(TEXT("terrain.prismatic-bulkhead")) : FName(TEXT("terrain.resonance-lift")));
+		Cell.TerrainDisplayName = X == 0
+			? TEXT("Slate Mesh Deck")
+			: (X == 1 ? TEXT("Prismatic Bulkhead") : TEXT("Resonance Lift"));
 		Cell.CurrentIntegrity = X == 1 ? 40 : 0;
+		Cell.MaxIntegrity = X == 1 ? 120 : 0;
+		Cell.MoveCost = X == 1 ? 8 : 1;
 		Cell.bBlocksMovement = X == 1;
 		Cell.bIsVerticalConnector = X == 2;
 		Cell.CoverPercent = X == 1 ? 60 : 0;
@@ -460,7 +468,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 				TEXT("Cette démonstration de présentation n'active que les commandes exactes prévues.")));
 		TestEqual(TEXT("French tactical hover preview renders through native Slate"),
 			Hud->GetRenderedHoverText(),
-			FString(TEXT("CASE 2 · 1 · N1  •  TRAJET 1 PA  •  SIGNAL 71%  −13 MORAL  +10 SUP")));
+			FString(TEXT("CASE 2 · 1 · N1\nAscenseur de résonance  •  INTÉGRITÉ —  •  DÉPLACEMENT 1 PA  •  COUVERTURE 0%  •  FUMÉE 0  •  FEU 0  •  TRAJET 1 PA  •  SIGNAL 71%  −13 MORAL  +10 SUP")));
 
 		FTacticalHudSnapshot DormantMentorshipSnapshot = LocalizedSnapshot;
 		DormantMentorshipSnapshot.Mentorship.bActive = false;

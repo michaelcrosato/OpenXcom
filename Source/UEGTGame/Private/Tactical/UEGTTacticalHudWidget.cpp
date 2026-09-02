@@ -1002,6 +1002,32 @@ void UUEGTTacticalHudWidget::RefreshSlate()
 		}
 		else
 		{
+			const FTacticalHudCellView* HoveredCell = CurrentSnapshot.VisibleCells.FindByPredicate(
+				[this](const FTacticalHudCellView& Cell)
+				{
+					return Cell.X == CurrentSnapshot.Hover.X
+						&& Cell.Y == CurrentSnapshot.Hover.Y
+						&& Cell.Z == CurrentSnapshot.Hover.Z;
+				});
+			if (HoveredCell != nullptr
+				&& (!HoveredCell->TerrainRuleId.IsNone() || !HoveredCell->TerrainDisplayName.IsEmpty()))
+			{
+				const FString Integrity = HoveredCell->MaxIntegrity > 0
+					? FString::Printf(TEXT("%d/%d"), HoveredCell->CurrentIntegrity, HoveredCell->MaxIntegrity)
+					: FString(TEXT("—"));
+				HoverLine += LocalizedFormat(
+					TEXT("tactical.hover-terrain-format"),
+					TEXT("\n{0}  •  INTEGRITY {1}  •  MOVE {2} AP  •  COVER {3}%  •  SMOKE {4}  •  FIRE {5}"),
+					{
+						FUEGTLocalizationService::ContentName(
+							HoveredCell->TerrainRuleId, HoveredCell->TerrainDisplayName),
+						Integrity,
+						FString::FromInt(HoveredCell->MoveCost),
+						FString::FromInt(HoveredCell->CoverPercent),
+						FString::FromInt(HoveredCell->Smoke),
+						FString::FromInt(HoveredCell->Fire)
+					});
+			}
 			if (CurrentSnapshot.Hover.bHasPathPreview && CurrentSnapshot.Hover.Path.bSucceeded)
 			{
 				HoverLine += LocalizedFormat(

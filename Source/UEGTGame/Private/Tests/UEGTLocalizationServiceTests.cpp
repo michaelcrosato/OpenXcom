@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, craft-state safeguards, personnel-integrity safeguards, control safeguards, base-site safeguards, tactical-resolution safeguards, interception aftershock, and last-known tactical contacts expose one thousand six hundred twenty-four localized keys"),
-		Loaded.Catalog.Entries.Num(), 1624);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, craft-state safeguards, personnel-integrity safeguards, control safeguards, base-site safeguards, tactical-resolution safeguards, interception aftershock, terrain hover context, and last-known tactical contacts expose one thousand six hundred thirty-four localized keys"),
+		Loaded.Catalog.Entries.Num(), 1634);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1155,7 +1155,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1624);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1634);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
