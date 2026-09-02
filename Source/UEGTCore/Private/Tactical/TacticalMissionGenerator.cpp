@@ -898,6 +898,7 @@ bool FTacticalMissionGenerator::ValidateBattle(
 				|| PlayerPersonnelIds.Contains(Unit.PersonnelId)
 				|| !bLoadoutValid
 				|| (Person != nullptr && (Unit.SourceRuleId != Person->RoleId
+					|| Unit.DisplayName != Person->DisplayName
 					|| Unit.MaxHealth != Person->MaxHealth || Unit.CurrentHealth > Person->CurrentHealth
 					|| Unit.Accuracy != ExpectedAccuracy || Unit.Resolve != ExpectedResolve
 					|| Unit.Mobility != ExpectedMobility || Unit.Strength != ExpectedStrength

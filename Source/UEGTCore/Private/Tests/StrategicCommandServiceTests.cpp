@@ -13893,6 +13893,23 @@ bool FStrategicSiteDeploymentLifecycleTest::RunTest(const FString& Parameters)
 			FTacticalMissionGenerator::ValidateBattle(FirstBattle, First, Rules, GenerationDiagnostics));
 		TestTrue(TEXT("Valid battlefield produces no generator diagnostics"), GenerationDiagnostics.IsEmpty());
 
+		FTacticalBattleState InvalidPlayerIdentity = FirstBattle;
+		FTacticalUnitState* InvalidPlayerUnit = InvalidPlayerIdentity.Units.FindByPredicate(
+			[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+		if (InvalidPlayerUnit != nullptr)
+		{
+			InvalidPlayerUnit->DisplayName = TEXT("Tampered Tactical Identity");
+			TArray<FTacticalGenerationDiagnostic> InvalidPlayerDiagnostics;
+			TestFalse(TEXT("Player units cannot drift from the deployed personnel identity"),
+				FTacticalMissionGenerator::ValidateBattle(
+					InvalidPlayerIdentity, First, Rules, InvalidPlayerDiagnostics));
+			TestTrue(TEXT("Player identity drift has a stable diagnostic"), InvalidPlayerDiagnostics.ContainsByPredicate(
+				[](const FTacticalGenerationDiagnostic& Diagnostic)
+				{
+					return Diagnostic.Code == FName(TEXT("invalid_tactical_player_unit"));
+				}));
+		}
+
 		FResolvedRuleSet RulesWithAlternateAdversary = Rules;
 		FTacticalUnitRule AlternateAdversary = Rules.TacticalUnits.FindChecked(
 			FirstBattle.Units.FindByPredicate(
