@@ -1255,6 +1255,10 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	const FCampaignSaveValidationResult Validation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("Invalid domain state fails validation"), Validation.bSucceeded);
 	TestTrue(TEXT("Negative command sequence is diagnosed"), Validation.HasDiagnostic(TEXT("invalid_command_sequence")));
+	Invalid.State.CommandSequence = MAX_int64;
+	const FCampaignSaveValidationResult ExhaustedSequenceValidation = FCampaignSaveCodec::Validate(Invalid);
+	TestFalse(TEXT("Exhausted command sequence fails validation"), ExhaustedSequenceValidation.bSucceeded);
+	TestTrue(TEXT("Exhausted command sequence is diagnosed"), ExhaustedSequenceValidation.HasDiagnostic(TEXT("invalid_command_sequence")));
 
 	const FCampaignSaveReadResult Malformed = FCampaignSaveCodec::Deserialize(TEXT("{broken"));
 	TestFalse(TEXT("Malformed JSON is rejected"), Malformed.bSucceeded);
