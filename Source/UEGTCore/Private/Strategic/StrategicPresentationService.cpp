@@ -818,13 +818,15 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		return Left.EntryId.LexicalLess(Right.EntryId);
 	});
 
-	TMap<FName, FIntPoint> RegionCoordinateSums;
-	TMap<FName, int32> RegionCoordinateCounts;
+	TMap<FName, int64> RegionLongitudeSums;
+	TMap<FName, int64> RegionLatitudeSums;
+	TMap<FName, int64> RegionCoordinateCounts;
 	for (const TPair<FName, FAdversaryMissionRule>& Pair : Rules.AdversaryMissions)
 	{
-		FIntPoint& Sum = RegionCoordinateSums.FindOrAdd(Pair.Value.TargetRegionId);
-		Sum.X += Pair.Value.DestinationLongitudeMilliDegrees;
-		Sum.Y += Pair.Value.DestinationLatitudeMilliDegrees;
+		RegionLongitudeSums.FindOrAdd(Pair.Value.TargetRegionId) +=
+			static_cast<int64>(Pair.Value.DestinationLongitudeMilliDegrees);
+		RegionLatitudeSums.FindOrAdd(Pair.Value.TargetRegionId) +=
+			static_cast<int64>(Pair.Value.DestinationLatitudeMilliDegrees);
 		++RegionCoordinateCounts.FindOrAdd(Pair.Value.TargetRegionId);
 	}
 	for (const FRegionalPressureState& Pressure : Campaign.RegionalPressure)
@@ -839,11 +841,13 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			Region.LongitudeMilliDegrees = RegionRule->CenterLongitudeMilliDegrees;
 			Region.LatitudeMilliDegrees = RegionRule->CenterLatitudeMilliDegrees;
 		}
-		else if (const FIntPoint* Sum = RegionCoordinateSums.Find(Pressure.RegionId))
+		else if (const int64* LongitudeSum = RegionLongitudeSums.Find(Pressure.RegionId))
 		{
-			const int32 Count = FMath::Max(1, RegionCoordinateCounts.FindRef(Pressure.RegionId));
-			Region.LongitudeMilliDegrees = Sum->X / Count;
-			Region.LatitudeMilliDegrees = Sum->Y / Count;
+			const int64 Count = FMath::Max<int64>(1,
+				RegionCoordinateCounts.FindRef(Pressure.RegionId));
+			Region.LongitudeMilliDegrees = static_cast<int32>(*LongitudeSum / Count);
+			Region.LatitudeMilliDegrees = static_cast<int32>(
+				RegionLatitudeSums.FindRef(Pressure.RegionId) / Count);
 		}
 		const FRegionalMandateState* Mandate = Campaign.RegionalMandates.FindByPredicate(
 			[&Pressure](const FRegionalMandateState& Entry) { return Entry.RegionId == Pressure.RegionId; });

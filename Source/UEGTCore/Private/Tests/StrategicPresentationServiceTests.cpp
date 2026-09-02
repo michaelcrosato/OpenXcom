@@ -831,6 +831,27 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	Config.ResilienceCharterCost = 250;
 	const FStrategicDashboardSnapshot Snapshot = FStrategicPresentationService::BuildDashboard(Campaign, Rules, Config);
 	TestTrue(TEXT("Valid strategic state produces a dashboard"), Snapshot.bSucceeded);
+	FResolvedRuleSet ExtremeCoordinateRules = Rules;
+	ExtremeCoordinateRules.Regions.Remove(RegionRule.Identity.RuleId);
+	for (TPair<FName, FAdversaryMissionRule>& Pair : ExtremeCoordinateRules.AdversaryMissions)
+	{
+		Pair.Value.DestinationLongitudeMilliDegrees = MAX_int32;
+		Pair.Value.DestinationLatitudeMilliDegrees = MAX_int32;
+	}
+	const FStrategicDashboardSnapshot ExtremeCoordinateSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			Campaign, ExtremeCoordinateRules, Config);
+	const FStrategicRegionView* ExtremeCoordinateRegion =
+		ExtremeCoordinateSnapshot.Regions.FindByPredicate(
+			[&Mission](const FStrategicRegionView& Region)
+			{
+				return Region.RegionId == Mission.TargetRegionId;
+			});
+	TestTrue(TEXT("Dashboard regional fallback coordinates do not wrap during averaging"),
+		ExtremeCoordinateSnapshot.bSucceeded
+		&& ExtremeCoordinateRegion != nullptr
+		&& ExtremeCoordinateRegion->LongitudeMilliDegrees == MAX_int32
+		&& ExtremeCoordinateRegion->LatitudeMilliDegrees == MAX_int32);
 	FResolvedRuleSet ExtremeNetRules = Rules;
 	ExtremeNetRules.Facilities.FindChecked(Operations.Identity.RuleId).MonthlyMaintenance = MAX_int32;
 	FCampaignState ExtremeNetCampaign = Campaign;
