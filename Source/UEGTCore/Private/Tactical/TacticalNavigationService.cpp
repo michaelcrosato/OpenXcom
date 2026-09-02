@@ -914,7 +914,11 @@ FTacticalThrowTrajectoryResult FTacticalNavigationService::PreviewThrowTrajector
 		const FTacticalCellState& Cell = Battle.Cells[Trace[StepIndex]];
 		const FTacticalTerrainRule* Terrain = Rules.TacticalTerrains.Find(Cell.TerrainRuleId);
 		check(Terrain != nullptr);
-		if (Cell.CurrentIntegrity <= 0 || Cell.bDoorOpen || Terrain->ThrowObstacleHeight <= 0)
+		const int64 ObstacleHeight = FMath::Clamp<int64>(
+			static_cast<int64>(Terrain->ThrowObstacleHeight),
+			0,
+			8);
+		if (Cell.CurrentIntegrity <= 0 || Cell.bDoorOpen || ObstacleHeight <= 0)
 		{
 			continue;
 		}
@@ -923,7 +927,7 @@ FTacticalThrowTrajectoryResult FTacticalNavigationService::PreviewThrowTrajector
 				+ static_cast<int64>(TargetZ * 4) * StepIndex) * StepCount;
 		const int64 ArcHeightNumerator = BaselineHeightNumerator
 			+ 4LL * PeakHeight * StepIndex * (StepCount - StepIndex);
-		const int64 ObstacleHeightNumerator = static_cast<int64>(Cell.Z * 4 + Terrain->ThrowObstacleHeight)
+		const int64 ObstacleHeightNumerator = (static_cast<int64>(Cell.Z) * 4 + ObstacleHeight)
 			* StepCount * StepCount;
 		if (ArcHeightNumerator <= ObstacleHeightNumerator)
 		{
@@ -931,7 +935,7 @@ FTacticalThrowTrajectoryResult FTacticalNavigationService::PreviewThrowTrajector
 			Result.LandingX = Cell.X;
 			Result.LandingY = Cell.Y;
 			Result.LandingZ = Cell.Z;
-			Result.InterceptedObstacleHeight = Terrain->ThrowObstacleHeight;
+			Result.InterceptedObstacleHeight = static_cast<int32>(ObstacleHeight);
 			Result.InterceptedTerrainRuleId = Cell.TerrainRuleId;
 			break;
 		}

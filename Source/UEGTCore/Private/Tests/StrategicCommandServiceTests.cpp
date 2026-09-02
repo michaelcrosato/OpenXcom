@@ -16047,6 +16047,28 @@ bool FTacticalMovementVisibilityTurnFlowTest::RunTest(const FString& Parameters)
 		&& InterceptedThrow.bIntercepted && InterceptedThrow.LandingX == 2 && InterceptedThrow.LandingY == 0
 		&& InterceptedThrow.InterceptedObstacleHeight == 6
 		&& InterceptedThrow.InterceptedTerrainRuleId == FName(TEXT("terrain.test-tall-bulkhead")));
+	FResolvedRuleSet ExtremeThrowRules = Rules;
+	FTacticalTerrainRule* ExtremeTallBulkhead = ExtremeThrowRules.TacticalTerrains.Find(TEXT("terrain.test-tall-bulkhead"));
+	if (ExtremeTallBulkhead != nullptr)
+	{
+		ExtremeTallBulkhead->ThrowObstacleHeight = MAX_int32;
+		FTacticalBattleState ExtremeVerticalThrowBattle = VisibilityBattle;
+		ExtremeVerticalThrowBattle.Levels = 2;
+		for (int32 X = 0; X < ExtremeVerticalThrowBattle.Width; ++X)
+		{
+			FTacticalCellState& Cell = ExtremeVerticalThrowBattle.Cells.AddDefaulted_GetRef();
+			Cell.X = X;
+			Cell.Z = 1;
+			Cell.TerrainRuleId = TEXT("terrain.test-deck");
+		}
+		FTacticalCellState& ExtremeVerticalObstacle = ExtremeVerticalThrowBattle.Cells[ExtremeVerticalThrowBattle.GetCellIndex(2, 0, 1)];
+		ExtremeVerticalObstacle.TerrainRuleId = TEXT("terrain.test-tall-bulkhead");
+		ExtremeVerticalObstacle.CurrentIntegrity = 100;
+		const FTacticalThrowTrajectoryResult ExtremeThrow = FTacticalNavigationService::PreviewThrowTrajectory(
+			ExtremeVerticalThrowBattle, ExtremeThrowRules, 0, 0, 4, 0, 2, 1, 1);
+		TestTrue(TEXT("Extreme throw obstacle heights clamp before arc arithmetic"), ExtremeThrow.bSucceeded
+			&& ExtremeThrow.bIntercepted && ExtremeThrow.InterceptedObstacleHeight == 8);
+	}
 	const FTacticalThrowTrajectoryResult InterceptedThrowReplay = FTacticalNavigationService::PreviewThrowTrajectory(
 		VisibilityBattle, Rules, 0, 0, 4, 0, 2);
 	TestTrue(TEXT("Throw interception preview replays exactly"), InterceptedThrowReplay.bSucceeded
