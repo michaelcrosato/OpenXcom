@@ -8187,6 +8187,49 @@ bool FStrategicPersonnelPersistenceAndSalaryTest::RunTest(const FString& Paramet
 		TestTrue(TEXT("Invalid memorial rank is diagnosed by commands"), InvalidMemorialCommand.HasDiagnostic(TEXT("invalid_memorial_record")));
 	}
 
+	FCampaignState InvalidPersonnelRankState = State;
+	if (InvalidPersonnelRankState.Personnel.Num() == 1)
+	{
+		InvalidPersonnelRankState.Personnel[0].Rank = MIN_int32;
+		const FCampaignSaveValidationResult InvalidPersonnelRankValidation = FCampaignSaveCodec::Validate(
+			FCampaignSaveCodec::CreateNew(
+				InvalidPersonnelRankState,
+				MakePackages(),
+				TEXT("0.6.0-invalid-personnel-rank-underflow"),
+				InvalidPersonnelRankState.StrategicTime.Utc,
+				FGuid(205, 206, 207, 208)),
+			MakePackages());
+		TestFalse(TEXT("Minimum personnel rank is rejected without progression arithmetic overflow"), InvalidPersonnelRankValidation.bSucceeded);
+		TestTrue(TEXT("Minimum personnel rank is diagnosed as invalid personnel state"),
+			InvalidPersonnelRankValidation.HasDiagnostic(TEXT("invalid_personnel_state")));
+
+		FAdvanceStrategicTimeCommand InvalidPersonnelAdvance;
+		InvalidPersonnelAdvance.ExpectedSequence = InvalidPersonnelRankState.CommandSequence;
+		InvalidPersonnelAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+		const FStrategicCommandResult InvalidPersonnelCommand = FStrategicCommandService::Execute(
+			InvalidPersonnelRankState, Rules, Config, InvalidPersonnelAdvance);
+		TestFalse(TEXT("Minimum personnel rank is rejected by commands"), InvalidPersonnelCommand.bAccepted);
+		TestTrue(TEXT("Minimum personnel rank is diagnosed by commands"),
+			InvalidPersonnelCommand.HasDiagnostic(TEXT("invalid_personnel_state")));
+	}
+
+	FCampaignState InvalidMemorialRankState = State;
+	if (InvalidMemorialRankState.Memorial.Num() == 1)
+	{
+		InvalidMemorialRankState.Memorial[0].Rank = MIN_int32;
+		const FCampaignSaveValidationResult InvalidMemorialUnderflowValidation = FCampaignSaveCodec::Validate(
+			FCampaignSaveCodec::CreateNew(
+				InvalidMemorialRankState,
+				MakePackages(),
+				TEXT("0.6.0-invalid-memorial-rank-underflow"),
+				InvalidMemorialRankState.StrategicTime.Utc,
+				FGuid(209, 210, 211, 212)),
+			MakePackages());
+		TestFalse(TEXT("Minimum memorial rank is rejected without progression arithmetic overflow"), InvalidMemorialUnderflowValidation.bSucceeded);
+		TestTrue(TEXT("Minimum memorial rank is diagnosed as invalid memorial record"),
+			InvalidMemorialUnderflowValidation.HasDiagnostic(TEXT("invalid_memorial_record")));
+	}
+
 	FAdvanceStrategicTimeCommand Advance;
 	Advance.ExpectedSequence = State.CommandSequence;
 	Advance.Rate = EStrategicTimeRate::FiveSeconds;

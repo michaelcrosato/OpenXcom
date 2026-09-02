@@ -2580,7 +2580,7 @@ namespace CampaignSavePrivate
 						|| !Person.DoctrineSelections.IsEmpty() || !Person.Commendations.IsEmpty();
 					const bool bProgressionValid = Person.PendingDoctrineChoices >= 0
 						&& static_cast<int64>(Person.PendingDoctrineChoices) + Person.DoctrineSelections.Num()
-							<= FMath::Max(0, Person.Rank - 1)
+							<= FMath::Max<int64>(0, static_cast<int64>(Person.Rank) - 1)
 						&& bProgressionIdsValid;
 					const bool bKnownStatus = Person.Status == EPersonnelStatus::Available
 						|| Person.Status == EPersonnelStatus::Recovering
@@ -2686,7 +2686,8 @@ namespace CampaignSavePrivate
 						SeenCommendations.Add(CommendationId);
 					}
 					const bool bHasProgression = !Record.DoctrineSelections.IsEmpty() || !Record.Commendations.IsEmpty();
-					const bool bProgressionValid = Record.DoctrineSelections.Num() <= FMath::Max(0, Record.Rank - 1)
+					const bool bProgressionValid = Record.DoctrineSelections.Num()
+						<= FMath::Max<int64>(0, static_cast<int64>(Record.Rank) - 1)
 						&& bProgressionIdsValid;
 					if (!Record.PersonnelId.IsValid() || SeenPersonnelIds.Contains(Record.PersonnelId)
 						|| Record.DisplayName.TrimStartAndEnd().IsEmpty() || Record.DisplayName.Len() > 64
