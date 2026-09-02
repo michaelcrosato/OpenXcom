@@ -435,13 +435,18 @@ namespace TacticalPresentationPrivate
 				[WeaponId](const FTacticalWeaponState& State) { return State.WeaponItemId == WeaponId; });
 			const int32 EffectiveMagazineCapacity = GetEffectiveTacticalMagazineCapacity(*Weapon);
 			const int32 EffectiveReloadActionPointCost = GetEffectiveTacticalReloadActionPointCost(*Weapon);
+			const int32 EffectiveWeaponRange = FMath::Clamp(Weapon->TacticalRange, 1, 64);
+			const int32 EffectiveWeaponActionPointCost = FMath::Clamp(Weapon->TacticalActionPointCost, 1, 20);
+			const int32 EffectiveBurstActionPointCost = Weapon->HasTacticalBurstMode()
+				? FMath::Clamp(Weapon->TacticalBurstActionPointCost, 1, 20)
+				: 0;
 			FTacticalHudWeaponView& WeaponView = View.Weapons.AddDefaulted_GetRef();
 			WeaponView.ItemId = WeaponId;
 			WeaponView.DisplayName = Weapon->DisplayName;
-			WeaponView.Range = Weapon->TacticalRange;
-			WeaponView.SingleActionPointCost = Weapon->TacticalActionPointCost;
+			WeaponView.Range = EffectiveWeaponRange;
+			WeaponView.SingleActionPointCost = EffectiveWeaponActionPointCost;
 			WeaponView.bSupportsBurst = Weapon->HasTacticalBurstMode();
-			WeaponView.BurstActionPointCost = Weapon->TacticalBurstActionPointCost;
+			WeaponView.BurstActionPointCost = EffectiveBurstActionPointCost;
 			WeaponView.LoadedAmmunition = WeaponState != nullptr && EffectiveMagazineCapacity > 0
 				? FMath::Clamp(WeaponState->LoadedAmmunition, 0, EffectiveMagazineCapacity)
 				: 0;

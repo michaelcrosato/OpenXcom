@@ -377,6 +377,9 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("HUD reload boundary fixture resolves its rifle rule"), ExtremeReloadRifle);
 	if (ExtremeReloadRifle != nullptr)
 	{
+		ExtremeReloadRifle->TacticalRange = MAX_int32;
+		ExtremeReloadRifle->TacticalActionPointCost = MAX_int32;
+		ExtremeReloadRifle->TacticalBurstActionPointCost = MAX_int32;
 		ExtremeReloadRifle->TacticalMagazineCapacity = MAX_int32;
 		ExtremeReloadRifle->TacticalReloadActionPointCost = MAX_int32;
 		FCampaignState ExtremeReloadCampaign = Fixture.Campaign;
@@ -397,6 +400,10 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 				ExtremeReloadSnapshot.bSucceeded && ExtremeReloadPlayerView != nullptr
 				&& ExtremeReloadPlayerView->Weapons.Num() == 1
 				&& ExtremeReloadPlayerView->Weapons[0].MagazineCapacity == 200
+				&& ExtremeReloadPlayerView->Weapons[0].Range == 64
+				&& ExtremeReloadPlayerView->Weapons[0].SingleActionPointCost == 20
+				&& ExtremeReloadPlayerView->Weapons[0].bSupportsBurst
+				&& ExtremeReloadPlayerView->Weapons[0].BurstActionPointCost == 20
 				&& ExtremeReloadPlayerView->Weapons[0].LoadedAmmunition == 4
 				&& ExtremeReloadPlayerView->Weapons[0].ReserveAmmunition == 600
 				&& ExtremeReloadPlayerView->Weapons[0].NextReloadAmmunition == 200
