@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, craft-state safeguards, personnel-integrity safeguards, and control safeguards expose one thousand five hundred ninety-seven localized keys"),
-		Loaded.Catalog.Entries.Num(), 1597);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, craft-state safeguards, personnel-integrity safeguards, control safeguards, and base-site safeguards expose one thousand six hundred three localized keys"),
+		Loaded.Catalog.Entries.Num(), 1603);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1597);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1603);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1613,6 +1613,30 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("invalid_sortie_fuel"), TEXT("Raw sortie-fuel diagnostic"), TEXT("de-DE")),
 		FString(TEXT("Die Treibstoffreservierung für den Einsatz muss die Mindest- und aktuellen Treibstoffgrenzen einhalten.")));
+	TestEqual(TEXT("Exact French base-defense-overflow diagnostics preserve damage projection"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("base_defense_overflow"), TEXT("Raw base-defense-overflow diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La projection des dégâts de défense de base dépasse la plage prise en charge.")));
+	TestEqual(TEXT("Exact German sensor-strength diagnostics preserve the detection boundary"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("sensor_strength_overflow"), TEXT("Raw sensor-strength diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Sensorstärke der Basis überschreitet den unterstützten Bereich.")));
+	TestEqual(TEXT("Exact Spanish deployment-range diagnostics preserve route bounds"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("deployment_range_overflow"), TEXT("Raw deployment-range diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La ruta de despliegue al sitio supera el rango numérico admitido.")));
+	TestEqual(TEXT("Exact Japanese base-defender diagnostics preserve availability"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("base_defender_unavailable"), TEXT("Raw base-defender diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("選択した基地防衛要員が展開に利用できなくなりました。")));
+	TestEqual(TEXT("Exact French base-assault-arrived diagnostics preserve resolution routing"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("base_assault_arrived"), TEXT("Raw base-assault-arrived diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Ce contact a atteint sa cible ; résolvez plutôt la défense de base.")));
+	TestEqual(TEXT("Exact German site-identity diagnostics preserve cross-object uniqueness"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("site_identity_conflict"), TEXT("Raw site-identity diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Kontakt-ID steht im Konflikt mit einem aktiven strategischen Ort.")));
 	TestEqual(TEXT("Exact French economy diagnostics preserve the numeric boundary"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("economy_overflow"), TEXT("Raw economy-overflow diagnostic"), TEXT("fr-FR")),

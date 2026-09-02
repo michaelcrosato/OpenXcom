@@ -5490,6 +5490,36 @@
       "translations": { "en": "The sortie fuel reservation must meet the minimum and current-fuel limits.", "fr": "La réserve de carburant de sortie doit respecter les limites minimales et de carburant actuel.", "de": "Die Treibstoffreservierung für den Einsatz muss die Mindest- und aktuellen Treibstoffgrenzen einhalten.", "es": "La reserva de combustible de la salida debe respetar los límites mínimos y de combustible actual.", "ja": "出撃の燃料予約は、最低量と現在の燃料上限を満たす必要があります。" }
     },
     {
+      "key": "diagnostic.base-defense-overflow",
+      "source": "Base-defense damage projection exceeds the supported range.",
+      "translations": { "en": "Base-defense damage projection exceeds the supported range.", "fr": "La projection des dégâts de défense de base dépasse la plage prise en charge.", "de": "Die Schadensprojektion der Basisverteidigung überschreitet den unterstützten Bereich.", "es": "La proyección de daño de la defensa de base supera el rango admitido.", "ja": "基地防衛のダメージ予測がサポート範囲を超えています。" }
+    },
+    {
+      "key": "diagnostic.sensor-strength-overflow",
+      "source": "Base sensor strength exceeds the supported range.",
+      "translations": { "en": "Base sensor strength exceeds the supported range.", "fr": "La puissance des capteurs de la base dépasse la plage prise en charge.", "de": "Die Sensorstärke der Basis überschreitet den unterstützten Bereich.", "es": "La potencia de sensores de la base supera el rango admitido.", "ja": "基地のセンサー強度がサポート範囲を超えています。" }
+    },
+    {
+      "key": "diagnostic.deployment-range-overflow",
+      "source": "Site deployment route exceeds the supported numeric range.",
+      "translations": { "en": "Site deployment route exceeds the supported numeric range.", "fr": "La route de déploiement vers le site dépasse la plage numérique prise en charge.", "de": "Die Einsatzroute zum Ort überschreitet den unterstützten numerischen Bereich.", "es": "La ruta de despliegue al sitio supera el rango numérico admitido.", "ja": "サイト展開ルートがサポートされる数値範囲を超えています。" }
+    },
+    {
+      "key": "diagnostic.base-defender-unavailable",
+      "source": "A selected base defender is no longer available for deployment.",
+      "translations": { "en": "A selected base defender is no longer available for deployment.", "fr": "Un défenseur de base sélectionné n'est plus disponible pour le déploiement.", "de": "Ein ausgewählter Basisverteidiger ist für den Einsatz nicht mehr verfügbar.", "es": "Un defensor de base seleccionado ya no está disponible para el despliegue.", "ja": "選択した基地防衛要員が展開に利用できなくなりました。" }
+    },
+    {
+      "key": "diagnostic.base-assault-arrived",
+      "source": "This contact has reached its target; resolve the base defense instead.",
+      "translations": { "en": "This contact has reached its target; resolve the base defense instead.", "fr": "Ce contact a atteint sa cible ; résolvez plutôt la défense de base.", "de": "Dieser Kontakt hat sein Ziel erreicht; lösen Sie stattdessen die Basisverteidigung.", "es": "Este contacto ha alcanzado su objetivo; resuelve la defensa de base en su lugar.", "ja": "このコンタクトは目標に到達しました。代わりに基地防衛を解決してください。" }
+    },
+    {
+      "key": "diagnostic.site-identity-conflict",
+      "source": "The contact ID conflicts with an active strategic site.",
+      "translations": { "en": "The contact ID conflicts with an active strategic site.", "fr": "L'identifiant du contact est en conflit avec un site stratégique actif.", "de": "Die Kontakt-ID steht im Konflikt mit einem aktiven strategischen Ort.", "es": "El identificador del contacto entra en conflicto con un sitio estratégico activo.", "ja": "コンタクトIDがアクティブな戦略サイトと競合しています。" }
+    },
+    {
       "key": "diagnostic.storage-capacity-exceeded",
       "source": "Free storage capacity before completing this order.",
       "translations": { "en": "Free storage capacity before completing this order.", "fr": "Libérez de la capacité de stockage avant de terminer cette commande.", "de": "Schaffen Sie Lagerkapazität, bevor Sie diesen Auftrag abschließen.", "es": "Libera capacidad de almacenamiento antes de completar esta orden.", "ja": "この命令を完了する前に保管容量を空けてください。" }
