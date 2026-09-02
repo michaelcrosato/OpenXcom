@@ -1893,6 +1893,27 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& Snapshot.Projects[1].CancellationStorageDelta == -7
 		&& Snapshot.Projects[1].bCanRemoveManufacturingUnit
 		&& Snapshot.Projects[1].bCanCancel);
+	FResolvedRuleSet ExtremeProjectRules = Rules;
+	ExtremeProjectRules.Items.FindChecked(Manufactured.Identity.RuleId).ManufactureHours = MAX_int32;
+	FCampaignState ExtremeProjectCampaign = Campaign;
+	ExtremeProjectCampaign.ManufacturingProjects[0].UnitsRemaining = MAX_int32;
+	ExtremeProjectCampaign.ManufacturingProjects[0].AssignedEngineers = 1;
+	ExtremeProjectCampaign.ManufacturingProjects[0].AccumulatedWorkSeconds = MIN_int64;
+	const FStrategicDashboardSnapshot ExtremeProjectSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			ExtremeProjectCampaign, ExtremeProjectRules, Config);
+	const FStrategicProjectView* ExtremeProjectView = ExtremeProjectSnapshot.Projects.FindByPredicate(
+		[](const FStrategicProjectView& Project)
+		{
+			return Project.Type == EStrategicProjectType::Manufacturing;
+		});
+	const int64 ExpectedExtremeProjectSeconds =
+		MAX_int64 / 100 + (MAX_int64 % 100 == 0 ? 0 : 1);
+	TestTrue(TEXT("Manufacturing presentation saturates malformed work and unit products before ETA arithmetic"),
+		ExtremeProjectView != nullptr
+		&& ExtremeProjectView->RemainingSeconds == ExpectedExtremeProjectSeconds
+		&& ExtremeProjectView->CancellationRefund
+			== static_cast<int64>(MAX_int32) * Manufactured.ManufactureCost);
 	TestTrue(TEXT("Construction view exposes its progress-based cancellation refund"),
 		Snapshot.Projects[2].Type == EStrategicProjectType::Construction
 		&& Snapshot.Projects[2].CancellationRefund == 56);

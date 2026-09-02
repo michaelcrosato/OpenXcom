@@ -361,8 +361,8 @@ namespace StrategicPresentationPrivate
 		int64 Capacity = 0;
 		if (!Base.Facilities.IsEmpty())
 		{
-			for (const FBaseFacilityState& Installed : Base.Facilities)
-			{
+		for (const FBaseFacilityState& Installed : Base.Facilities)
+		{
 				if (const FFacilityRule* Facility = Rules.Facilities.Find(Installed.FacilityId))
 				{
 					Capacity += Facility->ScaleEffectByIntegrity(
@@ -411,6 +411,32 @@ namespace StrategicPresentationPrivate
 			: Left * Right;
 	}
 
+	int64 NonNegativeDifference(const int64 Left, const int64 Right)
+	{
+		if (Left <= Right)
+		{
+			return 0;
+		}
+		if (Right < 0 && Left > MAX_int64 + Right)
+		{
+			return MAX_int64;
+		}
+		return Left - Right;
+	}
+
+	int64 CeilScaledWorkSeconds(
+		const int64 RemainingWork,
+		const int32 AssignedStaff,
+		const int32 RatePercent)
+	{
+		const int64 ScaledWork = SafeProduct(RemainingWork, 100);
+		const int64 Throughput = SafeProduct(
+			FMath::Max<int64>(0, AssignedStaff), FMath::Max<int64>(0, RatePercent));
+		return Throughput > 0
+			? ScaledWork / Throughput + (ScaledWork % Throughput == 0 ? 0 : 1)
+			: 0;
+	}
+
 	bool CanApplyStorageDelta(const FStrategicBaseView* Base, const int64 Delta)
 	{
 		if (Base == nullptr || !Base->bStorageEnforced)
@@ -424,7 +450,8 @@ namespace StrategicPresentationPrivate
 			return false;
 		}
 		ProjectedCommitted = FMath::Max<int64>(0, ProjectedCommitted + Delta);
-		const int64 ProjectedOverflow = FMath::Max<int64>(0, ProjectedCommitted - Base->StorageCapacity);
+		const int64 ProjectedOverflow = NonNegativeDifference(
+			ProjectedCommitted, Base->StorageCapacity);
 		return ProjectedOverflow <= Base->StorageOverflow;
 	}
 
@@ -434,7 +461,7 @@ namespace StrategicPresentationPrivate
 		{
 			return TEXT("The production base is unavailable.");
 		}
-		const int64 Required = FMath::Max<int64>(0, Delta - Base->StorageAvailable);
+		const int64 Required = NonNegativeDifference(Delta, Base->StorageAvailable);
 		return FString::Printf(TEXT("This change needs %lld more storage units; sell, equip, or relocate inventory first."),
 			Required);
 	}
@@ -1309,12 +1336,13 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		{
 			for (const FBaseFacilityState& Installed : Base.Facilities)
 			{
-				if (const FFacilityRule* Facility = Rules.Facilities.Find(Installed.FacilityId))
-				{
+			if (const FFacilityRule* Facility = Rules.Facilities.Find(Installed.FacilityId))
+			{
 					FString FacilityName = RuleName(Facility->DisplayName, Installed.FacilityId);
 					const int32 MaxIntegrity = FMath::Max(1, Facility->MaxIntegrity);
+					const int32 ClampedDamage = FMath::Clamp(Installed.Damage, 0, MaxIntegrity);
 					const int32 CurrentIntegrity = FMath::Clamp(
-						MaxIntegrity - Installed.Damage, 0, MaxIntegrity);
+						MaxIntegrity - ClampedDamage, 0, MaxIntegrity);
 					if (Installed.RemainingRepairSeconds > 0)
 					{
 						FacilityName += FString::Printf(TEXT(" [REPAIR %lld h • %d/%d]"),
@@ -1331,7 +1359,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 					{
 						FacilityName += FString::Printf(TEXT(" [DEGRADED %d/%d • %d%% OUTPUT]"),
 							CurrentIntegrity, MaxIntegrity,
-							Facility->ScaleEffectByIntegrity(100, Installed.Damage));
+							Facility->ScaleEffectByIntegrity(100, ClampedDamage));
 					}
 					View.Facilities.Add(MoveTemp(FacilityName));
 					Snapshot.MonthlyOutgoings += Facility->MonthlyMaintenance;
@@ -1569,8 +1597,9 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.OnwardForecastInterdictionDelaySeconds =
 			Convoy.OnwardForecastInterdictionDelaySeconds;
 		View.BalancedHandoffQuantity = Convoy.BalancedHandoffQuantity;
-		View.FinalDeliveryQuantity =
-			Convoy.Quantity - Convoy.BalancedHandoffQuantity;
+		View.FinalDeliveryQuantity = static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(Convoy.Quantity)
+				- static_cast<int64>(Convoy.BalancedHandoffQuantity), MIN_int32, MAX_int32));
 		View.BalancedHandoffStorage = SafeProduct(
 			FMath::Max(0, Item->Mass), Convoy.BalancedHandoffQuantity);
 		if (const FMutualAidRelayQueueView* Relay =
@@ -2152,10 +2181,14 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				&& bRepairStateConsistent && bRefuelStateConsistent)
 			{
 				const int64 RepairRefund = bRepairActive
-					? SafeProduct(Rule->MaxHull - Craft.CurrentHull, Rule->RepairCostPerHull)
+					? SafeProduct(NonNegativeDifference(
+						static_cast<int64>(Rule->MaxHull), static_cast<int64>(Craft.CurrentHull)),
+						Rule->RepairCostPerHull)
 					: 0;
 				const int64 RefuelRefund = bRefuelActive
-					? SafeProduct(Rule->FuelCapacity - Craft.CurrentFuel, Rule->RefuelCostPerUnit)
+					? SafeProduct(NonNegativeDifference(
+						static_cast<int64>(Rule->FuelCapacity), static_cast<int64>(Craft.CurrentFuel)),
+						Rule->RefuelCostPerUnit)
 					: 0;
 				View.ServiceCancellationRefund = RepairRefund > MAX_int64 - RefuelRefund
 					? MAX_int64 : RepairRefund + RefuelRefund;
@@ -2895,12 +2928,12 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			? FStrategicCommandService::EvaluateBaseResearchRatePercent(*ResearchBase, Rules)
 			: 100;
 		const int64 Required = Rule != nullptr ? static_cast<int64>(Rule->Effort) * 3600LL : 0;
-		const int64 RemainingWork = FMath::Max<int64>(0, Required - Project.AccumulatedWorkSeconds);
+		const int64 RemainingWork = NonNegativeDifference(
+			Required, Project.AccumulatedWorkSeconds);
 		View.Progress = Progress(Project.AccumulatedWorkSeconds, Required);
 		View.RemainingSeconds = !View.bPaused && Project.AssignedScientists > 0
-			? (RemainingWork * 100
-				+ static_cast<int64>(Project.AssignedScientists) * View.ResearchRatePercent - 1)
-				/ (static_cast<int64>(Project.AssignedScientists) * View.ResearchRatePercent)
+			? CeilScaledWorkSeconds(
+				RemainingWork, Project.AssignedScientists, View.ResearchRatePercent)
 			: 0;
 		View.AssignedStaff = Project.AssignedScientists;
 		const FString RequiredFacilityDetail = View.RequiredFacilityNames.IsEmpty()
@@ -2924,10 +2957,13 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		const FItemRule* Rule = Rules.Items.Find(Project.ItemId);
 		View.DisplayName = Rule != nullptr ? RuleName(Rule->DisplayName, Project.ItemId) : HumanizeId(Project.ItemId);
 		const int64 RequiredPerUnit = Rule != nullptr ? static_cast<int64>(Rule->ManufactureHours) * 3600LL : 0;
-		const int64 TotalRemainingWork = FMath::Max<int64>(0,
-			RequiredPerUnit * Project.UnitsRemaining - Project.AccumulatedWorkSeconds);
-		const int32 RefundableUnits = FMath::Max(0,
-			Project.UnitsRemaining - (Project.AccumulatedWorkSeconds > 0 ? 1 : 0));
+		const int64 TotalRequiredWork = SafeProduct(
+			RequiredPerUnit, FMath::Max<int64>(0, Project.UnitsRemaining));
+		const int64 TotalRemainingWork = NonNegativeDifference(
+			TotalRequiredWork, Project.AccumulatedWorkSeconds);
+		const int32 RefundableUnits = Project.UnitsRemaining <= 0
+			? 0
+			: Project.UnitsRemaining - (Project.AccumulatedWorkSeconds > 0 ? 1 : 0);
 		View.UnitsRemaining = Project.UnitsRemaining;
 		View.UnitCost = Rule != nullptr ? FMath::Max(0, Rule->ManufactureCost) : 0;
 		View.CancellationRefund = Rule != nullptr
@@ -2984,9 +3020,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		}
 		View.Progress = Progress(Project.AccumulatedWorkSeconds, RequiredPerUnit);
 		View.RemainingSeconds = Project.AssignedEngineers > 0
-			? (TotalRemainingWork * 100
-				+ static_cast<int64>(Project.AssignedEngineers) * View.ManufacturingRatePercent - 1)
-				/ (static_cast<int64>(Project.AssignedEngineers) * View.ManufacturingRatePercent)
+			? CeilScaledWorkSeconds(
+				TotalRemainingWork, Project.AssignedEngineers, View.ManufacturingRatePercent)
 			: 0;
 		View.AssignedStaff = Project.AssignedEngineers;
 		View.Detail = FString::Printf(TEXT("%d units • %d engineers • %s"), Project.UnitsRemaining,
@@ -3016,7 +3051,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		const FFacilityRule* Rule = Rules.Facilities.Find(Project.FacilityId);
 		View.DisplayName = Rule != nullptr ? RuleName(Rule->DisplayName, Project.FacilityId) : HumanizeId(Project.FacilityId);
 		const int64 Total = Rule != nullptr ? static_cast<int64>(Rule->BuildHours) * 3600LL : 0;
-		View.Progress = Progress(FMath::Max<int64>(0, Total - Project.RemainingBuildSeconds), Total);
+		View.Progress = Progress(
+			NonNegativeDifference(Total, Project.RemainingBuildSeconds), Total);
 		View.RemainingSeconds = Project.RemainingBuildSeconds;
 		View.CancellationRefund = Rule != nullptr
 			? ProportionalRefund(Rule->BuildCost, Project.RemainingBuildSeconds, Total)
@@ -3033,7 +3069,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.DisplayName = Order.DisplayName;
 		const FPersonnelRoleRule* Rule = Rules.PersonnelRoles.Find(Order.RoleId);
 		const int64 Total = Rule != nullptr ? static_cast<int64>(Rule->RecruitmentHours) * 3600LL : 0;
-		View.Progress = Progress(FMath::Max<int64>(0, Total - Order.RemainingTransitSeconds), Total);
+		View.Progress = Progress(
+			NonNegativeDifference(Total, Order.RemainingTransitSeconds), Total);
 		View.RemainingSeconds = Order.RemainingTransitSeconds;
 		View.Detail = FString::Printf(TEXT("%s • %s"),
 			Rule != nullptr ? *RuleName(Rule->DisplayName, Order.RoleId) : *HumanizeId(Order.RoleId),
@@ -3049,7 +3086,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.DisplayName = Order.DisplayName;
 		const FCraftRule* Rule = Rules.Craft.Find(Order.CraftRuleId);
 		const int64 Total = Rule != nullptr ? static_cast<int64>(Rule->AcquisitionHours) * 3600LL : 0;
-		View.Progress = Progress(FMath::Max<int64>(0, Total - Order.RemainingTransitSeconds), Total);
+		View.Progress = Progress(
+			NonNegativeDifference(Total, Order.RemainingTransitSeconds), Total);
 		View.RemainingSeconds = Order.RemainingTransitSeconds;
 		View.Detail = FString::Printf(TEXT("%s • %s"),
 			Rule != nullptr ? *RuleName(Rule->DisplayName, Order.CraftRuleId) : *HumanizeId(Order.CraftRuleId),
