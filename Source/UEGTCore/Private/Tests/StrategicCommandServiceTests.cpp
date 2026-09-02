@@ -15343,6 +15343,30 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 			ExtremeHealthDecision.bSucceeded && ExtremeHealthDecision.Goal == ETacticalAiGoal::Withdraw);
 	}
 
+	FTacticalBattleState ExtremeTargetStatsProbe = AttackProbe;
+	FTacticalUnitState* ExtremeTargetStats = ExtremeTargetStatsProbe.Units.FindByPredicate(
+		[&WoundedTargetId](const FTacticalUnitState& Unit) { return Unit.UnitId == WoundedTargetId; });
+	TestNotNull(TEXT("Extreme-target probe contains its wounded target"), ExtremeTargetStats);
+	if (ExtremeTargetStats != nullptr)
+	{
+		ExtremeTargetStats->MaxHealth = MIN_int32;
+		ExtremeTargetStats->CurrentHealth = 1;
+		ExtremeTargetStats->MaxMorale = MIN_int32;
+		ExtremeTargetStats->CurrentMorale = 1;
+		const FTacticalAiDecision ExtremeTargetAttackDecision = FTacticalAiService::ChooseAction(
+			ExtremeTargetStatsProbe, ProbeCampaign, Rules, AttackAiId);
+		TestTrue(TEXT("AI does not wrap malformed target health when prioritizing an attack"),
+			ExtremeTargetAttackDecision.bSucceeded
+			&& ExtremeTargetAttackDecision.ActionType == ETacticalAiActionType::AttackUnit
+			&& ExtremeTargetAttackDecision.TargetUnitId == HealthyTargetId);
+		const FTacticalAiDecision ExtremeTargetSignalDecision = FTacticalAiService::ChooseAction(
+			ExtremeTargetStatsProbe, ProbeCampaign, SignalRules, AttackAiId);
+		TestTrue(TEXT("AI does not wrap malformed target morale when prioritizing signal pressure"),
+			ExtremeTargetSignalDecision.bSucceeded
+			&& ExtremeTargetSignalDecision.ActionType == ETacticalAiActionType::ProjectSignal
+			&& ExtremeTargetSignalDecision.TargetUnitId == HealthyTargetId);
+	}
+
 	FResolvedRuleSet VerticalRules = Rules;
 	FTacticalUnitRule* ShortRangeScout = VerticalRules.TacticalUnits.Find(TEXT("unit.test-scout"));
 	check(ShortRangeScout != nullptr);

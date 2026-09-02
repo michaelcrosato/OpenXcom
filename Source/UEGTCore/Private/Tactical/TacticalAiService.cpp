@@ -440,7 +440,7 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 	{
 		const int32 Distance = CeilDistance(Unit->X, Unit->Y, Unit->Z, Hostile->X, Hostile->Y, Hostile->Z);
 		const int64 PursuitScore = -static_cast<int64>(Distance) * 1000
-			+ static_cast<int64>(Hostile->MaxHealth - Hostile->CurrentHealth) * Policy.WoundedTargetWeight;
+			+ (static_cast<int64>(Hostile->MaxHealth) - static_cast<int64>(Hostile->CurrentHealth)) * Policy.WoundedTargetWeight;
 		if (PrimaryTarget == nullptr || PursuitScore > BestPursuitScore
 			|| (PursuitScore == BestPursuitScore && GuidComesFirst(Hostile->UnitId, PrimaryTarget->UnitId)))
 		{
@@ -467,7 +467,7 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 			{
 				const int64 AttackScore = static_cast<int64>(Preview.HitChance) * 1000
 					+ static_cast<int64>(FMath::Min(Preview.AttackPower, Hostile->CurrentHealth)) * 100
-					+ static_cast<int64>(Hostile->MaxHealth - Hostile->CurrentHealth) * Policy.WoundedTargetWeight;
+					+ (static_cast<int64>(Hostile->MaxHealth) - static_cast<int64>(Hostile->CurrentHealth)) * Policy.WoundedTargetWeight;
 				if (AttackTarget == nullptr || AttackScore > BestAttackScore
 					|| (AttackScore == BestAttackScore && GuidComesFirst(Hostile->UnitId, AttackTarget->UnitId)))
 				{
@@ -483,7 +483,7 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 				const int64 SignalScore = static_cast<int64>(Signal.HitChance) * 1000
 					+ static_cast<int64>(Signal.MoraleDamage) * 180
 					+ static_cast<int64>(Signal.SuppressionGain) * 120
-					+ static_cast<int64>(Hostile->MaxMorale - Hostile->CurrentMorale) * 30;
+					+ (static_cast<int64>(Hostile->MaxMorale) - static_cast<int64>(Hostile->CurrentMorale)) * 30;
 				if (SignalTarget == nullptr || SignalScore > BestSignalScore
 					|| (SignalScore == BestSignalScore && GuidComesFirst(Hostile->UnitId, SignalTarget->UnitId)))
 				{
