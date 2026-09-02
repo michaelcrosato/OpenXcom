@@ -3278,6 +3278,8 @@ namespace CampaignSavePrivate
 				{
 					const bool bInBounds = Battle.IsWithinGrid(Unit.X, Unit.Y, Unit.Z);
 					const int32 CellIndex = bInBounds ? Battle.GetCellIndex(Unit.X, Unit.Y, Unit.Z) : -1;
+					const bool bOnExtractionCell = bInBounds && Battle.Cells.IsValidIndex(CellIndex)
+						&& Battle.Cells[CellIndex].bExtraction;
 					const bool bKnownTeam = Unit.Team == ETacticalTeam::Player || Unit.Team == ETacticalTeam::Adversary;
 					const bool bKnownStance = Unit.Stance == ETacticalStance::Standing || Unit.Stance == ETacticalStance::Crouched;
 					TSet<FName> WeaponItemIds;
@@ -3329,7 +3331,7 @@ namespace CampaignSavePrivate
 						&& Unit.CurrentMorale >= 0 && Unit.CurrentMorale <= Unit.MaxMorale
 						&& Unit.Suppression >= 0 && Unit.Suppression <= 100
 						&& bLoadoutValid
-						&& (!Unit.bExtracted || (Battle.bRequiresExtraction && Unit.CurrentHealth > 0));
+						&& (!Unit.bExtracted || (Battle.bRequiresExtraction && Unit.CurrentHealth > 0 && bOnExtractionCell));
 					const bool bOccupiesCell = Unit.CurrentHealth > 0 && !Unit.bExtracted;
 					if (!Unit.UnitId.IsValid() || SeenUnitIds.Contains(Unit.UnitId)
 						|| !bInBounds || (bOccupiesCell && OccupiedCells.Contains(CellIndex))

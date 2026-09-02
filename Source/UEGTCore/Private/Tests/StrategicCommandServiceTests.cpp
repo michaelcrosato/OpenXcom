@@ -17117,6 +17117,28 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 			ImpossibleCompletedObjectiveValidation.HasDiagnostic(TEXT("invalid_tactical_objective")));
 	}
 
+	FCampaignSaveEnvelope ImpossibleExtractedUnitEnvelope = MagazineWrite.Envelope;
+	FTacticalUnitState* ImpossibleExtractedUnit = ImpossibleExtractedUnitEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
+		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Player; });
+	const FTacticalCellState* NonExtractionCell = ImpossibleExtractedUnitEnvelope.State.TacticalBattles[0].Cells.FindByPredicate(
+		[](const FTacticalCellState& Cell) { return !Cell.bExtraction; });
+	TestNotNull(TEXT("Magazine save fixture has a player unit and non-extraction cell"), ImpossibleExtractedUnit);
+	TestNotNull(TEXT("Magazine save fixture has a non-extraction cell"), NonExtractionCell);
+	if (ImpossibleExtractedUnit != nullptr && NonExtractionCell != nullptr)
+	{
+		ImpossibleExtractedUnit->X = NonExtractionCell->X;
+		ImpossibleExtractedUnit->Y = NonExtractionCell->Y;
+		ImpossibleExtractedUnit->Z = NonExtractionCell->Z;
+		ImpossibleExtractedUnit->bExtracted = true;
+		const FCampaignSaveValidationResult ImpossibleExtractedUnitValidation = FCampaignSaveCodec::Validate(
+			ImpossibleExtractedUnitEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects extracted players outside extraction cells"),
+			ImpossibleExtractedUnitValidation.bSucceeded);
+		TestTrue(TEXT("Impossible extracted position has a stable diagnostic"),
+			ImpossibleExtractedUnitValidation.HasDiagnostic(TEXT("invalid_tactical_unit"))
+			|| ImpossibleExtractedUnitValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
+	}
+
 	FCampaignSaveEnvelope LegacyV26 = MagazineWrite.Envelope;
 	LegacyV26.Header.FormatVersion = 26;
 	for (FTacticalBattleState& LegacyBattle : LegacyV26.State.TacticalBattles)
