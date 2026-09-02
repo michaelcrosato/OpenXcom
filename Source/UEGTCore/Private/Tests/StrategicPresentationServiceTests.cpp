@@ -205,6 +205,117 @@ bool FPersonnelStewardshipProjectionTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicBaseSpecializationProjectionTest,
+	"UEGT.Core.Strategic.Presentation.BaseSpecializationProjection",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicBaseSpecializationProjectionTest::RunTest(const FString& Parameters)
+{
+	FResolvedRuleSet Rules;
+	const auto AddFacilityRule = [&Rules](
+		const FName RuleId,
+		const int32 DetectionStrength,
+		const int32 ScientistCapacity,
+		const int32 EngineerCapacity,
+		const int32 CraftCapacity,
+		const int32 StorageCapacity)
+	{
+		FFacilityRule Rule;
+		Rule.Identity.RuleId = RuleId;
+		Rule.DisplayName = RuleId.ToString();
+		Rule.DetectionStrength = DetectionStrength;
+		Rule.ScientistCapacity = ScientistCapacity;
+		Rule.EngineerCapacity = EngineerCapacity;
+		Rule.CraftCapacity = CraftCapacity;
+		Rule.StorageCapacity = StorageCapacity;
+		Rule.MaxIntegrity = 100;
+		Rules.Facilities.Add(Rule.Identity.RuleId, Rule);
+	};
+	AddFacilityRule(TEXT("facility.test-specialization-signal"), 70, 0, 0, 0, 0);
+	AddFacilityRule(TEXT("facility.test-specialization-research"), 0, 6, 0, 0, 0);
+	AddFacilityRule(TEXT("facility.test-specialization-fabrication"), 0, 0, 6, 0, 0);
+	AddFacilityRule(TEXT("facility.test-specialization-flight"), 0, 0, 0, 2, 0);
+	AddFacilityRule(TEXT("facility.test-specialization-logistics"), 0, 0, 0, 0, 1200);
+
+	const auto Project = [&Rules](const FName FacilityId, const bool bLegacy, const int32 Damage)
+	{
+		FCampaignState Campaign;
+		Campaign.CommandSequence = 1;
+		FStrategicBaseState& Base = Campaign.Bases.AddDefaulted_GetRef();
+		Base.BaseId = FGuid(0x5a510001, 0x5a510002, 0x5a510003, 0x5a510004);
+		Base.Name = TEXT("Profile Station");
+		if (bLegacy)
+		{
+			Base.BuiltFacilities.Add(FacilityId);
+		}
+		else
+		{
+			FBaseFacilityState& Facility = Base.Facilities.AddDefaulted_GetRef();
+			Facility.InstanceId = FGuid(0x5a510011, 0x5a510012, 0x5a510013, 0x5a510014);
+			Facility.FacilityId = FacilityId;
+			Facility.Damage = Damage;
+		}
+		const FStrategicDashboardSnapshot Snapshot =
+			FStrategicPresentationService::BuildDashboard(Campaign, Rules, {});
+		return Snapshot.Bases.Num() == 1
+			? Snapshot.Bases[0].Specialization
+			: FStrategicBaseSpecializationView();
+	};
+
+	const FStrategicBaseSpecializationView Signal =
+		Project(TEXT("facility.test-specialization-signal"), false, 0);
+	const FStrategicBaseSpecializationView Research =
+		Project(TEXT("facility.test-specialization-research"), false, 0);
+	const FStrategicBaseSpecializationView Fabrication =
+		Project(TEXT("facility.test-specialization-fabrication"), false, 0);
+	const FStrategicBaseSpecializationView Flight =
+		Project(TEXT("facility.test-specialization-flight"), false, 0);
+	const FStrategicBaseSpecializationView Logistics =
+		Project(TEXT("facility.test-specialization-logistics"), false, 0);
+	const FStrategicBaseSpecializationView LegacySignal =
+		Project(TEXT("facility.test-specialization-signal"), true, 0);
+	const FStrategicBaseSpecializationView DamagedSignal =
+		Project(TEXT("facility.test-specialization-signal"), false, 50);
+	TestTrue(TEXT("Every capability axis gets a stable specialized projection with its existing output"),
+		Signal.bSpecialized
+		&& Signal.SpecializationId == FName(TEXT("base.specialization.signal-relay"))
+		&& Signal.Score == 70
+		&& Signal.BenefitMetricId == FName(TEXT("base.specialization.detection-strength"))
+		&& Signal.BenefitValue == 70
+		&& Research.bSpecialized
+		&& Research.SpecializationId == FName(TEXT("base.specialization.research-enclave"))
+		&& Research.Score == 60
+		&& Research.BenefitMetricId == FName(TEXT("base.specialization.scientist-capacity"))
+		&& Research.BenefitValue == 6
+		&& Fabrication.bSpecialized
+		&& Fabrication.SpecializationId == FName(TEXT("base.specialization.fabrication-works"))
+		&& Fabrication.Score == 60
+		&& Fabrication.BenefitMetricId == FName(TEXT("base.specialization.engineer-capacity"))
+		&& Fabrication.BenefitValue == 6
+		&& Flight.bSpecialized
+		&& Flight.SpecializationId == FName(TEXT("base.specialization.flight-operations"))
+		&& Flight.Score == 100
+		&& Flight.BenefitMetricId == FName(TEXT("base.specialization.craft-berths"))
+		&& Flight.BenefitValue == 2
+		&& Logistics.bSpecialized
+		&& Logistics.SpecializationId == FName(TEXT("base.specialization.logistics-depot"))
+		&& Logistics.Score == 100
+		&& Logistics.BenefitMetricId == FName(TEXT("base.specialization.storage-capacity"))
+		&& Logistics.BenefitValue == 1200);
+	TestTrue(TEXT("Legacy abstract facilities retain the same specialization and damaged output falls back safely"),
+		LegacySignal.bSpecialized
+		&& LegacySignal.SpecializationId == Signal.SpecializationId
+		&& LegacySignal.Score == Signal.Score
+		&& LegacySignal.BenefitValue == Signal.BenefitValue
+		&& !DamagedSignal.bSpecialized
+		&& DamagedSignal.SpecializationId
+			== FName(TEXT("base.specialization.integrated-command"))
+		&& DamagedSignal.Score == 35
+		&& DamagedSignal.SecondaryScore == 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicPresentationDashboardTest,
 	"UEGT.Core.Strategic.Presentation.DashboardActionsAndContactSafety",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
