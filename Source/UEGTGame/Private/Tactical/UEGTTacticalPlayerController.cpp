@@ -4961,6 +4961,7 @@ void AUEGTTacticalPlayerController::RefreshTacticalPresentation()
 {
 	// A confirmation remains valid only while the player makes no other presentation choice.
 	EndTurnConfirmation.Reset();
+	const bool bEnteringTacticalMode = bStrategicMode;
 	UUEGTGameInstance* Instance = GetGameInstance<UUEGTGameInstance>();
 	if (Instance == nullptr)
 	{
@@ -5095,7 +5096,7 @@ void AUEGTTacticalPlayerController::RefreshTacticalPresentation()
 	{
 		HudWidget->ApplySnapshot(CurrentSnapshot);
 	}
-	if (CurrentSnapshot.bSucceeded && LastFocusedBattleId != ActiveBattleId)
+	if (CurrentSnapshot.bSucceeded && (bEnteringTacticalMode || LastFocusedBattleId != ActiveBattleId))
 	{
 		if (AUEGTTacticalCameraPawn* CameraPawn = GetTacticalCameraPawn())
 		{
