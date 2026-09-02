@@ -2775,6 +2775,7 @@ namespace CampaignSavePrivate
 							const FPersonnelState* Agent = State.Personnel.FindByPredicate(
 								[&AgentId](const FPersonnelState& Person) { return Person.PersonnelId == AgentId; });
 							if (!AgentId.IsValid() || CraftAgentIds.Contains(AgentId) || SeenAssignedAgents.Contains(AgentId)
+								|| SeenAssignedPilots.Contains(AgentId)
 								|| Agent == nullptr || Agent->BaseId != Craft.BaseId
 								|| (bFlying && Agent->Status != EPersonnelStatus::Deployed)
 								|| (!bFlying && Agent->Status != EPersonnelStatus::Available))
@@ -2820,6 +2821,8 @@ namespace CampaignSavePrivate
 						const FPersonnelState* Pilot = State.Personnel.FindByPredicate(
 							[&Craft](const FPersonnelState& Person) { return Person.PersonnelId == Craft.AssignedPilotId; });
 						if (Pilot == nullptr || Pilot->BaseId != Craft.BaseId || SeenAssignedPilots.Contains(Craft.AssignedPilotId)
+							|| SeenAssignedAgents.Contains(Craft.AssignedPilotId)
+							|| Craft.AssignedAgentIds.Contains(Craft.AssignedPilotId)
 							|| (bFlying && Pilot->Status != EPersonnelStatus::Deployed)
 							|| (!bFlying && Pilot->Status == EPersonnelStatus::Deployed))
 						{

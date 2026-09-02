@@ -17108,6 +17108,21 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 		&& MakeTacticalBattleFingerprint(MagazineRead.Envelope.State.TacticalBattles[0])
 			== MakeTacticalBattleFingerprint(First.TacticalBattles[0]));
 
+	FCampaignSaveEnvelope CrossRoleAssignmentEnvelope = MagazineWrite.Envelope;
+	FCraftState* CrossRoleAssignmentCraft = CrossRoleAssignmentEnvelope.State.Craft.FindByPredicate(
+		[&CraftId](const FCraftState& CraftState) { return CraftState.CraftId == CraftId; });
+	TestNotNull(TEXT("Magazine save fixture has a tactical craft assignment"), CrossRoleAssignmentCraft);
+	if (CrossRoleAssignmentCraft != nullptr)
+	{
+		CrossRoleAssignmentCraft->AssignedPilotId = AgentId;
+		const FCampaignSaveValidationResult CrossRoleAssignmentValidation = FCampaignSaveCodec::Validate(
+			CrossRoleAssignmentEnvelope, MakePackages());
+		TestFalse(TEXT("Save validation rejects personnel assigned as both pilot and field agent"),
+			CrossRoleAssignmentValidation.bSucceeded);
+		TestTrue(TEXT("Cross-role craft assignment has a stable pilot diagnostic"),
+			CrossRoleAssignmentValidation.HasDiagnostic(TEXT("invalid_craft_pilot")));
+	}
+
 	FCampaignSaveEnvelope AdversaryMagazineEnvelope = MagazineWrite.Envelope;
 	FTacticalUnitState* AdversaryWithMagazine = AdversaryMagazineEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
 		[](const FTacticalUnitState& Unit) { return Unit.Team == ETacticalTeam::Adversary; });
