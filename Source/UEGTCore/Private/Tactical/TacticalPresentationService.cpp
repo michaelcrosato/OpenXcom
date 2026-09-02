@@ -96,6 +96,20 @@ namespace TacticalPresentationPrivate
 			: 0;
 	}
 
+	int32 GetEffectiveTacticalMissionActionPointCost(const int32 ActionPointCost)
+	{
+		return ActionPointCost > 0
+			? FMath::Clamp(ActionPointCost, 1, 20)
+			: 0;
+	}
+
+	int32 GetEffectiveTacticalDoorActionPointCost(const int32 ActionPointCost)
+	{
+		return ActionPointCost > 0
+			? FMath::Clamp(ActionPointCost, 1, 4)
+			: 0;
+	}
+
 	int32 SaturatingNonNegativeAdd(const int32 Current, const int64 Contribution)
 	{
 		const int64 ClampedCurrent = FMath::Clamp<int64>(Current, 0, MAX_int32);
@@ -1091,7 +1105,9 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 			const FTacticalCellState& Cell = Battle.Cells[Battle.GetCellIndex(Query.HoveredX, Query.HoveredY, Query.HoveredZ)];
 			const FTacticalTerrainRule* Terrain = Rules.TacticalTerrains.Find(Cell.TerrainRuleId);
 			Door.bRequestedDoorOpen = !Cell.bDoorOpen;
-			Door.ActionPointCost = Terrain != nullptr ? Terrain->DoorActionPointCost : 0;
+			Door.ActionPointCost = Terrain != nullptr
+				? GetEffectiveTacticalDoorActionPointCost(Terrain->DoorActionPointCost)
+				: 0;
 			const int32 Distance = ManhattanDistance(
 				Query.HoveredX, Query.HoveredY, Query.HoveredZ,
 				SelectedUnit->X, SelectedUnit->Y, SelectedUnit->Z);
@@ -1208,7 +1224,8 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 		}
 	}
 	FTacticalHudActionAvailability& ObjectiveAction = AddAction(Snapshot, ETacticalHudActionType::InteractObjective, Query);
-	ObjectiveAction.ActionPointCost = Mission->ObjectiveActionPointCost;
+	ObjectiveAction.ActionPointCost = GetEffectiveTacticalMissionActionPointCost(
+		Mission->ObjectiveActionPointCost);
 	if (SelectedObjective != nullptr)
 	{
 		ObjectiveAction.ObjectiveId = SelectedObjective->ObjectiveId;
@@ -1269,7 +1286,8 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 	}
 
 	FTacticalHudActionAvailability& Extract = AddAction(Snapshot, ETacticalHudActionType::Extract, Query);
-	Extract.ActionPointCost = Mission->ExtractionActionPointCost;
+	Extract.ActionPointCost = GetEffectiveTacticalMissionActionPointCost(
+		Mission->ExtractionActionPointCost);
 	if (!Battle.bRequiresExtraction)
 	{
 		SetUnavailable(Extract, TEXT("tactical_extraction_not_required"),

@@ -405,6 +405,37 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 				&& ExtremeReloadAction->ActionPointCost == 20);
 		}
 	}
+	FResolvedRuleSet ExtremeMissionActionRules = Fixture.Rules;
+	FTacticalMissionRule* ExtremeMissionAction = ExtremeMissionActionRules.TacticalMissions.Find(
+		TEXT("tactical.presentation-test"));
+	TestNotNull(TEXT("HUD mission action boundary fixture resolves its mission rule"), ExtremeMissionAction);
+	if (ExtremeMissionAction != nullptr)
+	{
+		ExtremeMissionAction->ObjectiveActionPointCost = MAX_int32;
+		ExtremeMissionAction->ExtractionActionPointCost = MAX_int32;
+		FCampaignState ExtremeMissionActionCampaign = Fixture.Campaign;
+		FTacticalUnitState* ExtremeMissionActionPlayer = ExtremeMissionActionCampaign.TacticalBattles[0].Units.FindByPredicate(
+			[&Fixture](const FTacticalUnitState& Unit) { return Unit.UnitId == Fixture.PlayerUnitId; });
+		TestNotNull(TEXT("HUD mission action boundary fixture has a player unit"), ExtremeMissionActionPlayer);
+		if (ExtremeMissionActionPlayer != nullptr)
+		{
+			ExtremeMissionActionPlayer->MaxActionPoints = 20;
+			ExtremeMissionActionPlayer->RemainingActionPoints = 20;
+			const FTacticalHudSnapshot ExtremeMissionActionSnapshot = FTacticalPresentationService::BuildHudSnapshot(
+				ExtremeMissionActionCampaign.TacticalBattles[0], ExtremeMissionActionCampaign,
+				ExtremeMissionActionRules, Query);
+			const FTacticalHudActionAvailability* ExtremeObjectiveAction = ExtremeMissionActionSnapshot.FindAction(
+				ETacticalHudActionType::InteractObjective);
+			const FTacticalHudActionAvailability* ExtremeExtractAction = ExtremeMissionActionSnapshot.FindAction(
+				ETacticalHudActionType::Extract);
+			TestTrue(TEXT("HUD clamps extreme mission action costs to the supported boundary"),
+				ExtremeMissionActionSnapshot.bSucceeded
+				&& ExtremeObjectiveAction != nullptr && ExtremeObjectiveAction->bAvailable
+				&& ExtremeObjectiveAction->ActionPointCost == 20
+				&& ExtremeExtractAction != nullptr && ExtremeExtractAction->bAvailable
+				&& ExtremeExtractAction->ActionPointCost == 20);
+		}
+	}
 	const FTacticalHudActionAvailability* Objective = Snapshot.FindAction(ETacticalHudActionType::InteractObjective);
 	TestTrue(TEXT("Adjacent active objective is selected without leaking pointer state"), Objective != nullptr && Objective->bAvailable
 		&& Objective->ObjectiveId == FName(TEXT("objective.presentation-control")));
@@ -584,6 +615,20 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 	const FTacticalHudActionAvailability* DoorAction = Door.FindAction(ETacticalHudActionType::OperateDoor);
 	TestTrue(TEXT("Adjacent visible door exposes its exact toggle command"), DoorAction != nullptr && DoorAction->bAvailable
 		&& DoorAction->bRequestedDoorOpen && DoorAction->ActionPointCost == 1);
+	FResolvedRuleSet ExtremeDoorRules = Fixture.Rules;
+	FTacticalTerrainRule* ExtremeDoor = ExtremeDoorRules.TacticalTerrains.Find(TEXT("terrain.presentation-door"));
+	TestNotNull(TEXT("HUD door boundary fixture resolves its terrain rule"), ExtremeDoor);
+	if (ExtremeDoor != nullptr)
+	{
+		ExtremeDoor->DoorActionPointCost = MAX_int32;
+		const FTacticalHudSnapshot ExtremeDoorSnapshot = FTacticalPresentationService::BuildHudSnapshot(
+			Battle, Fixture.Campaign, ExtremeDoorRules, DoorQuery);
+		const FTacticalHudActionAvailability* ExtremeDoorAction = ExtremeDoorSnapshot.FindAction(
+			ETacticalHudActionType::OperateDoor);
+		TestTrue(TEXT("HUD clamps extreme door action cost to the supported boundary"),
+			ExtremeDoorSnapshot.bSucceeded && ExtremeDoorAction != nullptr
+			&& ExtremeDoorAction->bAvailable && ExtremeDoorAction->ActionPointCost == 4);
+	}
 
 	FTacticalHudQuery MoveQuery = Query;
 	MoveQuery.HoveredX = 2;

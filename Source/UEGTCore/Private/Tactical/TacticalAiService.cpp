@@ -137,6 +137,20 @@ namespace TacticalAiPrivate
 			MaximumSupportedBudget));
 	}
 
+	int32 GetEffectiveTacticalMissionActionPointCost(const int32 ActionPointCost)
+	{
+		return ActionPointCost > 0
+			? FMath::Clamp(ActionPointCost, 1, 20)
+			: 0;
+	}
+
+	int32 GetEffectiveTacticalDoorActionPointCost(const int32 ActionPointCost)
+	{
+		return ActionPointCost > 0
+			? FMath::Clamp(ActionPointCost, 1, 4)
+			: 0;
+	}
+
 	int32 CoverAt(
 		const FTacticalBattleState& Battle,
 		const FResolvedRuleSet& Rules,
@@ -362,7 +376,9 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 		const int32 ObjectiveDistance = ManhattanDistance(
 			Unit->X, Unit->Y, Unit->Z,
 			ControlObjective->X, ControlObjective->Y, ControlObjective->Z);
-		if (ObjectiveDistance <= 1 && Unit->RemainingActionPoints >= Mission->ObjectiveActionPointCost)
+		const int32 EffectiveObjectiveActionPointCost =
+			GetEffectiveTacticalMissionActionPointCost(Mission->ObjectiveActionPointCost);
+		if (ObjectiveDistance <= 1 && Unit->RemainingActionPoints >= EffectiveObjectiveActionPointCost)
 		{
 			Decision.Goal = ETacticalAiGoal::ControlObjective;
 			Decision.ActionType = ETacticalAiActionType::InteractObjective;
@@ -556,7 +572,8 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 			const FTacticalCellState& Cell = Battle.Cells[CellIndex];
 			const FTacticalTerrainRule* Terrain = Rules.TacticalTerrains.Find(Cell.TerrainRuleId);
 			if (Terrain == nullptr || !Terrain->IsDoor() || Cell.CurrentIntegrity <= 0 || Cell.bDoorOpen
-				|| Terrain->DoorActionPointCost > Unit->RemainingActionPoints)
+				|| GetEffectiveTacticalDoorActionPointCost(Terrain->DoorActionPointCost)
+					> Unit->RemainingActionPoints)
 			{
 				continue;
 			}

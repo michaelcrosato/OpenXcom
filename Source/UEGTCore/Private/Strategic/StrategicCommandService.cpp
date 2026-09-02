@@ -847,6 +847,20 @@ namespace StrategicCommandServicePrivate
 			: 0;
 	}
 
+	int32 GetEffectiveTacticalMissionActionPointCost(const int32 ActionPointCost)
+	{
+		return ActionPointCost > 0
+			? FMath::Clamp(ActionPointCost, 1, 20)
+			: 0;
+	}
+
+	int32 GetEffectiveTacticalDoorActionPointCost(const int32 ActionPointCost)
+	{
+		return ActionPointCost > 0
+			? FMath::Clamp(ActionPointCost, 1, 4)
+			: 0;
+	}
+
 	void SyncTacticalConsumablesToPersonnel(
 		FPersonnelState& Person,
 		const FTacticalUnitState& Unit,
@@ -16891,6 +16905,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("invalid_tactical_door"), TEXT("Target cell has no intact openable terrain."));
 		return Result;
 	}
+	const int32 EffectiveDoorActionPointCost = GetEffectiveTacticalDoorActionPointCost(DoorRule->DoorActionPointCost);
 	if (ExistingCell.bDoorOpen == Command.bOpen)
 	{
 		AddError(Result, TEXT("tactical_door_state_unchanged"), TEXT("Door is already in the requested state."));
@@ -16906,7 +16921,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("occupied_tactical_door"), TEXT("An occupied tactical doorway cannot be closed."));
 		return Result;
 	}
-	if (ExistingUnit->RemainingActionPoints < DoorRule->DoorActionPointCost)
+	if (ExistingUnit->RemainingActionPoints < EffectiveDoorActionPointCost)
 	{
 		AddError(Result, TEXT("insufficient_action_points"), TEXT("Unit lacks the action points required to operate this door."));
 		return Result;
@@ -16920,7 +16935,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	check(Unit != nullptr);
 	FTacticalCellState& Cell = Battle->Cells[Battle->GetCellIndex(Command.TargetX, Command.TargetY, Command.TargetZ)];
 	Cell.bDoorOpen = Command.bOpen;
-	Unit->RemainingActionPoints -= DoorRule->DoorActionPointCost;
+	Unit->RemainingActionPoints -= EffectiveDoorActionPointCost;
 	if (!RefreshAndValidateTacticalBattles(Transaction, Rules, Result))
 	{
 		return Result;
@@ -16930,7 +16945,6 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	const FGuid SiteId = Battle->SiteId;
 	const FGuid UnitId = Unit->UnitId;
 	const FName TerrainRuleId = Cell.TerrainRuleId;
-	const int32 ActionPointCost = DoorRule->DoorActionPointCost;
 	SortStateCollections(Transaction);
 	++Transaction.CommandSequence;
 	FStrategicEvent& Event = AddEvent(Result, EStrategicEventType::TacticalDoorStateChanged, Transaction.CommandSequence, Transaction.StrategicTime.Utc);
@@ -16943,7 +16957,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Event.ToZ = Command.TargetZ;
 	Event.RuleId = TerrainRuleId;
 	Event.bSuccessful = true;
-	Event.Amount = -ActionPointCost;
+	Event.Amount = -EffectiveDoorActionPointCost;
 	Event.Quantity = Command.bOpen ? 1 : 0;
 	State = MoveTemp(Transaction);
 	Result.bAccepted = true;
@@ -18266,6 +18280,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_tactical_objective"), TEXT("Tactical objective command references an unknown unit, objective, or mission rule."));
 		return Result;
 	}
+	const int32 EffectiveObjectiveActionPointCost =
+		GetEffectiveTacticalMissionActionPointCost(Mission->ObjectiveActionPointCost);
 	if (ExistingBattle->Phase == ETacticalBattlePhase::Resolved)
 	{
 		AddError(Result, TEXT("tactical_battle_resolved"), TEXT("Tactical objective cannot be operated after the battle resolves."));
@@ -18303,7 +18319,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("tactical_objective_out_of_reach"), TEXT("Tactical unit must occupy or stand adjacent to the objective."));
 		return Result;
 	}
-	if (ExistingUnit->RemainingActionPoints < Mission->ObjectiveActionPointCost)
+	if (ExistingUnit->RemainingActionPoints < EffectiveObjectiveActionPointCost)
 	{
 		AddError(Result, TEXT("insufficient_action_points"), TEXT("Tactical unit lacks the action points required to operate the objective."));
 		return Result;
@@ -18338,7 +18354,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	FTacticalObjectiveState* Objective = Battle->Objectives.FindByPredicate(
 		[&Command](const FTacticalObjectiveState& Entry) { return Entry.ObjectiveId == Command.ObjectiveId; });
 	check(Unit != nullptr && Objective != nullptr);
-	Unit->RemainingActionPoints -= Mission->ObjectiveActionPointCost;
+	Unit->RemainingActionPoints -= EffectiveObjectiveActionPointCost;
 	bool bContested = false;
 	if (Objective->Type == ETacticalObjectiveType::Control)
 	{
@@ -18427,7 +18443,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Progressed.ToX = ObjectiveX;
 	Progressed.ToY = ObjectiveY;
 	Progressed.ToZ = ObjectiveZ;
-	Progressed.Amount = -Mission->ObjectiveActionPointCost;
+	Progressed.Amount = -EffectiveObjectiveActionPointCost;
 	Progressed.Quantity = CompletedInteractions;
 	Progressed.Roll = AdversaryInteractions;
 	Progressed.bSuccessful = ActingTeam == ETacticalTeam::Player;
@@ -18564,7 +18580,9 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("tactical_extraction_unavailable"), TEXT("Player unit must occupy an extraction cell."));
 		return Result;
 	}
-	if (ExistingUnit->RemainingActionPoints < Mission->ExtractionActionPointCost)
+	const int32 EffectiveExtractionActionPointCost =
+		GetEffectiveTacticalMissionActionPointCost(Mission->ExtractionActionPointCost);
+	if (ExistingUnit->RemainingActionPoints < EffectiveExtractionActionPointCost)
 	{
 		AddError(Result, TEXT("insufficient_action_points"), TEXT("Player unit lacks the action points required to extract."));
 		return Result;
@@ -18576,7 +18594,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	FTacticalUnitState* Unit = Battle->Units.FindByPredicate(
 		[&Command](const FTacticalUnitState& Entry) { return Entry.UnitId == Command.UnitId; });
 	check(Unit != nullptr);
-	Unit->RemainingActionPoints -= Mission->ExtractionActionPointCost;
+	Unit->RemainingActionPoints -= EffectiveExtractionActionPointCost;
 	Unit->bExtracted = true;
 	const FTacticalResolutionEvaluation Evaluation = EvaluateTacticalBattleResolution(*Battle);
 	if (!RefreshAndValidateTacticalBattles(Transaction, Rules, Result))
@@ -18602,7 +18620,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Extracted.ToX = UnitX;
 	Extracted.ToY = UnitY;
 	Extracted.ToZ = UnitZ;
-	Extracted.Amount = -Mission->ExtractionActionPointCost;
+	Extracted.Amount = -EffectiveExtractionActionPointCost;
 	if (Evaluation.bResolved)
 	{
 		FStrategicEvent& Resolved = AddEvent(Result, EStrategicEventType::TacticalBattleResolved, Transaction.CommandSequence, Transaction.StrategicTime.Utc);

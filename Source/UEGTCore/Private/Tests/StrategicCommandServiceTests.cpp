@@ -15396,6 +15396,41 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 		&& ObjectiveDecision.ActionType == ETacticalAiActionType::Move
 		&& ObjectiveDecision.MovementCost > 0
 		&& ObjectiveDecisionDistance < ObjectiveStartDistance);
+	FResolvedRuleSet BoundaryObjectiveRules = ObjectiveRules;
+	FResolvedRuleSet ExtremeObjectiveRules = ObjectiveRules;
+	BoundaryObjectiveRules.TacticalMissions.FindChecked(TEXT("tactical.test-recovery")).ObjectiveActionPointCost = 20;
+	ExtremeObjectiveRules.TacticalMissions.FindChecked(TEXT("tactical.test-recovery")).ObjectiveActionPointCost = MAX_int32;
+	FTacticalBattleState BoundaryObjectiveProbe = ObjectiveProbe;
+	FTacticalBattleState ExtremeObjectiveProbe = ObjectiveProbe;
+	FTacticalUnitState* BoundaryObjectiveAi = BoundaryObjectiveProbe.Units.FindByPredicate(
+		[&ObjectiveAiId](const FTacticalUnitState& Unit) { return Unit.UnitId == ObjectiveAiId; });
+	FTacticalUnitState* ExtremeObjectiveAi = ExtremeObjectiveProbe.Units.FindByPredicate(
+		[&ObjectiveAiId](const FTacticalUnitState& Unit) { return Unit.UnitId == ObjectiveAiId; });
+	TestTrue(TEXT("Objective action-cost boundary fixtures resolve their adversary units"),
+		BoundaryObjectiveAi != nullptr && ExtremeObjectiveAi != nullptr);
+	if (BoundaryObjectiveAi != nullptr && ExtremeObjectiveAi != nullptr)
+	{
+		BoundaryObjectiveAi->X = 5;
+		BoundaryObjectiveAi->MaxActionPoints = 20;
+		BoundaryObjectiveAi->RemainingActionPoints = 20;
+		ExtremeObjectiveAi->X = 5;
+		ExtremeObjectiveAi->MaxActionPoints = 20;
+		ExtremeObjectiveAi->RemainingActionPoints = 20;
+		const FTacticalAiDecision BoundaryObjectiveDecision = FTacticalAiService::ChooseAction(
+			BoundaryObjectiveProbe, ProbeCampaign, BoundaryObjectiveRules, ObjectiveAiId);
+		const FTacticalAiDecision ExtremeObjectiveDecision = FTacticalAiService::ChooseAction(
+			ExtremeObjectiveProbe, ProbeCampaign, ExtremeObjectiveRules, ObjectiveAiId);
+		TestTrue(TEXT("Extreme objective action cost matches the supported AI decision boundary"),
+			BoundaryObjectiveDecision.bSucceeded && ExtremeObjectiveDecision.bSucceeded
+			&& BoundaryObjectiveDecision.Goal == ETacticalAiGoal::ControlObjective
+			&& BoundaryObjectiveDecision.ActionType == ETacticalAiActionType::InteractObjective
+			&& ExtremeObjectiveDecision.Goal == BoundaryObjectiveDecision.Goal
+			&& ExtremeObjectiveDecision.ActionType == BoundaryObjectiveDecision.ActionType
+			&& ExtremeObjectiveDecision.TargetUnitId == BoundaryObjectiveDecision.TargetUnitId
+			&& ExtremeObjectiveDecision.DestinationX == BoundaryObjectiveDecision.DestinationX
+			&& ExtremeObjectiveDecision.DestinationY == BoundaryObjectiveDecision.DestinationY
+			&& ExtremeObjectiveDecision.DestinationZ == BoundaryObjectiveDecision.DestinationZ);
+	}
 
 	FTacticalBattleState InvalidObjectiveProbe = ObjectiveProbe;
 	FTacticalObjectiveState* InvalidObjective = InvalidObjectiveProbe.Objectives.FindByPredicate(
@@ -15498,6 +15533,23 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 		&& DoorDecision.Goal == ETacticalAiGoal::Advance
 		&& DoorDecision.ActionType == ETacticalAiActionType::OpenDoor
 		&& DoorDecision.DestinationX == 2 && DoorDecision.DestinationY == 1 && DoorDecision.DestinationZ == 0);
+	FResolvedRuleSet BoundaryDoorRules = Rules;
+	FResolvedRuleSet ExtremeDoorRules = Rules;
+	BoundaryDoorRules.TacticalTerrains.FindChecked(TEXT("terrain.test-door")).DoorActionPointCost = 4;
+	ExtremeDoorRules.TacticalTerrains.FindChecked(TEXT("terrain.test-door")).DoorActionPointCost = MAX_int32;
+	const FTacticalAiDecision BoundaryDoorDecision = FTacticalAiService::ChooseAction(
+		DoorProbe, ProbeCampaign, BoundaryDoorRules, DoorAiId);
+	const FTacticalAiDecision ExtremeDoorDecision = FTacticalAiService::ChooseAction(
+		DoorProbe, ProbeCampaign, ExtremeDoorRules, DoorAiId);
+	TestTrue(TEXT("Extreme door action cost matches the supported AI decision boundary"),
+		BoundaryDoorDecision.bSucceeded && ExtremeDoorDecision.bSucceeded
+		&& BoundaryDoorDecision.Goal == ETacticalAiGoal::Advance
+		&& BoundaryDoorDecision.ActionType == ETacticalAiActionType::OpenDoor
+		&& ExtremeDoorDecision.Goal == BoundaryDoorDecision.Goal
+		&& ExtremeDoorDecision.ActionType == BoundaryDoorDecision.ActionType
+		&& ExtremeDoorDecision.DestinationX == BoundaryDoorDecision.DestinationX
+		&& ExtremeDoorDecision.DestinationY == BoundaryDoorDecision.DestinationY
+		&& ExtremeDoorDecision.DestinationZ == BoundaryDoorDecision.DestinationZ);
 
 	FTacticalBattleState RetreatProbe = MakeProbeBattle(9, 5, 1);
 	const FGuid RetreatAiId(645, 646, 647, 648);
@@ -16319,7 +16371,31 @@ bool FTacticalMovementVisibilityTurnFlowTest::RunTest(const FString& Parameters)
 			[](const FStrategicEvent& Event)
 			{
 				return Event.Type == EStrategicEventType::TacticalDoorStateChanged && Event.Quantity == 0;
-			}));
+				}));
+	FResolvedRuleSet BoundaryDoorRules = Rules;
+	FResolvedRuleSet ExtremeDoorRules = Rules;
+	BoundaryDoorRules.TacticalTerrains.FindChecked(TEXT("terrain.test-door")).DoorActionPointCost = 4;
+	ExtremeDoorRules.TacticalTerrains.FindChecked(TEXT("terrain.test-door")).DoorActionPointCost = MAX_int32;
+	FCampaignState BoundaryDoorCostProbe = First;
+	FCampaignState ExtremeDoorCostProbe = First;
+	FSetTacticalDoorCommand BoundaryDoorCostCommand = CloseDoor;
+	FSetTacticalDoorCommand ExtremeDoorCostCommand = CloseDoor;
+	BoundaryDoorCostCommand.ExpectedSequence = BoundaryDoorCostProbe.CommandSequence;
+	ExtremeDoorCostCommand.ExpectedSequence = ExtremeDoorCostProbe.CommandSequence;
+	const FStrategicCommandResult BoundaryDoorCostResult = FStrategicCommandService::Execute(
+		BoundaryDoorCostProbe, BoundaryDoorRules, BoundaryDoorCostCommand);
+	const FStrategicCommandResult ExtremeDoorCostResult = FStrategicCommandService::Execute(
+		ExtremeDoorCostProbe, ExtremeDoorRules, ExtremeDoorCostCommand);
+	const FStrategicEvent* ExtremeDoorCostEvent = ExtremeDoorCostResult.Events.FindByPredicate(
+		[](const FStrategicEvent& Event)
+		{
+			return Event.Type == EStrategicEventType::TacticalDoorStateChanged;
+		});
+	TestTrue(TEXT("Extreme door action cost matches the supported command boundary"),
+		BoundaryDoorCostResult.bAccepted && ExtremeDoorCostResult.bAccepted
+		&& ExtremeDoorCostEvent != nullptr && ExtremeDoorCostEvent->Amount == -4
+		&& MakeTacticalBattleFingerprint(ExtremeDoorCostProbe.TacticalBattles[0])
+			== MakeTacticalBattleFingerprint(BoundaryDoorCostProbe.TacticalBattles[0]));
 	FCampaignState OccupiedDoorProbe = First;
 	FTacticalUnitState* OccupyingUnit = OccupiedDoorProbe.TacticalBattles[0].Units.FindByPredicate(
 		[&PlayerUnitId](const FTacticalUnitState& Unit) { return Unit.UnitId != PlayerUnitId && Unit.Team == ETacticalTeam::Player; });
@@ -19582,6 +19658,43 @@ bool FTacticalObjectiveRecoveryControlProgressionTest::RunTest(const FString& Pa
 	Interact.BattleId = BattleId;
 	Interact.UnitId = RecoveryAgent->UnitId;
 	Interact.ObjectiveId = GeneratedObjective.ObjectiveId;
+	FResolvedRuleSet BoundaryObjectiveRules = RecoveryRules;
+	FResolvedRuleSet ExtremeObjectiveRules = RecoveryRules;
+	BoundaryObjectiveRules.TacticalMissions.FindChecked(TEXT("tactical.test-recovery")).ObjectiveActionPointCost = 20;
+	ExtremeObjectiveRules.TacticalMissions.FindChecked(TEXT("tactical.test-recovery")).ObjectiveActionPointCost = MAX_int32;
+	FCampaignState BoundaryObjectiveCampaign = First;
+	FCampaignState ExtremeObjectiveCampaign = First;
+	FTacticalUnitState* BoundaryObjectiveAgent = BoundaryObjectiveCampaign.TacticalBattles[0].Units.FindByPredicate(
+		[&AgentId](const FTacticalUnitState& Unit) { return Unit.PersonnelId == AgentId; });
+	FTacticalUnitState* ExtremeObjectiveAgent = ExtremeObjectiveCampaign.TacticalBattles[0].Units.FindByPredicate(
+		[&AgentId](const FTacticalUnitState& Unit) { return Unit.PersonnelId == AgentId; });
+	TestNotNull(TEXT("Objective action-cost boundary fixture has a player unit"), BoundaryObjectiveAgent);
+	TestNotNull(TEXT("Extreme objective action-cost fixture has a player unit"), ExtremeObjectiveAgent);
+	if (BoundaryObjectiveAgent != nullptr && ExtremeObjectiveAgent != nullptr)
+	{
+		BoundaryObjectiveAgent->MaxActionPoints = 20;
+		BoundaryObjectiveAgent->RemainingActionPoints = 20;
+		ExtremeObjectiveAgent->MaxActionPoints = 20;
+		ExtremeObjectiveAgent->RemainingActionPoints = 20;
+		FInteractTacticalObjectiveCommand BoundaryObjectiveInteract = Interact;
+		FInteractTacticalObjectiveCommand ExtremeObjectiveInteract = Interact;
+		BoundaryObjectiveInteract.ExpectedSequence = BoundaryObjectiveCampaign.CommandSequence;
+		ExtremeObjectiveInteract.ExpectedSequence = ExtremeObjectiveCampaign.CommandSequence;
+		const FStrategicCommandResult BoundaryObjectiveResult = FStrategicCommandService::Execute(
+			BoundaryObjectiveCampaign, BoundaryObjectiveRules, BoundaryObjectiveInteract);
+		const FStrategicCommandResult ExtremeObjectiveResult = FStrategicCommandService::Execute(
+			ExtremeObjectiveCampaign, ExtremeObjectiveRules, ExtremeObjectiveInteract);
+		const FStrategicEvent* ExtremeObjectiveEvent = ExtremeObjectiveResult.Events.FindByPredicate(
+			[](const FStrategicEvent& Event)
+			{
+				return Event.Type == EStrategicEventType::TacticalObjectiveProgressed;
+			});
+		TestTrue(TEXT("Extreme objective action cost matches the supported command boundary"),
+			BoundaryObjectiveResult.bAccepted && ExtremeObjectiveResult.bAccepted
+			&& ExtremeObjectiveEvent != nullptr && ExtremeObjectiveEvent->Amount == -20
+			&& MakeTacticalBattleFingerprint(ExtremeObjectiveCampaign.TacticalBattles[0])
+				== MakeTacticalBattleFingerprint(BoundaryObjectiveCampaign.TacticalBattles[0]));
+	}
 	const FStrategicCommandResult FirstProgress = FStrategicCommandService::Execute(First, RecoveryRules, Interact);
 	const FStrategicCommandResult ReplayProgress = FStrategicCommandService::Execute(Replay, RecoveryRules, Interact);
 	TestTrue(TEXT("First recovery step replays without prematurely awarding cargo"),
@@ -19709,6 +19822,45 @@ bool FTacticalObjectiveRecoveryControlProgressionTest::RunTest(const FString& Pa
 		Agent->X = ExtractionCell->X;
 		Agent->Y = ExtractionCell->Y;
 		Agent->Z = ExtractionCell->Z;
+	}
+	FResolvedRuleSet BoundaryExtractionRules = RecoveryRules;
+	FResolvedRuleSet ExtremeExtractionRules = RecoveryRules;
+	BoundaryExtractionRules.TacticalMissions.FindChecked(TEXT("tactical.test-recovery")).ExtractionActionPointCost = 20;
+	ExtremeExtractionRules.TacticalMissions.FindChecked(TEXT("tactical.test-recovery")).ExtractionActionPointCost = MAX_int32;
+	FCampaignState BoundaryExtractionCampaign = First;
+	FCampaignState ExtremeExtractionCampaign = First;
+	FTacticalUnitState* BoundaryExtractionAgent = BoundaryExtractionCampaign.TacticalBattles[0].Units.FindByPredicate(
+		[&AgentId](const FTacticalUnitState& Unit) { return Unit.PersonnelId == AgentId; });
+	FTacticalUnitState* ExtremeExtractionAgent = ExtremeExtractionCampaign.TacticalBattles[0].Units.FindByPredicate(
+		[&AgentId](const FTacticalUnitState& Unit) { return Unit.PersonnelId == AgentId; });
+	TestNotNull(TEXT("Extraction action-cost boundary fixture has a player unit"), BoundaryExtractionAgent);
+	TestNotNull(TEXT("Extreme extraction action-cost fixture has a player unit"), ExtremeExtractionAgent);
+	if (BoundaryExtractionAgent != nullptr && ExtremeExtractionAgent != nullptr)
+	{
+		BoundaryExtractionAgent->MaxActionPoints = 20;
+		BoundaryExtractionAgent->RemainingActionPoints = 20;
+		ExtremeExtractionAgent->MaxActionPoints = 20;
+		ExtremeExtractionAgent->RemainingActionPoints = 20;
+		FExtractTacticalUnitCommand BoundaryExtraction = {};
+		BoundaryExtraction.ExpectedSequence = BoundaryExtractionCampaign.CommandSequence;
+		BoundaryExtraction.BattleId = BattleId;
+		BoundaryExtraction.UnitId = BoundaryExtractionAgent->UnitId;
+		FExtractTacticalUnitCommand ExtremeExtraction = BoundaryExtraction;
+		ExtremeExtraction.ExpectedSequence = ExtremeExtractionCampaign.CommandSequence;
+		const FStrategicCommandResult BoundaryExtractionResult = FStrategicCommandService::Execute(
+			BoundaryExtractionCampaign, BoundaryExtractionRules, BoundaryExtraction);
+		const FStrategicCommandResult ExtremeExtractionResult = FStrategicCommandService::Execute(
+			ExtremeExtractionCampaign, ExtremeExtractionRules, ExtremeExtraction);
+		const FStrategicEvent* ExtremeExtractionEvent = ExtremeExtractionResult.Events.FindByPredicate(
+			[](const FStrategicEvent& Event)
+			{
+				return Event.Type == EStrategicEventType::TacticalUnitExtracted;
+			});
+		TestTrue(TEXT("Extreme extraction action cost matches the supported command boundary"),
+			BoundaryExtractionResult.bAccepted && ExtremeExtractionResult.bAccepted
+			&& ExtremeExtractionEvent != nullptr && ExtremeExtractionEvent->Amount == -20
+			&& MakeTacticalBattleFingerprint(ExtremeExtractionCampaign.TacticalBattles[0])
+				== MakeTacticalBattleFingerprint(BoundaryExtractionCampaign.TacticalBattles[0]));
 	}
 	FExtractTacticalUnitCommand Extract;
 	Extract.ExpectedSequence = First.CommandSequence;
