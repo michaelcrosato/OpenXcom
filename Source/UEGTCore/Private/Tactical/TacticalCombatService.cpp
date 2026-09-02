@@ -84,7 +84,7 @@ namespace TacticalCombatPrivate
 		return true;
 	}
 
-	int32 CeilDistance(const int32 DeltaX, const int32 DeltaY, const int32 DeltaZ)
+	int32 CeilDistance(const int64 DeltaX, const int64 DeltaY, const int64 DeltaZ)
 	{
 		const int64 AbsX = DeltaX < 0 ? -static_cast<int64>(DeltaX) : static_cast<int64>(DeltaX);
 		const int64 AbsY = DeltaY < 0 ? -static_cast<int64>(DeltaY) : static_cast<int64>(DeltaY);
@@ -331,9 +331,9 @@ namespace TacticalCombatPrivate
 			AddDiagnostic(Result, TEXT("invalid_tactical_target"), TEXT("Tactical attack target is outside the battlefield."));
 			return false;
 		}
-		const int32 DeltaX = TargetX - Attacker.X;
-		const int32 DeltaY = TargetY - Attacker.Y;
-		const int32 DeltaZ = TargetZ - Attacker.Z;
+		const int64 DeltaX = static_cast<int64>(TargetX) - Attacker.X;
+		const int64 DeltaY = static_cast<int64>(TargetY) - Attacker.Y;
+		const int64 DeltaZ = static_cast<int64>(TargetZ) - Attacker.Z;
 		Result.Distance = CeilDistance(DeltaX, DeltaY, DeltaZ);
 		if (Result.Distance <= 0 || Result.Distance > Profile.MaximumRange)
 		{
@@ -566,9 +566,9 @@ FTacticalSignalPreview FTacticalCombatService::PreviewSignalProjection(
 			return Result;
 		}
 		Result.SignalRuleId = ProjectorItemId;
-		Result.SignalPower = Projector->Power;
-		Result.MaximumRange = Projector->TacticalRange;
-		Result.ActionPointCost = Projector->TacticalActionPointCost;
+		Result.SignalPower = FMath::Clamp(Projector->Power, 1, 100);
+		Result.MaximumRange = FMath::Clamp(Projector->TacticalRange, 1, 64);
+		Result.ActionPointCost = FMath::Clamp(Projector->TacticalActionPointCost, 1, 20);
 	}
 	else if (Attacker->Team == ETacticalTeam::Adversary)
 	{
@@ -584,9 +584,9 @@ FTacticalSignalPreview FTacticalCombatService::PreviewSignalProjection(
 			return Result;
 		}
 		Result.SignalRuleId = Attacker->SourceRuleId;
-		Result.SignalPower = UnitRule->SignalPower;
-		Result.MaximumRange = UnitRule->SignalRange;
-		Result.ActionPointCost = UnitRule->SignalActionPointCost;
+		Result.SignalPower = FMath::Clamp(UnitRule->SignalPower, 1, 100);
+		Result.MaximumRange = FMath::Clamp(UnitRule->SignalRange, 1, 64);
+		Result.ActionPointCost = FMath::Clamp(UnitRule->SignalActionPointCost, 1, 20);
 	}
 	else
 	{
@@ -633,9 +633,9 @@ FTacticalSignalPreview FTacticalCombatService::PreviewSignalProjection(
 		return Result;
 	}
 	Result.Distance = CeilDistance(
-		Target->X - Attacker->X,
-		Target->Y - Attacker->Y,
-		Target->Z - Attacker->Z);
+		static_cast<int64>(Target->X) - Attacker->X,
+		static_cast<int64>(Target->Y) - Attacker->Y,
+		static_cast<int64>(Target->Z) - Attacker->Z);
 	if (Result.Distance <= 0 || Result.Distance > Result.MaximumRange)
 	{
 		AddDiagnostic(Result, TEXT("tactical_signal_target_out_of_range"), TEXT("Target is outside the signal projector's range."));

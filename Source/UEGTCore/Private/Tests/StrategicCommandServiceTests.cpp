@@ -17079,15 +17079,21 @@ bool FTacticalSignalPressureCommandTest::RunTest(const FString& Parameters)
 	if (ExtremeSignalProjector != nullptr && ExtremeSignalOperator != nullptr && ExtremeSignalTarget != nullptr)
 	{
 		ExtremeSignalProjector->Power = MAX_int32;
+		ExtremeSignalProjector->TacticalRange = MAX_int32;
+		ExtremeSignalProjector->TacticalActionPointCost = MAX_int32;
+		ExtremeSignalOperator->RemainingActionPoints = 20;
 		ExtremeSignalOperator->Resolve = MAX_int32;
 		ExtremeSignalTarget->Resolve = MIN_int32;
 		ExtremeSignalTarget->Suppression = MIN_int32;
 		ExtremeSignalTarget->CurrentMorale = MAX_int32;
 		const FTacticalSignalPreview ExtremeSignalPreview = FTacticalCombatService::PreviewSignalProjection(
 			ExtremeSignalBattle, Initial, ExtremeSignalRules, PlayerUnitId, TargetUnitId, TEXT("item.signal-probe"));
-		TestTrue(TEXT("Extreme signal inputs clamp preview chance and pressure outputs safely"),
+		TestTrue(TEXT("Extreme signal fields clamp to the supported profile before preview"),
 			ExtremeSignalPreview.bSucceeded && ExtremeSignalPreview.HitChance == 95
-			&& ExtremeSignalPreview.SuppressionGain == 30 && ExtremeSignalPreview.MoraleDamage == 35);
+			&& ExtremeSignalPreview.SuppressionGain == 30 && ExtremeSignalPreview.MoraleDamage == 35
+			&& ExtremeSignalPreview.SignalPower == 100
+			&& ExtremeSignalPreview.MaximumRange == 64
+			&& ExtremeSignalPreview.ActionPointCost == 20);
 	}
 
 	int64 HitSeed = 1;
