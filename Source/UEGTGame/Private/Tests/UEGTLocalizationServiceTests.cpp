@@ -26,8 +26,8 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		Loaded.Catalog.CatalogId, FName(TEXT("uegt.ui")));
 	TestEqual(TEXT("English remains the source culture"), Loaded.Catalog.SourceCulture, FString(TEXT("en")));
 	TestEqual(TEXT("All five selectable cultures are authored"), Loaded.Catalog.Cultures.Num(), 5);
-	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, craft-state safeguards, personnel-integrity safeguards, control safeguards, and base-site safeguards expose one thousand six hundred three localized keys"),
-		Loaded.Catalog.Entries.Num(), 1603);
+	TestEqual(TEXT("The complete shell, strategic and tactical systems, Mutual Aid policies, Signal Watch, Works Cadre, Works Charters, Enduring Beacon, relay pressure, interception safeguards, base specialization, facility-construction safeguards, personnel-craft safeguards, economy safeguards, numeric-boundary safeguards, identity safeguards, strategic-object safeguards, craft-state safeguards, personnel-integrity safeguards, control safeguards, base-site safeguards, and tactical-resolution safeguards expose one thousand six hundred twenty-one localized keys"),
+		Loaded.Catalog.Entries.Num(), 1621);
 	if (!Loaded.bSucceeded)
 	{
 		return false;
@@ -1149,7 +1149,7 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 	const FUEGTLocalizationLoadResult Activated = FUEGTLocalizationService::ReloadDefaultCatalog();
 	TestTrue(TEXT("Default catalog activates for runtime lookup"), Activated.bSucceeded
 		&& FUEGTLocalizationService::IsCatalogReady()
-		&& FUEGTLocalizationService::GetActiveEntryCount() == 1603);
+		&& FUEGTLocalizationService::GetActiveEntryCount() == 1621);
 	TestEqual(TEXT("Explicit-culture runtime lookup uses the activated catalog"),
 		FUEGTLocalizationService::TextForCulture(
 			TEXT("settings.language-controls"), TEXT("fallback"), TEXT("ja-JP")),
@@ -1637,6 +1637,78 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("site_identity_conflict"), TEXT("Raw site-identity diagnostic"), TEXT("de-DE")),
 		FString(TEXT("Die Kontakt-ID steht im Konflikt mit einem aktiven strategischen Ort.")));
+	TestEqual(TEXT("Exact French tactical-operation diagnostics preserve saved links"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_tactical_operation"), TEXT("Raw tactical-operation diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("L'opération tactique possède une identité, un contexte, des liens, un effectif, une cargaison ou une heure de création sauvegardés invalides.")));
+	TestEqual(TEXT("Exact German tactical-operation identity diagnostics preserve uniqueness"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_operation_identity_conflict"), TEXT("Raw tactical-operation-identity diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die ID der taktischen Operation wird bereits verwendet.")));
+	TestEqual(TEXT("Exact Spanish tactical-battle-exists diagnostics preserve materialization state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_battle_exists"), TEXT("Raw tactical-battle-exists diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La operación táctica ya tiene un campo de batalla.")));
+	TestEqual(TEXT("Exact Japanese tactical-battle identity diagnostics preserve uniqueness"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_battle_identity_conflict"), TEXT("Raw tactical-battle-identity diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("生成された戦術戦場IDはすでに使用中です。")));
+	TestEqual(TEXT("Exact French tactical-stance diagnostics preserve supported choices"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_tactical_stance"), TEXT("Raw tactical-stance diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("La posture tactique sélectionnée n'est pas prise en charge.")));
+	TestEqual(TEXT("Exact German tactical-stance-unchanged diagnostics preserve no-op state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_stance_unchanged"), TEXT("Raw tactical-stance-unchanged diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die Einheit verwendet bereits die angeforderte taktische Haltung.")));
+	TestEqual(TEXT("Exact Spanish tactical-door diagnostics preserve no-op state"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_door_state_unchanged"), TEXT("Raw tactical-door diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La puerta ya está en el estado solicitado.")));
+	TestEqual(TEXT("Exact Japanese tactical-random diagnostics preserve draw accounting"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_random_exhausted"), TEXT("Raw tactical-random diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("戦術ランダムストリームはこれ以上の行動を受け付けられません。")));
+	TestEqual(TEXT("Exact French tactical-kill diagnostics preserve personnel bounds"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_kill_record_overflow"), TEXT("Raw tactical-kill diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Le personnel attaquant ne peut pas enregistrer une incapacité supplémentaire.")));
+	TestEqual(TEXT("Exact German tactical-objective identity diagnostics preserve references"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("unknown_tactical_objective"), TEXT("Raw tactical-objective diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Das taktische Ziel, die Einheit oder die Missionsregel ist nicht verfügbar.")));
+	TestEqual(TEXT("Exact Spanish tactical-objective policy diagnostics preserve opposing control"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_objective_player_only"), TEXT("Raw tactical-objective-policy diagnostic"), TEXT("es-ES")),
+		FString(TEXT("Las unidades adversarias solo pueden operar objetivos de control enfrentados.")));
+	TestEqual(TEXT("Exact Japanese tactical-recovery diagnostics preserve manifest commit"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_recovery_manifest_failed"), TEXT("Raw tactical-recovery diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("目標報酬を戦術および輸送マニフェストに確定できませんでした。")));
+	TestEqual(TEXT("Exact French tactical-AI planning diagnostics preserve plan validity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_ai_planning_failed"), TEXT("Raw tactical-AI-planning diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("L'IA tactique n'a pas pu produire un plan d'action valide.")));
+	TestEqual(TEXT("Exact German tactical-AI action diagnostics preserve action schema"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_tactical_ai_action"), TEXT("Raw tactical-AI-action diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Die taktische KI hat eine nicht unterstützte Aktion ausgewählt.")));
+	TestEqual(TEXT("Exact Spanish tactical-AI rollback diagnostics preserve transaction safety"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_ai_action_failed"), TEXT("Raw tactical-AI-rollback diagnostic"), TEXT("es-ES")),
+		FString(TEXT("La acción de la IA táctica fue rechazada; el turno se revirtió.")));
+	TestEqual(TEXT("Exact Japanese tactical-AI end-turn diagnostics preserve rollback"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_ai_end_turn_failed"), TEXT("Raw tactical-AI-end-turn diagnostic"), TEXT("ja-JP")),
+		FString(TEXT("戦術AIはターンを完了できなかったため、すべての行動をロールバックしました。")));
+	TestEqual(TEXT("Exact French tactical-resolution diagnostics preserve objective parity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("tactical_resolution_mismatch"), TEXT("Raw tactical-resolution diagnostic"), TEXT("fr-FR")),
+		FString(TEXT("Le résultat stratégique ne correspond pas aux objectifs résolus sur le champ de bataille.")));
+	TestEqual(TEXT("Exact German tactical-casualty diagnostics preserve strategic parity"),
+		FUEGTLocalizationService::DiagnosticTextForCulture(
+			TEXT("invalid_tactical_casualty_state"), TEXT("Raw tactical-casualty diagnostic"), TEXT("de-DE")),
+		FString(TEXT("Der taktische Verluststatus ist nicht mit dem strategischen Personal- oder Basisstatus vereinbar.")));
 	TestEqual(TEXT("Exact French economy diagnostics preserve the numeric boundary"),
 		FUEGTLocalizationService::DiagnosticTextForCulture(
 			TEXT("economy_overflow"), TEXT("Raw economy-overflow diagnostic"), TEXT("fr-FR")),

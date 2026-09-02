@@ -5520,6 +5520,96 @@
       "translations": { "en": "The contact ID conflicts with an active strategic site.", "fr": "L'identifiant du contact est en conflit avec un site stratégique actif.", "de": "Die Kontakt-ID steht im Konflikt mit einem aktiven strategischen Ort.", "es": "El identificador del contacto entra en conflicto con un sitio estratégico activo.", "ja": "コンタクトIDがアクティブな戦略サイトと競合しています。" }
     },
     {
+      "key": "diagnostic.invalid-tactical-operation",
+      "source": "The tactical operation has invalid saved identity, context, links, roster, cargo, or creation time.",
+      "translations": { "en": "The tactical operation has invalid saved identity, context, links, roster, cargo, or creation time.", "fr": "L'opération tactique possède une identité, un contexte, des liens, un effectif, une cargaison ou une heure de création sauvegardés invalides.", "de": "Die taktische Operation weist eine ungültige gespeicherte Identität, einen ungültigen Kontext, Verknüpfungen, Kader, Fracht oder Erstellungszeit auf.", "es": "La operación táctica tiene una identidad, contexto, vínculos, plantilla, carga u hora de creación guardados no válidos.", "ja": "戦術作戦の保存された識別情報、コンテキスト、リンク、名簿、貨物、または作成時刻が無効です。" }
+    },
+    {
+      "key": "diagnostic.tactical-operation-identity-conflict",
+      "source": "The tactical operation ID is already in use.",
+      "translations": { "en": "The tactical operation ID is already in use.", "fr": "L'identifiant de l'opération tactique est déjà utilisé.", "de": "Die ID der taktischen Operation wird bereits verwendet.", "es": "El identificador de la operación táctica ya está en uso.", "ja": "戦術作戦IDはすでに使用中です。" }
+    },
+    {
+      "key": "diagnostic.tactical-battle-exists",
+      "source": "The tactical operation already has a battlefield.",
+      "translations": { "en": "The tactical operation already has a battlefield.", "fr": "L'opération tactique possède déjà un champ de bataille.", "de": "Die taktische Operation verfügt bereits über ein Schlachtfeld.", "es": "La operación táctica ya tiene un campo de batalla.", "ja": "この戦術作戦にはすでに戦場があります。" }
+    },
+    {
+      "key": "diagnostic.tactical-battle-identity-conflict",
+      "source": "The generated tactical battlefield ID is already in use.",
+      "translations": { "en": "The generated tactical battlefield ID is already in use.", "fr": "L'identifiant du champ de bataille tactique généré est déjà utilisé.", "de": "Die ID des generierten taktischen Schlachtfelds wird bereits verwendet.", "es": "El identificador del campo de batalla táctico generado ya está en uso.", "ja": "生成された戦術戦場IDはすでに使用中です。" }
+    },
+    {
+      "key": "diagnostic.invalid-tactical-stance",
+      "source": "The selected tactical stance is unsupported.",
+      "translations": { "en": "The selected tactical stance is unsupported.", "fr": "La posture tactique sélectionnée n'est pas prise en charge.", "de": "Die ausgewählte taktische Haltung wird nicht unterstützt.", "es": "La postura táctica seleccionada no está admitida.", "ja": "選択した戦術姿勢はサポートされていません。" }
+    },
+    {
+      "key": "diagnostic.tactical-stance-unchanged",
+      "source": "The unit is already using the requested tactical stance.",
+      "translations": { "en": "The unit is already using the requested tactical stance.", "fr": "L'unité utilise déjà la posture tactique demandée.", "de": "Die Einheit verwendet bereits die angeforderte taktische Haltung.", "es": "La unidad ya está usando la postura táctica solicitada.", "ja": "ユニットはすでに指定した戦術姿勢を使用しています。" }
+    },
+    {
+      "key": "diagnostic.tactical-door-state-unchanged",
+      "source": "The door is already in the requested state.",
+      "translations": { "en": "The door is already in the requested state.", "fr": "La porte est déjà dans l'état demandé.", "de": "Die Tür befindet sich bereits im angeforderten Zustand.", "es": "La puerta ya está en el estado solicitado.", "ja": "ドアはすでに指定した状態です。" }
+    },
+    {
+      "key": "diagnostic.tactical-random-exhausted",
+      "source": "The tactical random stream cannot accept another action.",
+      "translations": { "en": "The tactical random stream cannot accept another action.", "fr": "Le flux aléatoire tactique ne peut pas accepter une nouvelle action.", "de": "Der taktische Zufallsstrom kann keine weitere Aktion aufnehmen.", "es": "El flujo aleatorio táctico no puede aceptar otra acción.", "ja": "戦術ランダムストリームはこれ以上の行動を受け付けられません。" }
+    },
+    {
+      "key": "diagnostic.tactical-kill-record-overflow",
+      "source": "Attacking personnel cannot record another incapacitation.",
+      "translations": { "en": "Attacking personnel cannot record another incapacitation.", "fr": "Le personnel attaquant ne peut pas enregistrer une incapacité supplémentaire.", "de": "Das angreifende Personal kann keine weitere Kampfunfähigkeit verzeichnen.", "es": "El personal atacante no puede registrar otra incapacitación.", "ja": "攻撃側人員にこれ以上の無力化記録を追加できません。" }
+    },
+    {
+      "key": "diagnostic.unknown-tactical-objective",
+      "source": "The tactical objective, unit, or mission rule is unavailable.",
+      "translations": { "en": "The tactical objective, unit, or mission rule is unavailable.", "fr": "L'objectif tactique, l'unité ou la règle de mission est indisponible.", "de": "Das taktische Ziel, die Einheit oder die Missionsregel ist nicht verfügbar.", "es": "El objetivo táctico, la unidad o la regla de misión no están disponibles.", "ja": "戦術目標、ユニット、またはミッションルールを利用できません。" }
+    },
+    {
+      "key": "diagnostic.tactical-objective-player-only",
+      "source": "Adversary units can operate only opposed control objectives.",
+      "translations": { "en": "Adversary units can operate only opposed control objectives.", "fr": "Les unités adverses ne peuvent agir que sur des objectifs de contrôle opposés.", "de": "Gegnerische Einheiten können nur umkämpfte Kontrollziele bedienen.", "es": "Las unidades adversarias solo pueden operar objetivos de control enfrentados.", "ja": "敵対ユニットが操作できるのは、対立中の制圧目標だけです。" }
+    },
+    {
+      "key": "diagnostic.tactical-recovery-manifest-failed",
+      "source": "The objective reward could not be committed to tactical and transport manifests.",
+      "translations": { "en": "The objective reward could not be committed to tactical and transport manifests.", "fr": "La récompense de l'objectif n'a pas pu être ajoutée aux manifestes tactique et de transport.", "de": "Die Zielbelohnung konnte nicht in die taktischen und Transportmanifeste übernommen werden.", "es": "La recompensa del objetivo no se pudo registrar en los manifiestos táctico y de transporte.", "ja": "目標報酬を戦術および輸送マニフェストに確定できませんでした。" }
+    },
+    {
+      "key": "diagnostic.tactical-ai-planning-failed",
+      "source": "Tactical AI could not produce a valid action plan.",
+      "translations": { "en": "Tactical AI could not produce a valid action plan.", "fr": "L'IA tactique n'a pas pu produire un plan d'action valide.", "de": "Die taktische KI konnte keinen gültigen Aktionsplan erstellen.", "es": "La IA táctica no pudo producir un plan de acción válido.", "ja": "戦術AIは有効な行動計画を作成できませんでした。" }
+    },
+    {
+      "key": "diagnostic.invalid-tactical-ai-action",
+      "source": "Tactical AI selected an unsupported action.",
+      "translations": { "en": "Tactical AI selected an unsupported action.", "fr": "L'IA tactique a sélectionné une action non prise en charge.", "de": "Die taktische KI hat eine nicht unterstützte Aktion ausgewählt.", "es": "La IA táctica seleccionó una acción no admitida.", "ja": "戦術AIがサポートされていない行動を選択しました。" }
+    },
+    {
+      "key": "diagnostic.tactical-ai-action-failed",
+      "source": "Tactical AI action was rejected; the turn was rolled back.",
+      "translations": { "en": "Tactical AI action was rejected; the turn was rolled back.", "fr": "L'action de l'IA tactique a été refusée ; le tour a été annulé.", "de": "Die Aktion der taktischen KI wurde abgelehnt; der Zug wurde zurückgesetzt.", "es": "La acción de la IA táctica fue rechazada; el turno se revirtió.", "ja": "戦術AIの行動が拒否されたため、ターンをロールバックしました。" }
+    },
+    {
+      "key": "diagnostic.tactical-ai-end-turn-failed",
+      "source": "Tactical AI could not complete its turn; all actions were rolled back.",
+      "translations": { "en": "Tactical AI could not complete its turn; all actions were rolled back.", "fr": "L'IA tactique n'a pas pu terminer son tour ; toutes les actions ont été annulées.", "de": "Die taktische KI konnte ihren Zug nicht abschließen; alle Aktionen wurden zurückgesetzt.", "es": "La IA táctica no pudo completar su turno; todas las acciones se revirtieron.", "ja": "戦術AIはターンを完了できなかったため、すべての行動をロールバックしました。" }
+    },
+    {
+      "key": "diagnostic.tactical-resolution-mismatch",
+      "source": "The strategic result does not match the resolved battlefield objectives.",
+      "translations": { "en": "The strategic result does not match the resolved battlefield objectives.", "fr": "Le résultat stratégique ne correspond pas aux objectifs résolus sur le champ de bataille.", "de": "Das strategische Ergebnis stimmt nicht mit den abgeschlossenen Schlachtfeldzielen überein.", "es": "El resultado estratégico no coincide con los objetivos del campo de batalla resueltos.", "ja": "戦略結果が解決済みの戦場目標と一致しません。" }
+    },
+    {
+      "key": "diagnostic.invalid-tactical-casualty-state",
+      "source": "The tactical casualty state is inconsistent with the strategic personnel or base state.",
+      "translations": { "en": "The tactical casualty state is inconsistent with the strategic personnel or base state.", "fr": "L'état de la victime tactique est incohérent avec l'état stratégique du personnel ou de la base.", "de": "Der taktische Verluststatus ist nicht mit dem strategischen Personal- oder Basisstatus vereinbar.", "es": "El estado de bajas tácticas no es coherente con el estado estratégico del personal o la base.", "ja": "戦術死傷者の状態が戦略上の人員または基地の状態と一致しません。" }
+    },
+    {
       "key": "diagnostic.storage-capacity-exceeded",
       "source": "Free storage capacity before completing this order.",
       "translations": { "en": "Free storage capacity before completing this order.", "fr": "Libérez de la capacité de stockage avant de terminer cette commande.", "de": "Schaffen Sie Lagerkapazität, bevor Sie diesen Auftrag abschließen.", "es": "Libera capacidad de almacenamiento antes de completar esta orden.", "ja": "この命令を完了する前に保管容量を空けてください。" }
