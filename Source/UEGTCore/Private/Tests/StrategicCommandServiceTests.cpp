@@ -21177,7 +21177,7 @@ bool FStrategicInterceptionBalanceCorpusTest::RunTest(const FString& Parameters)
 	Weapon.InterceptionDamage = 16;
 	Weapon.SalvoSize = 3;
 
-	constexpr int32 ScenarioCount = 256;
+	constexpr int32 ScenarioCount = 1024;
 	constexpr int32 MaximumRoundsPerScenario = 16;
 	bool bFixturesValid = true;
 	bool bEveryRoundAccepted = true;
