@@ -18203,6 +18203,36 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 		MakeTacticalBattleFingerprint(Replay.TacticalBattles[0]),
 		MakeTacticalBattleFingerprint(First.TacticalBattles[0]));
 
+	FCampaignState ExtremeEnvironment = First;
+	FCampaignState BoundaryEnvironment = First;
+	FResolvedRuleSet ExtremeEnvironmentRules = Rules;
+	FResolvedRuleSet BoundaryEnvironmentRules = Rules;
+	FTacticalTerrainRule* ExtremeEnvironmentFloor = ExtremeEnvironmentRules.TacticalTerrains.Find(TEXT("terrain.test-deck"));
+	FTacticalTerrainRule* BoundaryEnvironmentFloor = BoundaryEnvironmentRules.TacticalTerrains.Find(TEXT("terrain.test-deck"));
+	if (ExtremeEnvironmentFloor != nullptr && BoundaryEnvironmentFloor != nullptr)
+	{
+		ExtremeEnvironmentFloor->VentilationPercent = MAX_int32;
+		ExtremeEnvironmentFloor->Flammability = MAX_int32;
+		BoundaryEnvironmentFloor->VentilationPercent = 100;
+		BoundaryEnvironmentFloor->Flammability = 100;
+		ExtremeEnvironment.TacticalBattles[0].Cells[0].Smoke = 100;
+		ExtremeEnvironment.TacticalBattles[0].Cells[0].Fire = 80;
+		BoundaryEnvironment.TacticalBattles[0].Cells[0].Smoke = 100;
+		BoundaryEnvironment.TacticalBattles[0].Cells[0].Fire = 80;
+		FEndTacticalTurnCommand ExtremeEnvironmentTurn;
+		ExtremeEnvironmentTurn.ExpectedSequence = ExtremeEnvironment.CommandSequence;
+		ExtremeEnvironmentTurn.BattleId = BattleId;
+		const FStrategicCommandResult ExtremeEnvironmentResult = FStrategicCommandService::Execute(
+			ExtremeEnvironment, ExtremeEnvironmentRules, ExtremeEnvironmentTurn);
+		const FStrategicCommandResult BoundaryEnvironmentResult = FStrategicCommandService::Execute(
+			BoundaryEnvironment, BoundaryEnvironmentRules, ExtremeEnvironmentTurn);
+		TestTrue(TEXT("Extreme environmental rule inputs remain transactionally valid"),
+			ExtremeEnvironmentResult.bAccepted && BoundaryEnvironmentResult.bAccepted);
+		TestEqual(TEXT("Extreme environmental inputs match their supported boundary behavior"),
+			MakeTacticalBattleFingerprint(ExtremeEnvironment.TacticalBattles[0]),
+			MakeTacticalBattleFingerprint(BoundaryEnvironment.TacticalBattles[0]));
+	}
+
 	FCampaignState VerticalFirst = First;
 	FCampaignState VerticalReplay = Replay;
 	FResolvedRuleSet VerticalRules = Rules;

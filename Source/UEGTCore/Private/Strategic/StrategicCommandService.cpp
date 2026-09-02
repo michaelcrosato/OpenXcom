@@ -464,7 +464,14 @@ namespace StrategicCommandServicePrivate
 
 	int32 GetEffectiveVentilation(const FTacticalCellState& Cell, const FTacticalTerrainRule& Terrain)
 	{
-		return IsTacticalAirflowBlocked(Cell, Terrain) ? 0 : Terrain.VentilationPercent;
+		return IsTacticalAirflowBlocked(Cell, Terrain)
+			? 0
+			: FMath::Clamp(Terrain.VentilationPercent, 0, 100);
+	}
+
+	int32 GetEffectiveFlammability(const FTacticalTerrainRule& Terrain)
+	{
+		return FMath::Clamp(Terrain.Flammability, 0, 100);
 	}
 
 	void GetTacticalWindOffset(const ETacticalWindDirection Direction, int32& OutX, int32& OutY)
@@ -710,6 +717,7 @@ namespace StrategicCommandServicePrivate
 				}
 			}
 			int32 VerticalSpreadFire = 0;
+			const int32 Flammability = GetEffectiveFlammability(*Terrain);
 			if (!IsTacticalAirflowBlocked(Cell, *Terrain) && Terrain->IsVerticalConnector())
 			{
 				for (const int32 SourceDeltaZ : { -1, 1 })
@@ -730,13 +738,14 @@ namespace StrategicCommandServicePrivate
 					const int32 Divisor = SourceDeltaZ < 0 ? 100 : 300;
 					VerticalSpreadFire = FMath::Max(
 						VerticalSpreadFire,
-						PreviousFire[SourceIndex] * Terrain->Flammability / Divisor);
+						static_cast<int32>(static_cast<int64>(PreviousFire[SourceIndex]) * Flammability / Divisor));
 				}
 			}
 			const int32 SmokeAfterTransport = FMath::Max(
 				0,
 				PreviousSmoke[CellIndex] - BaseSmokeOutgoing[CellIndex] - WindSmokeOutgoing[CellIndex]);
-			const int32 VentilatedSmoke = SmokeAfterTransport * EffectiveVentilation[CellIndex] / 100;
+			const int32 VentilatedSmoke = static_cast<int32>(
+				static_cast<int64>(SmokeAfterTransport) * EffectiveVentilation[CellIndex] / 100);
 			const int32 RetainedSmoke = SmokeAfterTransport - VentilatedSmoke;
 			Outcome.VentilatedSmokeAmount += VentilatedSmoke;
 			Outcome.VentilatedSmokeCellCount += VentilatedSmoke > 0 ? 1 : 0;
@@ -745,9 +754,10 @@ namespace StrategicCommandServicePrivate
 					+ PreviousFire[CellIndex] / 5 - 10,
 				0,
 				100);
-			const int32 FireDecay = FMath::Max(5, 15 - Terrain->Flammability / 10);
+			const int32 FireDecay = FMath::Max(5, 15 - Flammability / 10);
 			const int32 RetainedFire = FMath::Max(0, PreviousFire[CellIndex] - FireDecay);
-			const int32 BaseSpreadFire = MaximumNeighborFire * Terrain->Flammability / 200;
+			const int32 BaseSpreadFire = static_cast<int32>(
+				static_cast<int64>(MaximumNeighborFire) * Flammability / 200);
 			int32 WindBiasedSpreadFire = 0;
 			if (Battle.WindStrength > 0 && (WindX != 0 || WindY != 0) && EffectiveVentilation[CellIndex] > 0)
 			{
@@ -764,9 +774,10 @@ namespace StrategicCommandServicePrivate
 						const int32 LinkVentilation = FMath::Min(
 							EffectiveVentilation[CellIndex],
 							EffectiveVentilation[UpwindIndex]);
-						const int32 UpwindBaseSpread = PreviousFire[UpwindIndex] * Terrain->Flammability / 200;
+						const int32 UpwindBaseSpread = static_cast<int32>(
+							static_cast<int64>(PreviousFire[UpwindIndex]) * Flammability / 200);
 						const int32 WindBonus = static_cast<int32>(
-							static_cast<int64>(PreviousFire[UpwindIndex]) * Terrain->Flammability
+							static_cast<int64>(PreviousFire[UpwindIndex]) * Flammability
 								* Battle.WindStrength * LinkVentilation / 50000);
 						WindBiasedSpreadFire = UpwindBaseSpread + WindBonus;
 					}
