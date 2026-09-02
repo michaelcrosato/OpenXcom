@@ -248,10 +248,20 @@ namespace TacticalNavigationPrivate
 		}
 		TArray<int32, TInlineAllocator<64>> Trace;
 		BuildTraceIndices(Battle, OriginX, OriginY, OriginZ, TargetX, TargetY, TargetZ, Trace);
-		int32 Obscuration = Battle.Cells[Trace[0]].Smoke * 3 / 8;
+		const int64 InitialSmoke = FMath::Clamp<int64>(
+			static_cast<int64>(Battle.Cells[Trace[0]].Smoke),
+			0,
+			100);
+		int32 Obscuration = static_cast<int32>(InitialSmoke * 3 / 8);
 		for (int32 TraceIndex = 1; TraceIndex < Trace.Num(); ++TraceIndex)
 		{
-			Obscuration = FMath::Min(100, Obscuration + Battle.Cells[Trace[TraceIndex]].Smoke * 3 / 4);
+			const int64 Smoke = FMath::Clamp<int64>(
+				static_cast<int64>(Battle.Cells[Trace[TraceIndex]].Smoke),
+				0,
+				100);
+			Obscuration = static_cast<int32>(FMath::Min<int64>(
+				100,
+				static_cast<int64>(Obscuration) + Smoke * 3 / 4));
 		}
 		return Obscuration;
 	}

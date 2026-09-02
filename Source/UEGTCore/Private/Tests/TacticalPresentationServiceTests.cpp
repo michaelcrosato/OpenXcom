@@ -680,6 +680,11 @@ bool FTacticalNavigationGridStateValidationTest::RunTest(const FString& Paramete
 	TestEqual(TEXT("Direct smoke query preserves its documented lower bound on malformed state"),
 		FTacticalNavigationService::ComputeSmokeObscuration(NegativeSmoke, 0, 0, 1, 0), 0);
 
+	FTacticalBattleState ExtremeSmoke = Fixture.Campaign.TacticalBattles[0];
+	ExtremeSmoke.Cells[0].Smoke = MAX_int32 / 3 + 1;
+	TestEqual(TEXT("Direct smoke query clamps extreme persisted smoke before multiplication"),
+		FTacticalNavigationService::ComputeSmokeObscuration(ExtremeSmoke, 0, 0, 1, 0), 37);
+
 	FTacticalBattleState ExcessFire = Fixture.Campaign.TacticalBattles[0];
 	ExcessFire.Cells[0].Fire = 101;
 	const FTacticalVisibilityResult ExcessFireVisibility = FTacticalNavigationService::ComputePlayerVisibility(
