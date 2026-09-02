@@ -18856,6 +18856,56 @@ bool FTacticalFireModesAndBlastTest::RunTest(const FString& Parameters)
 			0);
 	}
 
+	FResolvedRuleSet ExtremeBlastRules = Rules;
+	FResolvedRuleSet BoundaryBlastRules = Rules;
+	FItemRule* ExtremeBlastLauncher = ExtremeBlastRules.Items.Find(TEXT("item.test-breach-launcher"));
+	FItemRule* BoundaryBlastLauncher = BoundaryBlastRules.Items.Find(TEXT("item.test-breach-launcher"));
+	TestTrue(TEXT("Blast profile boundary fixtures resolve their launchers"),
+		ExtremeBlastLauncher != nullptr && BoundaryBlastLauncher != nullptr);
+	if (ExtremeBlastLauncher != nullptr && BoundaryBlastLauncher != nullptr)
+	{
+		ExtremeBlastLauncher->TacticalBlastRadius = MAX_int32;
+		ExtremeBlastLauncher->TacticalScatterRadius = MAX_int32;
+		ExtremeBlastLauncher->TacticalBlastFalloffPercent = MAX_int32;
+		ExtremeBlastLauncher->TacticalTerrainDamagePercent = MAX_int32;
+		ExtremeBlastLauncher->TacticalBlastSmoke = MAX_int32;
+		ExtremeBlastLauncher->TacticalBlastFire = MAX_int32;
+		ExtremeBlastLauncher->TacticalBlastSuppression = MAX_int32;
+		BoundaryBlastLauncher->TacticalBlastRadius = 8;
+		BoundaryBlastLauncher->TacticalScatterRadius = 4;
+		BoundaryBlastLauncher->TacticalBlastFalloffPercent = 100;
+		BoundaryBlastLauncher->TacticalTerrainDamagePercent = 300;
+		BoundaryBlastLauncher->TacticalBlastSmoke = 100;
+		BoundaryBlastLauncher->TacticalBlastFire = 100;
+		BoundaryBlastLauncher->TacticalBlastSuppression = 100;
+		const FTacticalAttackPreview ExtremeBlastPreview = FTacticalCombatService::PreviewTerrainAttack(
+			First.TacticalBattles[0], First, ExtremeBlastRules, AttackerUnitId, 5, 5,
+			TEXT("item.test-breach-launcher"));
+		TestTrue(TEXT("Extreme blast fields clamp to the supported preview boundary"), ExtremeBlastPreview.bSucceeded
+			&& ExtremeBlastPreview.BlastRadius == 8 && ExtremeBlastPreview.ScatterRadius == 4
+			&& ExtremeBlastPreview.BlastFalloffPercent == 100 && ExtremeBlastPreview.TerrainDamagePercent == 300
+			&& ExtremeBlastPreview.BlastSmoke == 100 && ExtremeBlastPreview.BlastFire == 100
+			&& ExtremeBlastPreview.BlastSuppression == 100);
+		FCampaignState ExtremeBlastCampaign = First;
+		FCampaignState BoundaryBlastCampaign = First;
+		FAttackTacticalTerrainCommand ExtremeBlast = Blast;
+		FAttackTacticalTerrainCommand BoundaryBlast = Blast;
+		ExtremeBlast.ExpectedSequence = ExtremeBlastCampaign.CommandSequence;
+		BoundaryBlast.ExpectedSequence = BoundaryBlastCampaign.CommandSequence;
+		const FStrategicCommandResult ExtremeBlastResult = FStrategicCommandService::Execute(
+			ExtremeBlastCampaign, ExtremeBlastRules, ExtremeBlast);
+		const FStrategicCommandResult BoundaryBlastResult = FStrategicCommandService::Execute(
+			BoundaryBlastCampaign, BoundaryBlastRules, BoundaryBlast);
+		TestTrue(TEXT("Extreme blast fields execute as a bounded supported profile"),
+			ExtremeBlastResult.bAccepted && BoundaryBlastResult.bAccepted);
+		if (ExtremeBlastResult.bAccepted && BoundaryBlastResult.bAccepted)
+		{
+			TestEqual(TEXT("Extreme blast execution matches the supported boundary replay"),
+				MakeTacticalBattleFingerprint(ExtremeBlastCampaign.TacticalBattles[0]),
+				MakeTacticalBattleFingerprint(BoundaryBlastCampaign.TacticalBattles[0]));
+		}
+	}
+
 	const FCampaignSaveWriteResult BlastWrite = FCampaignSaveCodec::Serialize(FCampaignSaveCodec::CreateNew(
 		First, MakePackages(), TEXT("0.17.0-fire-mode-blast-test"), FDateTime(2026, 8, 30, 6, 0, 0), FGuid(777, 778, 779, 780)));
 	TestTrue(TEXT("Burst and blast mutations serialize through save v18"), BlastWrite.bSucceeded);

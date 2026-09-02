@@ -133,20 +133,35 @@ namespace TacticalCombatPrivate
 				AddDiagnostic(Result, TEXT("invalid_tactical_weapon"), TEXT("The equipped item has no valid tactical weapon profile."));
 				return false;
 			}
+			const bool bHasBlastProfile = Weapon->HasTacticalBlastProfile();
 			OutProfile.RuleId = WeaponItemId;
-			OutProfile.MaximumRange = Weapon->TacticalRange;
-			OutProfile.AccuracyModifier = Weapon->TacticalAccuracyModifier;
-			OutProfile.AttackPower = Weapon->Power;
-			OutProfile.ActionPointCost = Weapon->TacticalActionPointCost;
+			OutProfile.MaximumRange = FMath::Clamp(Weapon->TacticalRange, 1, 64);
+			OutProfile.AccuracyModifier = FMath::Clamp(Weapon->TacticalAccuracyModifier, -50, 50);
+			OutProfile.AttackPower = FMath::Max(1, Weapon->Power);
+			OutProfile.ActionPointCost = FMath::Clamp(Weapon->TacticalActionPointCost, 1, 20);
 			OutProfile.DamageType = Weapon->TacticalDamageType;
 			OutProfile.FireMode = FireMode;
-			OutProfile.BlastRadius = Weapon->TacticalBlastRadius;
-			OutProfile.ScatterRadius = Weapon->TacticalScatterRadius;
-			OutProfile.BlastFalloffPercent = Weapon->TacticalBlastFalloffPercent;
-			OutProfile.TerrainDamagePercent = Weapon->TacticalTerrainDamagePercent;
-			OutProfile.BlastSmoke = Weapon->TacticalBlastSmoke;
-			OutProfile.BlastFire = Weapon->TacticalBlastFire;
-			OutProfile.BlastSuppression = Weapon->TacticalBlastSuppression;
+			OutProfile.BlastRadius = bHasBlastProfile
+				? FMath::Clamp(Weapon->TacticalBlastRadius, 1, 8)
+				: 0;
+			OutProfile.ScatterRadius = bHasBlastProfile
+				? FMath::Clamp(Weapon->TacticalScatterRadius, 0, 4)
+				: 0;
+			OutProfile.BlastFalloffPercent = bHasBlastProfile
+				? FMath::Clamp(Weapon->TacticalBlastFalloffPercent, 0, 100)
+				: 0;
+			OutProfile.TerrainDamagePercent = bHasBlastProfile
+				? FMath::Clamp(Weapon->TacticalTerrainDamagePercent, 1, 300)
+				: 0;
+			OutProfile.BlastSmoke = bHasBlastProfile
+				? FMath::Clamp(Weapon->TacticalBlastSmoke, 0, 100)
+				: 0;
+			OutProfile.BlastFire = bHasBlastProfile
+				? FMath::Clamp(Weapon->TacticalBlastFire, 0, 100)
+				: 0;
+			OutProfile.BlastSuppression = bHasBlastProfile
+				? FMath::Clamp(Weapon->TacticalBlastSuppression, 0, 100)
+				: 0;
 			if (FireMode == ETacticalFireMode::Burst)
 			{
 				if (!Weapon->HasTacticalBurstMode())
@@ -160,9 +175,10 @@ namespace TacticalCombatPrivate
 					return false;
 				}
 				OutProfile.AccuracyModifier = SaturatingInt32Add(
-					OutProfile.AccuracyModifier, Weapon->TacticalBurstAccuracyModifier);
-				OutProfile.ActionPointCost = Weapon->TacticalBurstActionPointCost;
-				OutProfile.ProjectileCount = Weapon->TacticalBurstShotCount;
+					OutProfile.AccuracyModifier,
+					FMath::Clamp(Weapon->TacticalBurstAccuracyModifier, -50, 0));
+				OutProfile.ActionPointCost = FMath::Clamp(Weapon->TacticalBurstActionPointCost, 1, 20);
+				OutProfile.ProjectileCount = FMath::Clamp(Weapon->TacticalBurstShotCount, 2, 8);
 			}
 			else if (FireMode != ETacticalFireMode::Single)
 			{

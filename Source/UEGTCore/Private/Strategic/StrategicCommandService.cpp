@@ -17522,20 +17522,21 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		int32 ImpactX = Command.TargetX;
 		int32 ImpactY = Command.TargetY;
 		const int32 ImpactZ = Command.TargetZ;
-		if (Preview.ScatterRadius > 0)
+		const int32 SafeScatterRadius = FMath::Clamp(Preview.ScatterRadius, 0, 4);
+		if (SafeScatterRadius > 0)
 		{
-			const int32 ScatterDiameter = Preview.ScatterRadius * 2 + 1;
-			const int32 ScatterCellCount = ScatterDiameter * ScatterDiameter;
-			const int32 ScatterIndex = static_cast<int32>(Battle->TacticalRandom.NextUInt64()
+			const int64 ScatterDiameter = static_cast<int64>(SafeScatterRadius) * 2 + 1;
+			const int64 ScatterCellCount = ScatterDiameter * ScatterDiameter;
+			const int64 ScatterIndex = static_cast<int64>(Battle->TacticalRandom.NextUInt64()
 				% static_cast<uint64>(ScatterCellCount));
-			ImpactX = FMath::Clamp(
-				Command.TargetX + ScatterIndex % ScatterDiameter - Preview.ScatterRadius,
+			ImpactX = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(Command.TargetX) + ScatterIndex % ScatterDiameter - SafeScatterRadius,
 				0,
-				Battle->Width - 1);
-			ImpactY = FMath::Clamp(
-				Command.TargetY + ScatterIndex / ScatterDiameter - Preview.ScatterRadius,
+				static_cast<int64>(Battle->Width) - 1));
+			ImpactY = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(Command.TargetY) + ScatterIndex / ScatterDiameter - SafeScatterRadius,
 				0,
-				Battle->Height - 1);
+				static_cast<int64>(Battle->Height) - 1));
 		}
 		const FTacticalBattleState PreBlastBattle = *Battle;
 		const int32 DamageVariance = static_cast<int32>(Battle->TacticalRandom.NextUInt64() % 41ULL) + 80;
@@ -17577,8 +17578,14 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 				continue;
 			}
 			++AffectedCellCount;
-			BlastCell.Smoke = FMath::Min(100, BlastCell.Smoke + ScaleTacticalValue(Preview.BlastSmoke, EffectPercent));
-			BlastCell.Fire = FMath::Min(100, BlastCell.Fire + ScaleTacticalValue(Preview.BlastFire, EffectPercent));
+			BlastCell.Smoke = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(BlastCell.Smoke) + ScaleTacticalValue(Preview.BlastSmoke, EffectPercent),
+				0,
+				100));
+			BlastCell.Fire = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(BlastCell.Fire) + ScaleTacticalValue(Preview.BlastFire, EffectPercent),
+				0,
+				100));
 			const FTacticalTerrainRule* Terrain = Rules.TacticalTerrains.Find(BlastCell.TerrainRuleId);
 			if (Terrain == nullptr || Terrain->MaxIntegrity <= 0 || BlastCell.CurrentIntegrity <= 0)
 			{
@@ -17656,7 +17663,12 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			{
 				const int32 BlastPressure = ScaleTacticalValue(Preview.BlastSuppression, EffectPercent);
 				const int32 DamagePressure = AppliedDamage > 0 ? FMath::Max(1, AppliedDamage / 4) : 0;
-				Unit.Suppression = FMath::Min(100, Unit.Suppression + BlastPressure + DamagePressure);
+				Unit.Suppression = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(Unit.Suppression)
+						+ static_cast<int64>(BlastPressure)
+						+ static_cast<int64>(DamagePressure),
+					0,
+					100));
 				const int32 SuppressionDelta = Unit.Suppression - PreviousSuppression;
 				if (SuppressionDelta > 0 || AppliedDamage > 0)
 				{
