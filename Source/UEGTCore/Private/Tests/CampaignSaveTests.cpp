@@ -189,6 +189,16 @@ bool FCampaignSaveBaseAssaultRoundTripTest::RunTest(const FString& Parameters)
 			!InvalidPositionValidation.bSucceeded
 			&& InvalidPositionValidation.HasDiagnostic(TEXT("invalid_strategic_contact")));
 	}
+	FCampaignState MismatchedTargetBase = State;
+	MismatchedTargetBase.Bases[0].LongitudeMilliDegrees += 1000;
+	const FCampaignSaveEnvelope MismatchedTargetBaseEnvelope = FCampaignSaveCodec::CreateNew(
+		MismatchedTargetBase, MakeContentPackages(), TEXT("0.20.0-mismatched-target"), TestWallClock,
+		FGuid(0x20202021, 0x30303030, 0x40404040, 0x50505050));
+	const FCampaignSaveValidationResult MismatchedTargetBaseValidation = FCampaignSaveCodec::Validate(
+		MismatchedTargetBaseEnvelope, MakeContentPackages());
+	TestTrue(TEXT("Save validation rejects a mission whose target base coordinates drift from its contact destination"),
+		!MismatchedTargetBaseValidation.bSucceeded
+		&& MismatchedTargetBaseValidation.HasDiagnostic(TEXT("invalid_adversary_mission")));
 	return true;
 }
 

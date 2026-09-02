@@ -3209,12 +3209,21 @@ namespace CampaignSavePrivate
 			TSet<FGuid> SeenMissionContactIds;
 			for (const FAdversaryMissionState& Mission : State.AdversaryMissions)
 			{
+				const FStrategicContactState* Contact = State.StrategicContacts.FindByPredicate(
+					[&Mission](const FStrategicContactState& Entry) { return Entry.ContactId == Mission.ContactId; });
+				const FStrategicBaseState* TargetBase = Mission.TargetBaseId.IsValid()
+					? State.Bases.FindByPredicate(
+						[&Mission](const FStrategicBaseState& Entry) { return Entry.BaseId == Mission.TargetBaseId; })
+					: nullptr;
 				if (!Mission.MissionId.IsValid() || SeenMissionIds.Contains(Mission.MissionId)
 					|| !Mission.ContactId.IsValid() || SeenMissionContactIds.Contains(Mission.ContactId)
 					|| Mission.MissionId == Mission.ContactId || !ContactIds.Contains(Mission.ContactId)
 					|| !FContentPackageResolver::IsValidPackageId(Mission.MissionRuleId)
 					|| (Header.FormatVersion >= 20 && Mission.TargetBaseId.IsValid()
-						&& !State.Bases.ContainsByPredicate([&Mission](const FStrategicBaseState& Base) { return Base.BaseId == Mission.TargetBaseId; }))
+						&& (TargetBase == nullptr
+							|| (Contact != nullptr
+								&& (Contact->DestinationLongitudeMilliDegrees != TargetBase->LongitudeMilliDegrees
+									|| Contact->DestinationLatitudeMilliDegrees != TargetBase->LatitudeMilliDegrees))))
 					|| !IsUsableWallClock(Mission.StartedUtc) || Mission.StartedUtc > State.StrategicTime.Utc)
 				{
 					AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_adversary_mission"), FString::Printf(TEXT("Adversary mission '%s' has invalid identity, rule, contact, or start time."), *Mission.MissionId.ToString()));
