@@ -747,6 +747,48 @@ bool FCampaignSaveMutualAidConvoyRoundTripTest::RunTest(const FString& Parameter
 	TestTrue(TEXT("Invalid persisted convoy routes are rejected"),
 		!InvalidValidation.bSucceeded
 		&& InvalidValidation.HasDiagnostic(TEXT("invalid_mutual_aid_convoy")));
+	FCampaignSaveEnvelope InvalidDestinationInventoryCapacity = Write.Envelope;
+	FStrategicBaseState* OverflowDestination =
+		InvalidDestinationInventoryCapacity.State.Bases.FindByPredicate(
+			[&DestinationBaseId](FStrategicBaseState& Base)
+			{
+				return Base.BaseId == DestinationBaseId;
+			});
+	TestNotNull(TEXT("Destination base remains addressable for convoy capacity validation"),
+		OverflowDestination);
+	if (OverflowDestination != nullptr)
+	{
+		FInventoryStack& OverflowStack = OverflowDestination->Inventory.AddDefaulted_GetRef();
+		OverflowStack.ItemId = Convoy.ItemId;
+		OverflowStack.Quantity = MAX_int32 - 3;
+		const FCampaignSaveValidationResult InvalidDestinationCapacity =
+			FCampaignSaveCodec::Validate(InvalidDestinationInventoryCapacity);
+		TestTrue(TEXT("Pending final deliveries cannot overflow destination inventory"),
+			!InvalidDestinationCapacity.bSucceeded
+			&& InvalidDestinationCapacity.HasDiagnostic(
+				TEXT("mutual_aid_inventory_overflow")));
+	}
+	FCampaignSaveEnvelope InvalidWaypointInventoryCapacity = Write.Envelope;
+	FStrategicBaseState* OverflowWaypoint =
+		InvalidWaypointInventoryCapacity.State.Bases.FindByPredicate(
+			[&RelayWaypointBaseId](FStrategicBaseState& Base)
+			{
+				return Base.BaseId == RelayWaypointBaseId;
+			});
+	TestNotNull(TEXT("Relay waypoint remains addressable for convoy capacity validation"),
+		OverflowWaypoint);
+	if (OverflowWaypoint != nullptr)
+	{
+		FInventoryStack& OverflowStack = OverflowWaypoint->Inventory.AddDefaulted_GetRef();
+		OverflowStack.ItemId = Convoy.ItemId;
+		OverflowStack.Quantity = MAX_int32 - 2;
+		const FCampaignSaveValidationResult InvalidWaypointCapacity =
+			FCampaignSaveCodec::Validate(InvalidWaypointInventoryCapacity);
+		TestTrue(TEXT("Pending waypoint handoffs cannot overflow relay inventory"),
+			!InvalidWaypointCapacity.bSucceeded
+			&& InvalidWaypointCapacity.HasDiagnostic(
+				TEXT("mutual_aid_inventory_overflow")));
+	}
 
 	FCampaignSaveEnvelope LegacyV35Envelope = Write.Envelope;
 	LegacyV35Envelope.Header.FormatVersion = 35;

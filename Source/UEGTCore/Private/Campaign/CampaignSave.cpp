@@ -2248,6 +2248,47 @@ namespace CampaignSavePrivate
 				}
 				TSet<FGuid> SeenConvoyIds;
 				TSet<int64> SeenConvoyDispatchSequences;
+				TMap<FString, int64> InboundConvoyItemTotals;
+				const auto ValidateInboundInventory =
+					[&InboundConvoyItemTotals, &State, &Result](
+						const FGuid ReceivingBaseId,
+						const FName ItemId,
+						const int32 Quantity)
+				{
+					const FStrategicBaseState* ReceivingBase = State.Bases.FindByPredicate(
+						[&ReceivingBaseId](const FStrategicBaseState& Base)
+						{
+							return Base.BaseId == ReceivingBaseId;
+						});
+					if (ReceivingBase == nullptr || Quantity <= 0)
+					{
+						return false;
+					}
+					const FString ItemKey = FString::Printf(
+						TEXT("%s|%s"),
+						*ReceivingBaseId.ToString(EGuidFormats::Digits), *ItemId.ToString());
+					int64& InboundQuantity = InboundConvoyItemTotals.FindOrAdd(ItemKey);
+					InboundQuantity += static_cast<int64>(Quantity);
+					const FInventoryStack* Existing = ReceivingBase->Inventory.FindByPredicate(
+						[ItemId](const FInventoryStack& Stack)
+						{
+							return Stack.ItemId == ItemId;
+						});
+					if (InboundQuantity > MAX_int32
+						|| (Existing != nullptr
+							&& InboundQuantity
+								> static_cast<int64>(MAX_int32) - Existing->Quantity))
+					{
+						AddDiagnostic(Result.Diagnostics,
+							ECampaignSaveDiagnosticSeverity::Error,
+							TEXT("mutual_aid_inventory_overflow"),
+							FString::Printf(
+								TEXT("Pending Mutual Aid Convoy deliveries would overflow base '%s' inventory for '%s'."),
+								*ReceivingBase->Name, *ItemId.ToString()));
+						return false;
+					}
+					return true;
+				};
 				for (const FMutualAidConvoyState& Convoy : State.MutualAidConvoys)
 				{
 					const bool bKnownRoutePolicy =
@@ -2334,6 +2375,20 @@ namespace CampaignSavePrivate
 						AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error,
 							TEXT("invalid_mutual_aid_convoy"),
 							TEXT("A Mutual Aid Convoy has invalid identity, bases, cargo, or transit time."));
+					}
+					else
+					{
+						const int32 FinalQuantity =
+							Convoy.Quantity - Convoy.BalancedHandoffQuantity;
+						ValidateInboundInventory(
+							Convoy.DestinationBaseId, Convoy.ItemId, FinalQuantity);
+						if (Convoy.BalancedHandoffQuantity > 0)
+						{
+							ValidateInboundInventory(
+								Convoy.RelayWaypointBaseId,
+								Convoy.ItemId,
+								Convoy.BalancedHandoffQuantity);
+						}
 					}
 					SeenConvoyIds.Add(Convoy.ConvoyId);
 					if (Header.FormatVersion >= 38)
