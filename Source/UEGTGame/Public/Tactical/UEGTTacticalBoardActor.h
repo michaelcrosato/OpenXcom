@@ -79,6 +79,7 @@ public:
 	int32 GetRenderedAdversaryUnitCount() const;
 	int32 GetRenderedLastKnownAdversaryCount() const;
 	int32 GetRenderedObjectiveCount() const;
+	int32 GetRenderedPathCount() const;
 	int32 GetRenderedSelectionCount() const;
 	int32 GetRenderedConnectorCount() const;
 	int32 GetRenderedCoverCount() const;
@@ -94,6 +95,8 @@ public:
 	static float CalculateTerrainMarkerHeightScale(const FTacticalHudCellView& Cell);
 	/** Deterministic footprint encoding for visible terrain cover percentage. */
 	static float CalculateCoverMarkerScale(const FTacticalHudCellView& Cell);
+	/** Deterministic footprint encoding for one path step's action-point cost. */
+	static float CalculatePathMarkerScale(const FTacticalPathStep& Step);
 	EUEGTColorVisionMode GetColorVisionMode() const { return ColorVisionMode; }
 	bool IsHighContrastPaletteEnabled() const { return bUseHighContrast; }
 	bool IsReducedMotionEnabled() const { return bReduceMotion; }

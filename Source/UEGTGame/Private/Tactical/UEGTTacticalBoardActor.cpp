@@ -463,6 +463,16 @@ float AUEGTTacticalBoardActor::CalculateCoverMarkerScale(
 	return 0.38f + CoverRatio * 0.52f;
 }
 
+float AUEGTTacticalBoardActor::CalculatePathMarkerScale(
+	const FTacticalPathStep& Step)
+{
+	const float CostRatio = FMath::Clamp(
+		static_cast<float>(Step.MoveCost) / 20.0f,
+		0.0f,
+		1.0f);
+	return 0.2f + CostRatio * 0.56f;
+}
+
 void AUEGTTacticalBoardActor::AddUnitMarker(
 	UInstancedStaticMeshComponent* Component,
 	const FTacticalHudUnitView& Unit)
@@ -635,7 +645,12 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 		{
 			if (Step.Z == Snapshot.ViewedLevel)
 			{
-				AddCellMarker(PathInstances, FIntVector(Step.X, Step.Y, Step.Z), 6.0f, 0.24f, 0.035f);
+				AddCellMarker(
+					PathInstances,
+					FIntVector(Step.X, Step.Y, Step.Z),
+					6.0f,
+					CalculatePathMarkerScale(Step),
+					0.035f);
 			}
 		}
 	}
@@ -735,6 +750,11 @@ int32 AUEGTTacticalBoardActor::GetRenderedLastKnownAdversaryCount() const
 int32 AUEGTTacticalBoardActor::GetRenderedObjectiveCount() const
 {
 	return ObjectiveInstances != nullptr ? ObjectiveInstances->GetInstanceCount() : 0;
+}
+
+int32 AUEGTTacticalBoardActor::GetRenderedPathCount() const
+{
+	return PathInstances != nullptr ? PathInstances->GetInstanceCount() : 0;
 }
 
 int32 AUEGTTacticalBoardActor::GetRenderedSelectionCount() const

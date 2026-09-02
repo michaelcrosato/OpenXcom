@@ -104,6 +104,18 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 		FMath::IsNearlyEqual(
 			AUEGTTacticalBoardActor::CalculateCoverMarkerScale(MarkerTerrain),
 			0.9f));
+	FTacticalPathStep MarkerPathStep;
+	MarkerPathStep.MoveCost = 1;
+	const float LowCostPathScale = AUEGTTacticalBoardActor::CalculatePathMarkerScale(MarkerPathStep);
+	MarkerPathStep.MoveCost = 10;
+	const float HighCostPathScale = AUEGTTacticalBoardActor::CalculatePathMarkerScale(MarkerPathStep);
+	TestTrue(TEXT("Path marker footprint increases with action-point cost"),
+		HighCostPathScale > LowCostPathScale);
+	MarkerPathStep.MoveCost = MAX_int32;
+	TestTrue(TEXT("Path marker footprint clamps at bounded maximum cost"),
+		FMath::IsNearlyEqual(
+			AUEGTTacticalBoardActor::CalculatePathMarkerScale(MarkerPathStep),
+			0.76f));
 	TestTrue(TEXT("Intact terrain markers retain their full silhouette"),
 		FMath::IsNearlyEqual(
 			AUEGTTacticalBoardActor::CalculateTerrainMarkerHeightScale(MarkerTerrain),
@@ -212,6 +224,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	Snapshot.Hover.bHasPathPreview = true;
 	Snapshot.Hover.Path.bSucceeded = true;
 	Snapshot.Hover.Path.Steps.Add({ 1, 1, 0, 1 });
+	Snapshot.Hover.Path.Steps.Add({ 2, 1, 0, 10 });
 
 	Board->ApplySnapshot(Snapshot);
 	const float InitialPresentationTime = Board->GetPresentationAnimationTimeSeconds();
@@ -229,6 +242,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Visible adversary presentation uses its own instance set"), Board->GetRenderedAdversaryUnitCount(), 1);
 	TestEqual(TEXT("Last-known adversary presentation uses a separate subdued instance set"), Board->GetRenderedLastKnownAdversaryCount(), 1);
 	TestEqual(TEXT("Active objective receives a board marker"), Board->GetRenderedObjectiveCount(), 1);
+	TestEqual(TEXT("Path previews render every visible-level step"), Board->GetRenderedPathCount(), 2);
 	TestEqual(TEXT("Selected units receive a dedicated emphasis marker"), Board->GetRenderedSelectionCount(), 1);
 	TestEqual(TEXT("Vertical connector cells receive a dedicated traversal marker"), Board->GetRenderedConnectorCount(), 1);
 	TestEqual(TEXT("Covered cells receive a dedicated cover marker"), Board->GetRenderedCoverCount(), 1);
