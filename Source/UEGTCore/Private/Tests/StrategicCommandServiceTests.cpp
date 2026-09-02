@@ -17968,6 +17968,67 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 		MakeTacticalBattleFingerprint(Replay.TacticalBattles[0]),
 		MakeTacticalBattleFingerprint(First.TacticalBattles[0]));
 
+	FResolvedRuleSet ExtremeReloadRules = Rules;
+	FResolvedRuleSet BoundaryReloadRules = Rules;
+	FItemRule* ExtremeReloadRifle = ExtremeReloadRules.Items.Find(TEXT("item.service-rifle"));
+	FItemRule* BoundaryReloadRifle = BoundaryReloadRules.Items.Find(TEXT("item.service-rifle"));
+	TestTrue(TEXT("Tactical reload boundary fixtures resolve their rifle rules"),
+		ExtremeReloadRifle != nullptr && BoundaryReloadRifle != nullptr);
+	if (ExtremeReloadRifle != nullptr && BoundaryReloadRifle != nullptr)
+	{
+		ExtremeReloadRifle->TacticalMagazineCapacity = MAX_int32;
+		ExtremeReloadRifle->TacticalReloadActionPointCost = MAX_int32;
+		BoundaryReloadRifle->TacticalMagazineCapacity = 200;
+		BoundaryReloadRifle->TacticalReloadActionPointCost = 20;
+		FCampaignState ExtremeReloadCampaign = First;
+		FCampaignState BoundaryReloadCampaign = First;
+		auto PrepareReloadBoundaryCampaign = [&AgentId, &PlayerUnitId](FCampaignState& Campaign)
+		{
+			FPersonnelState* ReloadPerson = Campaign.Personnel.FindByPredicate(
+				[&AgentId](const FPersonnelState& Person) { return Person.PersonnelId == AgentId; });
+			FTacticalUnitState* ReloadUnit = Campaign.TacticalBattles[0].Units.FindByPredicate(
+				[&PlayerUnitId](const FTacticalUnitState& Unit) { return Unit.UnitId == PlayerUnitId; });
+			check(ReloadPerson != nullptr && ReloadUnit != nullptr);
+			ReloadPerson->EquippedItems.Add(TEXT("item.test-rifle-magazine"));
+			ReloadUnit->CarriedItems.Add({ TEXT("item.test-rifle-magazine"), 1 });
+			ReloadUnit->WeaponStates[0].LoadedAmmunition = 1;
+			ReloadUnit->RemainingActionPoints = 20;
+		};
+		PrepareReloadBoundaryCampaign(ExtremeReloadCampaign);
+		PrepareReloadBoundaryCampaign(BoundaryReloadCampaign);
+		FReloadTacticalWeaponCommand BoundaryReload;
+		BoundaryReload.ExpectedSequence = BoundaryReloadCampaign.CommandSequence;
+		BoundaryReload.BattleId = BattleId;
+		BoundaryReload.UnitId = PlayerUnitId;
+		BoundaryReload.WeaponItemId = TEXT("item.service-rifle");
+		FReloadTacticalWeaponCommand ExtremeReload = BoundaryReload;
+		ExtremeReload.ExpectedSequence = ExtremeReloadCampaign.CommandSequence;
+		const FStrategicCommandResult ExtremeReloadResult = FStrategicCommandService::Execute(
+			ExtremeReloadCampaign, ExtremeReloadRules, ExtremeReload);
+		const FStrategicCommandResult BoundaryReloadResult = FStrategicCommandService::Execute(
+			BoundaryReloadCampaign, BoundaryReloadRules, BoundaryReload);
+		const FTacticalUnitState* ExtremeReloadPlayer = ExtremeReloadCampaign.TacticalBattles[0].Units.FindByPredicate(
+			[&PlayerUnitId](const FTacticalUnitState& Unit) { return Unit.UnitId == PlayerUnitId; });
+		const FStrategicEvent* ExtremeReloadEvent = ExtremeReloadResult.Events.FindByPredicate(
+			[](const FStrategicEvent& Event)
+			{
+				return Event.Type == EStrategicEventType::TacticalWeaponReloaded;
+			});
+		TestTrue(TEXT("Extreme reload fields execute as the supported capacity and AP boundary"),
+			ExtremeReloadResult.bAccepted && BoundaryReloadResult.bAccepted
+			&& ExtremeReloadPlayer != nullptr
+			&& ExtremeReloadPlayer->WeaponStates[0].LoadedAmmunition == 200
+			&& ExtremeReloadPlayer->RemainingActionPoints == 0
+			&& ExtremeReloadEvent != nullptr && ExtremeReloadEvent->Amount == -20
+			&& ExtremeReloadEvent->Quantity == 200);
+		if (ExtremeReloadResult.bAccepted && BoundaryReloadResult.bAccepted)
+		{
+			TestEqual(TEXT("Extreme reload execution matches the supported boundary replay"),
+				MakeTacticalBattleFingerprint(ExtremeReloadCampaign.TacticalBattles[0]),
+				MakeTacticalBattleFingerprint(BoundaryReloadCampaign.TacticalBattles[0]));
+		}
+	}
+
 	FResolvedRuleSet ExtremeDeviceRules = Rules;
 	FResolvedRuleSet BoundaryDeviceRules = Rules;
 	FItemRule* ExtremeDevice = ExtremeDeviceRules.Items.Find(TEXT("item.test-aerosol-charge"));

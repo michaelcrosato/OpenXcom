@@ -372,6 +372,39 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 				&& ExtremeDeviceAction != nullptr && ExtremeDeviceAction->bAvailable
 				&& ExtremeDeviceAction->ActionPointCost == 2);
 	}
+	FResolvedRuleSet ExtremeReloadRules = Fixture.Rules;
+	FItemRule* ExtremeReloadRifle = ExtremeReloadRules.Items.Find(TEXT("item.presentation-rifle"));
+	TestNotNull(TEXT("HUD reload boundary fixture resolves its rifle rule"), ExtremeReloadRifle);
+	if (ExtremeReloadRifle != nullptr)
+	{
+		ExtremeReloadRifle->TacticalMagazineCapacity = MAX_int32;
+		ExtremeReloadRifle->TacticalReloadActionPointCost = MAX_int32;
+		FCampaignState ExtremeReloadCampaign = Fixture.Campaign;
+		FTacticalUnitState* ExtremeReloadPlayer = ExtremeReloadCampaign.TacticalBattles[0].Units.FindByPredicate(
+			[&Fixture](const FTacticalUnitState& Unit) { return Unit.UnitId == Fixture.PlayerUnitId; });
+		TestNotNull(TEXT("HUD reload boundary fixture has a player unit"), ExtremeReloadPlayer);
+		if (ExtremeReloadPlayer != nullptr && !ExtremeReloadPlayer->EjectedMagazines.IsEmpty())
+		{
+			ExtremeReloadPlayer->RemainingActionPoints = 20;
+			ExtremeReloadPlayer->EjectedMagazines[0].LoadedAmmunition = MAX_int32;
+			const FTacticalHudSnapshot ExtremeReloadSnapshot = FTacticalPresentationService::BuildHudSnapshot(
+				ExtremeReloadCampaign.TacticalBattles[0], ExtremeReloadCampaign, ExtremeReloadRules, Query);
+			const FTacticalHudUnitView* ExtremeReloadPlayerView = ExtremeReloadSnapshot.Units.FindByPredicate(
+				[&Fixture](const FTacticalHudUnitView& Unit) { return Unit.UnitId == Fixture.PlayerUnitId; });
+			const FTacticalHudActionAvailability* ExtremeReloadAction = ExtremeReloadSnapshot.FindAction(
+				ETacticalHudActionType::Reload);
+			TestTrue(TEXT("HUD clamps extreme magazine capacity, reserves, and reload cost consistently"),
+				ExtremeReloadSnapshot.bSucceeded && ExtremeReloadPlayerView != nullptr
+				&& ExtremeReloadPlayerView->Weapons.Num() == 1
+				&& ExtremeReloadPlayerView->Weapons[0].MagazineCapacity == 200
+				&& ExtremeReloadPlayerView->Weapons[0].LoadedAmmunition == 4
+				&& ExtremeReloadPlayerView->Weapons[0].ReserveAmmunition == 600
+				&& ExtremeReloadPlayerView->Weapons[0].NextReloadAmmunition == 200
+				&& ExtremeReloadPlayerView->Weapons[0].ReloadActionPointCost == 20
+				&& ExtremeReloadAction != nullptr && ExtremeReloadAction->bAvailable
+				&& ExtremeReloadAction->ActionPointCost == 20);
+		}
+	}
 	const FTacticalHudActionAvailability* Objective = Snapshot.FindAction(ETacticalHudActionType::InteractObjective);
 	TestTrue(TEXT("Adjacent active objective is selected without leaking pointer state"), Objective != nullptr && Objective->bAvailable
 		&& Objective->ObjectiveId == FName(TEXT("objective.presentation-control")));

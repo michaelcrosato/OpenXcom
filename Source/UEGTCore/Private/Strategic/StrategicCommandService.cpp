@@ -833,6 +833,20 @@ namespace StrategicCommandServicePrivate
 		return BestIndex;
 	}
 
+	int32 GetEffectiveTacticalMagazineCapacity(const FItemRule& Weapon)
+	{
+		return Weapon.TacticalMagazineCapacity > 0
+			? FMath::Clamp(Weapon.TacticalMagazineCapacity, 1, 200)
+			: 0;
+	}
+
+	int32 GetEffectiveTacticalReloadActionPointCost(const FItemRule& Weapon)
+	{
+		return Weapon.TacticalReloadActionPointCost > 0
+			? FMath::Clamp(Weapon.TacticalReloadActionPointCost, 1, 20)
+			: 0;
+	}
+
 	void SyncTacticalConsumablesToPersonnel(
 		FPersonnelState& Person,
 		const FTacticalUnitState& Unit,
@@ -17983,7 +17997,9 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("invalid_tactical_reload"), TEXT("Tactical reload requires a carried magazine-fed weapon with a valid reload profile."));
 		return Result;
 	}
-	if (ExistingWeaponState->LoadedAmmunition >= Weapon->TacticalMagazineCapacity)
+	const int32 EffectiveMagazineCapacity = GetEffectiveTacticalMagazineCapacity(*Weapon);
+	const int32 EffectiveReloadActionPointCost = GetEffectiveTacticalReloadActionPointCost(*Weapon);
+	if (ExistingWeaponState->LoadedAmmunition >= EffectiveMagazineCapacity)
 	{
 		AddError(Result, TEXT("tactical_weapon_full"), TEXT("Tactical weapon magazine is already full."));
 		return Result;
@@ -17996,9 +18012,9 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	const int32 ExistingEjectedIndex = FindBestEjectedMagazineIndex(
 		*ExistingUnit, Command.WeaponItemId, Weapon->TacticalAmmunitionItemId);
 	const int32 BestReserveAmmunition = ExistingMagazine != nullptr
-		? Weapon->TacticalMagazineCapacity
+		? EffectiveMagazineCapacity
 		: (ExistingUnit->EjectedMagazines.IsValidIndex(ExistingEjectedIndex)
-			? ExistingUnit->EjectedMagazines[ExistingEjectedIndex].LoadedAmmunition
+			? FMath::Clamp(ExistingUnit->EjectedMagazines[ExistingEjectedIndex].LoadedAmmunition, 0, EffectiveMagazineCapacity)
 			: 0);
 	if (BestReserveAmmunition <= 0)
 	{
@@ -18016,7 +18032,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("tactical_magazine_inventory_full"), TEXT("This unit cannot retain the currently loaded magazine."));
 		return Result;
 	}
-	if (ExistingUnit->RemainingActionPoints < Weapon->TacticalReloadActionPointCost)
+	if (ExistingUnit->RemainingActionPoints < EffectiveReloadActionPointCost)
 	{
 		AddError(Result, TEXT("insufficient_action_points"), TEXT("Unit lacks the action points required to reload."));
 		return Result;
@@ -18033,11 +18049,12 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	FInventoryStack* Magazine = Unit->CarriedItems.FindByPredicate(
 		[Weapon](const FInventoryStack& Stack) { return Stack.ItemId == Weapon->TacticalAmmunitionItemId; });
 	check(WeaponState != nullptr);
-	const int32 PreviousAmmunition = WeaponState->LoadedAmmunition;
+	const int32 PreviousAmmunition = FMath::Clamp(
+		WeaponState->LoadedAmmunition, 0, EffectiveMagazineCapacity);
 	int32 LoadedAmmunition = 0;
 	if (Magazine != nullptr && Magazine->Quantity > 0)
 	{
-		LoadedAmmunition = Weapon->TacticalMagazineCapacity;
+		LoadedAmmunition = EffectiveMagazineCapacity;
 		--Magazine->Quantity;
 	}
 	else
@@ -18045,10 +18062,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		const int32 EjectedIndex = FindBestEjectedMagazineIndex(
 			*Unit, Command.WeaponItemId, Weapon->TacticalAmmunitionItemId);
 		check(Unit->EjectedMagazines.IsValidIndex(EjectedIndex));
-		LoadedAmmunition = Unit->EjectedMagazines[EjectedIndex].LoadedAmmunition;
+		LoadedAmmunition = FMath::Clamp(
+			Unit->EjectedMagazines[EjectedIndex].LoadedAmmunition, 0, EffectiveMagazineCapacity);
 		Unit->EjectedMagazines.RemoveAt(EjectedIndex);
 	}
-	Unit->RemainingActionPoints -= Weapon->TacticalReloadActionPointCost;
+	Unit->RemainingActionPoints -= EffectiveReloadActionPointCost;
 	WeaponState->LoadedAmmunition = LoadedAmmunition;
 	if (PreviousAmmunition > 0)
 	{
@@ -18075,7 +18093,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Reloaded.SiteId = SiteId;
 	Reloaded.TacticalUnitId = UnitId;
 	Reloaded.RuleId = Command.WeaponItemId;
-	Reloaded.Amount = -Weapon->TacticalReloadActionPointCost;
+	Reloaded.Amount = -EffectiveReloadActionPointCost;
 	Reloaded.Quantity = EventLoadedAmmunition;
 	Reloaded.bSuccessful = true;
 	State = MoveTemp(Transaction);
@@ -18147,6 +18165,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("invalid_tactical_ejection"), TEXT("Magazine ejection requires a carried magazine-fed weapon with a valid reload profile."));
 		return Result;
 	}
+	const int32 EffectiveMagazineCapacity = GetEffectiveTacticalMagazineCapacity(*Weapon);
+	const int32 EffectiveReloadActionPointCost = GetEffectiveTacticalReloadActionPointCost(*Weapon);
 	if (ExistingWeaponState->LoadedAmmunition <= 0)
 	{
 		AddError(Result, TEXT("tactical_weapon_empty"), TEXT("The selected weapon has no loaded magazine to eject."));
@@ -18157,7 +18177,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("tactical_magazine_inventory_full"), TEXT("This unit cannot retain another individually tracked magazine."));
 		return Result;
 	}
-	if (ExistingUnit->RemainingActionPoints < Weapon->TacticalReloadActionPointCost)
+	if (ExistingUnit->RemainingActionPoints < EffectiveReloadActionPointCost)
 	{
 		AddError(Result, TEXT("insufficient_action_points"), TEXT("Unit lacks the action points required to eject this magazine."));
 		return Result;
@@ -18172,13 +18192,14 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	FTacticalWeaponState* WeaponState = Unit->WeaponStates.FindByPredicate(
 		[&Command](const FTacticalWeaponState& Entry) { return Entry.WeaponItemId == Command.WeaponItemId; });
 	check(WeaponState != nullptr && WeaponState->LoadedAmmunition > 0);
-	const int32 EjectedAmmunition = WeaponState->LoadedAmmunition;
+	const int32 EjectedAmmunition = FMath::Clamp(
+		WeaponState->LoadedAmmunition, 0, EffectiveMagazineCapacity);
 	FTacticalMagazineState& Ejected = Unit->EjectedMagazines.AddDefaulted_GetRef();
 	Ejected.WeaponItemId = Command.WeaponItemId;
 	Ejected.AmmunitionItemId = Weapon->TacticalAmmunitionItemId;
 	Ejected.LoadedAmmunition = EjectedAmmunition;
 	WeaponState->LoadedAmmunition = 0;
-	Unit->RemainingActionPoints -= Weapon->TacticalReloadActionPointCost;
+	Unit->RemainingActionPoints -= EffectiveReloadActionPointCost;
 	if (!RefreshAndValidateTacticalBattles(Transaction, Rules, Result))
 	{
 		return Result;
@@ -18196,7 +18217,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	EjectedEvent.SiteId = SiteId;
 	EjectedEvent.TacticalUnitId = UnitId;
 	EjectedEvent.RuleId = Command.WeaponItemId;
-	EjectedEvent.Amount = -Weapon->TacticalReloadActionPointCost;
+	EjectedEvent.Amount = -EffectiveReloadActionPointCost;
 	EjectedEvent.Quantity = EjectedAmmunition;
 	EjectedEvent.bSuccessful = true;
 	State = MoveTemp(Transaction);

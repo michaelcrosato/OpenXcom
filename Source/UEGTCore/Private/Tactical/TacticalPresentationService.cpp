@@ -82,6 +82,20 @@ namespace TacticalPresentationPrivate
 		return Stack != nullptr ? FMath::Max(0, Stack->Quantity) : 0;
 	}
 
+	int32 GetEffectiveTacticalMagazineCapacity(const FItemRule& Weapon)
+	{
+		return Weapon.TacticalMagazineCapacity > 0
+			? FMath::Clamp(Weapon.TacticalMagazineCapacity, 1, 200)
+			: 0;
+	}
+
+	int32 GetEffectiveTacticalReloadActionPointCost(const FItemRule& Weapon)
+	{
+		return Weapon.TacticalReloadActionPointCost > 0
+			? FMath::Clamp(Weapon.TacticalReloadActionPointCost, 1, 20)
+			: 0;
+	}
+
 	int32 SaturatingNonNegativeAdd(const int32 Current, const int64 Contribution)
 	{
 		const int64 ClampedCurrent = FMath::Clamp<int64>(Current, 0, MAX_int32);
@@ -116,9 +130,10 @@ namespace TacticalPresentationPrivate
 		const FName WeaponItemId,
 		const FItemRule& Weapon)
 	{
+		const int32 EffectiveMagazineCapacity = GetEffectiveTacticalMagazineCapacity(Weapon);
 		if (FindItemQuantity(Unit.CarriedItems, Weapon.TacticalAmmunitionItemId) > 0)
 		{
-			return Weapon.TacticalMagazineCapacity;
+			return EffectiveMagazineCapacity;
 		}
 		int32 Best = 0;
 		for (const FTacticalMagazineState& Magazine : Unit.EjectedMagazines)
@@ -126,7 +141,7 @@ namespace TacticalPresentationPrivate
 			if (Magazine.WeaponItemId == WeaponItemId
 				&& Magazine.AmmunitionItemId == Weapon.TacticalAmmunitionItemId)
 			{
-				Best = FMath::Max(Best, Magazine.LoadedAmmunition);
+				Best = FMath::Max(Best, FMath::Clamp(Magazine.LoadedAmmunition, 0, EffectiveMagazineCapacity));
 			}
 		}
 		return Best;
@@ -404,6 +419,8 @@ namespace TacticalPresentationPrivate
 			}
 			const FTacticalWeaponState* WeaponState = Unit.WeaponStates.FindByPredicate(
 				[WeaponId](const FTacticalWeaponState& State) { return State.WeaponItemId == WeaponId; });
+			const int32 EffectiveMagazineCapacity = GetEffectiveTacticalMagazineCapacity(*Weapon);
+			const int32 EffectiveReloadActionPointCost = GetEffectiveTacticalReloadActionPointCost(*Weapon);
 			FTacticalHudWeaponView& WeaponView = View.Weapons.AddDefaulted_GetRef();
 			WeaponView.ItemId = WeaponId;
 			WeaponView.DisplayName = Weapon->DisplayName;
@@ -411,14 +428,16 @@ namespace TacticalPresentationPrivate
 			WeaponView.SingleActionPointCost = Weapon->TacticalActionPointCost;
 			WeaponView.bSupportsBurst = Weapon->HasTacticalBurstMode();
 			WeaponView.BurstActionPointCost = Weapon->TacticalBurstActionPointCost;
-			WeaponView.LoadedAmmunition = WeaponState != nullptr ? WeaponState->LoadedAmmunition : 0;
-			WeaponView.MagazineCapacity = Weapon->TacticalMagazineCapacity;
+			WeaponView.LoadedAmmunition = WeaponState != nullptr && EffectiveMagazineCapacity > 0
+				? FMath::Clamp(WeaponState->LoadedAmmunition, 0, EffectiveMagazineCapacity)
+				: 0;
+			WeaponView.MagazineCapacity = EffectiveMagazineCapacity;
 			WeaponView.AmmunitionItemId = Weapon->TacticalAmmunitionItemId;
 			const int32 CarriedFullMagazines = FindItemQuantity(Unit.CarriedItems, Weapon->TacticalAmmunitionItemId);
 			WeaponView.FullReserveMagazines = CarriedFullMagazines;
 			WeaponView.ReserveAmmunition = SaturatingNonNegativeAdd(
 				0,
-				static_cast<int64>(CarriedFullMagazines) * Weapon->TacticalMagazineCapacity);
+				static_cast<int64>(CarriedFullMagazines) * EffectiveMagazineCapacity);
 			for (const FTacticalMagazineState& Magazine : Unit.EjectedMagazines)
 			{
 				if (Magazine.WeaponItemId != WeaponId
@@ -426,9 +445,11 @@ namespace TacticalPresentationPrivate
 				{
 					continue;
 				}
+				const int32 EffectiveLoadedAmmunition = FMath::Clamp(
+					Magazine.LoadedAmmunition, 0, EffectiveMagazineCapacity);
 				WeaponView.ReserveAmmunition = SaturatingNonNegativeAdd(
-					WeaponView.ReserveAmmunition, Magazine.LoadedAmmunition);
-				if (Magazine.LoadedAmmunition >= Weapon->TacticalMagazineCapacity)
+					WeaponView.ReserveAmmunition, EffectiveLoadedAmmunition);
+				if (EffectiveLoadedAmmunition >= EffectiveMagazineCapacity)
 				{
 					WeaponView.FullReserveMagazines = SaturatingNonNegativeAdd(
 						WeaponView.FullReserveMagazines, 1);
@@ -442,7 +463,7 @@ namespace TacticalPresentationPrivate
 			WeaponView.ReserveMagazines = SaturatingNonNegativeAdd(
 				WeaponView.FullReserveMagazines, WeaponView.PartialReserveMagazines);
 			WeaponView.NextReloadAmmunition = FindBestReserveAmmunition(Unit, WeaponId, *Weapon);
-			WeaponView.ReloadActionPointCost = Weapon->TacticalReloadActionPointCost;
+			WeaponView.ReloadActionPointCost = EffectiveReloadActionPointCost;
 		}
 		return View;
 	}
@@ -967,10 +988,11 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 		}
 		else
 		{
-			Reload.ActionPointCost = Weapon->TacticalReloadActionPointCost;
+			const int32 EffectiveMagazineCapacity = GetEffectiveTacticalMagazineCapacity(*Weapon);
+			Reload.ActionPointCost = GetEffectiveTacticalReloadActionPointCost(*Weapon);
 			const int32 BestReserveAmmunition = FindBestReserveAmmunition(
 				*SelectedUnit, Snapshot.EffectiveWeaponItemId, *Weapon);
-			if (WeaponState->LoadedAmmunition >= Weapon->TacticalMagazineCapacity)
+			if (WeaponState->LoadedAmmunition >= EffectiveMagazineCapacity)
 			{
 				SetUnavailable(Reload, TEXT("tactical_weapon_full"), TEXT("The selected weapon magazine is already full."));
 			}
@@ -1017,7 +1039,7 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 		}
 		else
 		{
-			Eject.ActionPointCost = Weapon->TacticalReloadActionPointCost;
+			Eject.ActionPointCost = GetEffectiveTacticalReloadActionPointCost(*Weapon);
 			if (WeaponState->LoadedAmmunition <= 0)
 			{
 				SetUnavailable(Eject, TEXT("tactical_weapon_empty"), TEXT("The selected weapon has no loaded magazine to eject."));
