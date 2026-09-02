@@ -11,6 +11,7 @@ UENUM(BlueprintType)
 enum class EUEGTAudioCue : uint8
 {
 	InterfaceConfirm,
+	TacticalSelection,
 	CommandAccepted,
 	CommandRejected,
 	StrategicAlert,

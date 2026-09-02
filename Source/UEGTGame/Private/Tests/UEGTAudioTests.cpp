@@ -16,7 +16,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FUEGTAudioSynthesisTest::RunTest(const FString& Parameters)
 {
 	const TArray<EUEGTAudioCue> Cues = FUEGTAudioSynthesisService::GetCueTypes();
-	TestEqual(TEXT("The original runtime palette publishes twelve intentional voices"), Cues.Num(), 12);
+	TestEqual(TEXT("The original runtime palette publishes thirteen intentional voices"), Cues.Num(), 13);
 	TSet<FName> Names;
 	TSet<uint32> Fingerprints;
 	int32 AmbientCount = 0;

@@ -8393,6 +8393,9 @@ void AUEGTTacticalPlayerController::SelectOrTargetTacticalUnit(const FGuid UnitI
 	{
 		return;
 	}
+	const bool bChanged = Unit->Team == ETacticalTeam::Player
+		? SelectedUnitId != UnitId
+		: HoveredUnitId != UnitId;
 	if (Unit->Team == ETacticalTeam::Player)
 	{
 		SelectedUnitId = UnitId;
@@ -8412,6 +8415,10 @@ void AUEGTTacticalPlayerController::SelectOrTargetTacticalUnit(const FGuid UnitI
 	}
 	ViewedLevel = Unit->Z;
 	RefreshTacticalPresentation();
+	if (bChanged && AudioDirector != nullptr)
+	{
+		AudioDirector->PlayCue(EUEGTAudioCue::TacticalSelection);
+	}
 	if (UnitId == SelectedUnitId)
 	{
 		if (const FTacticalHudUnitView* Selected = CurrentSnapshot.Units.FindByPredicate(
@@ -8430,6 +8437,7 @@ void AUEGTTacticalPlayerController::TargetTacticalObjective(const FName Objectiv
 	{
 		return;
 	}
+	const bool bChanged = HoveredObjectiveId != ObjectiveId;
 	HoveredObjectiveId = ObjectiveId;
 	HoveredUnitId.Invalidate();
 	bHasHoveredCell = true;
@@ -8438,6 +8446,10 @@ void AUEGTTacticalPlayerController::TargetTacticalObjective(const FName Objectiv
 	HoveredZ = Objective->Z;
 	ViewedLevel = Objective->Z;
 	RefreshTacticalPresentation();
+	if (bChanged && AudioDirector != nullptr)
+	{
+		AudioDirector->PlayCue(EUEGTAudioCue::TacticalSelection);
+	}
 }
 
 void AUEGTTacticalPlayerController::HandlePrimaryClick()
