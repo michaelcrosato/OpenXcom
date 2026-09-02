@@ -2919,11 +2919,12 @@ namespace CampaignSavePrivate
 								}
 							}
 							bool bBaseAgentsValid = bBaseDefense && !Operation.AgentIds.IsEmpty();
+							TSet<FGuid> CurrentOperationAgentIds;
 							for (const FGuid& AgentId : Operation.AgentIds)
 							{
 								const FPersonnelState* Person = State.Personnel.FindByPredicate(
 									[&AgentId](const FPersonnelState& Entry) { return Entry.PersonnelId == AgentId; });
-								if (!AgentId.IsValid() || OperationAgentIds.Contains(AgentId) || Person == nullptr
+								if (!AgentId.IsValid() || CurrentOperationAgentIds.Contains(AgentId) || OperationAgentIds.Contains(AgentId) || Person == nullptr
 									|| Person->Status != EPersonnelStatus::Deployed
 									|| (bBaseDefense && (Person->BaseId != Operation.BaseId
 										|| State.Craft.ContainsByPredicate([&AgentId](const FCraftState& Entry) { return Entry.AssignedAgentIds.Contains(AgentId); }))))
@@ -2931,6 +2932,7 @@ namespace CampaignSavePrivate
 									bBaseAgentsValid = false;
 									bAgentsMatch = false;
 								}
+								CurrentOperationAgentIds.Add(AgentId);
 							}
 							const bool bContextValid =
 								(bSiteRecovery

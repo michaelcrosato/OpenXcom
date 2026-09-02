@@ -4858,22 +4858,25 @@ namespace StrategicCommandServicePrivate
 					}
 				}
 			}
-			const bool bAgentsMatch = Craft != nullptr
+			bool bAgentsMatch = Craft != nullptr
 				&& Operation.AgentIds.Num() == Craft->AssignedAgentIds.Num()
 				&& Operation.AgentIds.ContainsByPredicate(
 					[&Craft](const FGuid& AgentId) { return !Craft->AssignedAgentIds.Contains(AgentId); }) == false;
 			bool bBaseAgentsValid = bBaseDefense && !Operation.AgentIds.IsEmpty();
+			TSet<FGuid> OperationAgentIds;
 			for (const FGuid& AgentId : Operation.AgentIds)
 			{
 				const FPersonnelState* Agent = FindPersonnel(State, AgentId);
-				if (!AgentId.IsValid() || SeenAgentIds.Contains(AgentId) || Agent == nullptr
+				if (!AgentId.IsValid() || OperationAgentIds.Contains(AgentId) || SeenAgentIds.Contains(AgentId) || Agent == nullptr
 					|| Agent->Status != EPersonnelStatus::Deployed
 					|| (bBaseDefense && (Agent->BaseId != Operation.BaseId
 						|| State.Craft.ContainsByPredicate([&AgentId](const FCraftState& Entry) { return Entry.AssignedAgentIds.Contains(AgentId); }))))
 				{
 					bBaseAgentsValid = false;
+					bAgentsMatch = false;
 					break;
 				}
+				OperationAgentIds.Add(AgentId);
 			}
 			const bool bContextValid =
 				(bSiteRecovery

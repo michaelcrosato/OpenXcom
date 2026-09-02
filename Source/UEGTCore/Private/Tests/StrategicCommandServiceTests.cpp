@@ -12870,6 +12870,30 @@ bool FStrategicTacticalBaseDefenseTest::RunTest(const FString& Parameters)
 		State.Personnel.Num() == 2
 		&& State.Personnel[0].Status == EPersonnelStatus::Deployed
 		&& State.Personnel[1].Status == EPersonnelStatus::Deployed);
+	FCampaignState DuplicateOperationRoster = State;
+	const FGuid DuplicateOperationAgentId = DuplicateOperationRoster.TacticalOperations[0].AgentIds[0];
+	DuplicateOperationRoster.TacticalOperations[0].AgentIds.Add(DuplicateOperationAgentId);
+	FGenerateTacticalBattleCommand DuplicateOperationGenerate;
+	DuplicateOperationGenerate.ExpectedSequence = DuplicateOperationRoster.CommandSequence;
+	DuplicateOperationGenerate.OperationId = DuplicateOperationRoster.TacticalOperations[0].OperationId;
+	const FStrategicCommandResult DuplicateOperationResult = FStrategicCommandService::Execute(
+		DuplicateOperationRoster, Rules, DuplicateOperationGenerate);
+	TestFalse(TEXT("Tactical operations reject duplicate agent roster entries"), DuplicateOperationResult.bAccepted);
+	TestTrue(TEXT("Duplicate tactical roster has a stable operation diagnostic"),
+		DuplicateOperationResult.HasDiagnostic(TEXT("invalid_tactical_operation")));
+	TestTrue(TEXT("Rejected duplicate tactical roster does not materialize a battle"),
+		DuplicateOperationRoster.TacticalBattles.IsEmpty());
+	const FCampaignSaveEnvelope ValidPreBattleEnvelope = FCampaignSaveCodec::CreateNew(
+		State, MakePackages(), TEXT("0.45.0-pre-battle"), State.StrategicTime.Utc, FGuid(0x91000021, 2, 3, 4));
+	FCampaignSaveEnvelope InvalidDuplicateOperationEnvelope = ValidPreBattleEnvelope;
+	const FGuid SavedDuplicateOperationAgentId = InvalidDuplicateOperationEnvelope.State.TacticalOperations[0].AgentIds[0];
+	InvalidDuplicateOperationEnvelope.State.TacticalOperations[0].AgentIds.Add(SavedDuplicateOperationAgentId);
+	const FCampaignSaveValidationResult InvalidDuplicateOperationValidation = FCampaignSaveCodec::Validate(
+		InvalidDuplicateOperationEnvelope, MakePackages());
+	TestFalse(TEXT("Save validation rejects duplicate tactical roster entries"),
+		InvalidDuplicateOperationValidation.bSucceeded);
+	TestTrue(TEXT("Saved duplicate tactical roster has a stable operation diagnostic"),
+		InvalidDuplicateOperationValidation.HasDiagnostic(TEXT("invalid_tactical_operation")));
 	FResolveBaseAssaultCommand AutomaticResolve;
 	AutomaticResolve.ExpectedSequence = State.CommandSequence;
 	AutomaticResolve.AssaultId = Deploy.AssaultId;
