@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "packageId": "sample.aurora-relay",
+  "displayName": "Aurora Relay Field Kit",
+  "version": "1.0.0",
+  "priority": 100,
+  "dependencies": ["uegt.base"],
+  "loadAfter": ["uegt.base"],
+  "rules": {
+    "items": [
+      {
+        "id": "item.aurora-relay",
+        "displayName": "Aurora Relay",
+        "category": "sensor",
+        "purchaseCost": 24000,
+        "sellValue": 9000,
+        "mass": 4,
+        "power": 22,
+        "manufactureCost": 16000,
+        "manufactureHours": 20,
+        "requires": ["research.signal-analysis"]
+      }
+    ]
+  }
+}

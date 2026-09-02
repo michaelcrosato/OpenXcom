@@ -1,0 +1,155 @@
+#pragma once
+
+// Copyright 2026 UEGT contributors. MIT License.
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "Tactical/TacticalPresentationService.h"
+#include "UEGTUserSettings.h"
+
+#include "UEGTTacticalBoardActor.generated.h"
+
+class UDirectionalLightComponent;
+class UInstancedStaticMeshComponent;
+class UMaterialInstanceDynamic;
+class UMaterialInterface;
+class USceneComponent;
+class USkyLightComponent;
+
+/** Semantic result of a cursor/controller trace against the generated tactical board. */
+USTRUCT(BlueprintType)
+struct UEGTGAME_API FUEGTTacticalBoardHit
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Board")
+	bool bHit = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Board")
+	bool bHasCell = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Board")
+	int32 X = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Board")
+	int32 Y = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Board")
+	int32 Z = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Board")
+	FGuid UnitId;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Tactical|Board")
+	FName ObjectiveId;
+};
+
+/** Runtime-generated, asset-light tactical board driven exclusively by fog-safe presentation snapshots. */
+UCLASS(BlueprintType)
+class UEGTGAME_API AUEGTTacticalBoardActor final : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	AUEGTTacticalBoardActor();
+
+	UFUNCTION(BlueprintCallable, Category = "UEGT|Tactical|Board")
+	void ApplySnapshot(const FTacticalHudSnapshot& Snapshot);
+
+	UFUNCTION(BlueprintCallable, Category = "UEGT|Tactical|Board")
+	void ClearBoard();
+
+	UFUNCTION(BlueprintCallable, Category = "UEGT|Settings|Accessibility")
+	void ApplyAccessibilityPalette(EUEGTColorVisionMode Mode, bool bHighContrast);
+
+	UFUNCTION(BlueprintPure, Category = "UEGT|Tactical|Board")
+	FVector GridToWorld(int32 X, int32 Y, int32 Z, float HeightOffset = 0.0f) const;
+
+	bool ResolveHit(const FHitResult& Hit, FUEGTTacticalBoardHit& OutHit) const;
+
+	float GetCellSize() const { return CellSize; }
+	float GetLevelHeight() const { return LevelHeight; }
+	int32 GetRenderedGroundCount() const;
+	int32 GetRenderedFogMemoryCount() const;
+	int32 GetRenderedPlayerUnitCount() const;
+	int32 GetRenderedAdversaryUnitCount() const;
+	int32 GetRenderedObjectiveCount() const;
+	EUEGTColorVisionMode GetColorVisionMode() const { return ColorVisionMode; }
+	bool IsHighContrastPaletteEnabled() const { return bUseHighContrast; }
+
+protected:
+	virtual void BeginPlay() override;
+
+private:
+	void ConfigureMeshComponent(UInstancedStaticMeshComponent* Component, bool bCollisionEnabled) const;
+	void ApplyPalette();
+	UMaterialInstanceDynamic* MakeColorMaterial(FName ObjectName, const FLinearColor& Color);
+	void AddCellMarker(UInstancedStaticMeshComponent* Component, const FIntVector& Cell, float Height, float XYScale, float ZScale);
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<USceneComponent> SceneRoot;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> GroundInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> FogMemoryInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> BlockerInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> DoorInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> PlayerUnitInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> AdversaryUnitInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> ObjectiveInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> PathInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> HoverInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> SelectionInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> SmokeInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UInstancedStaticMeshComponent> FireInstances;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<UDirectionalLightComponent> KeyLight;
+
+	UPROPERTY(VisibleAnywhere, Category = "UEGT|Tactical|Board")
+	TObjectPtr<USkyLightComponent> FillLight;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UEGT|Tactical|Board")
+	float CellSize = 100.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UEGT|Tactical|Board")
+	float LevelHeight = 180.0f;
+
+	UPROPERTY()
+	TObjectPtr<UMaterialInterface> BaseShapeMaterial;
+
+	TArray<FIntVector> GroundCells;
+	TArray<FIntVector> FogMemoryCells;
+	TArray<FIntVector> BlockerCells;
+	TArray<FIntVector> DoorCells;
+	TArray<FGuid> PlayerUnitIds;
+	TArray<FIntVector> PlayerUnitCells;
+	TArray<FGuid> AdversaryUnitIds;
+	TArray<FIntVector> AdversaryUnitCells;
+	TArray<FName> ObjectiveIds;
+	TArray<FIntVector> ObjectiveCells;
+	EUEGTColorVisionMode ColorVisionMode = EUEGTColorVisionMode::Standard;
+	bool bUseHighContrast = true;
+};

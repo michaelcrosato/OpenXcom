@@ -81,3 +81,12 @@ bin/Win32/user*
 bin/user
 /.kdev4/
 /*.kdev4
+# Unreal Engine generated files
+/Binaries/
+/DerivedDataCache/
+/Intermediate/
+/Saved/
+/LocalBuilds/
+/*.sln
+/*.code-workspace
+/.idea/
