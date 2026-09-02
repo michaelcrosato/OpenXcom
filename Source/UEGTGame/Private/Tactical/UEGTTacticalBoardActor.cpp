@@ -40,21 +40,33 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> ConeMesh(TEXT("/Engine/BasicShapes/Cone.Cone"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMaterial(
 		TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 	if (CubeMesh.Succeeded())
 	{
 		for (UInstancedStaticMeshComponent* Component : {
-			GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), PlayerUnitInstances.Get(),
-			AdversaryUnitInstances.Get(), LastKnownAdversaryInstances.Get(), PathInstances.Get(), HoverInstances.Get(), SelectionInstances.Get(),
-			SmokeInstances.Get(), FireInstances.Get() })
+			GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), PathInstances.Get(), HoverInstances.Get(),
+			SelectionInstances.Get() })
 		{
 			Component->SetStaticMesh(CubeMesh.Object);
 		}
 	}
 	if (CylinderMesh.Succeeded())
 	{
+		PlayerUnitInstances->SetStaticMesh(CylinderMesh.Object);
 		ObjectiveInstances->SetStaticMesh(CylinderMesh.Object);
+	}
+	if (ConeMesh.Succeeded())
+	{
+		AdversaryUnitInstances->SetStaticMesh(ConeMesh.Object);
+		FireInstances->SetStaticMesh(ConeMesh.Object);
+	}
+	if (SphereMesh.Succeeded())
+	{
+		LastKnownAdversaryInstances->SetStaticMesh(SphereMesh.Object);
+		SmokeInstances->SetStaticMesh(SphereMesh.Object);
 	}
 	if (ShapeMaterial.Succeeded())
 	{
@@ -450,4 +462,27 @@ int32 AUEGTTacticalBoardActor::GetRenderedLastKnownAdversaryCount() const
 int32 AUEGTTacticalBoardActor::GetRenderedObjectiveCount() const
 {
 	return ObjectiveInstances != nullptr ? ObjectiveInstances->GetInstanceCount() : 0;
+}
+
+bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const
+{
+	const UStaticMesh* GroundMesh = GroundInstances != nullptr ? GroundInstances->GetStaticMesh() : nullptr;
+	const UStaticMesh* PlayerMesh = PlayerUnitInstances != nullptr ? PlayerUnitInstances->GetStaticMesh() : nullptr;
+	const UStaticMesh* AdversaryMesh = AdversaryUnitInstances != nullptr ? AdversaryUnitInstances->GetStaticMesh() : nullptr;
+	const UStaticMesh* LastKnownMesh = LastKnownAdversaryInstances != nullptr
+		? LastKnownAdversaryInstances->GetStaticMesh()
+		: nullptr;
+	const UStaticMesh* SmokeMesh = SmokeInstances != nullptr ? SmokeInstances->GetStaticMesh() : nullptr;
+	const UStaticMesh* FireMesh = FireInstances != nullptr ? FireInstances->GetStaticMesh() : nullptr;
+	return GroundMesh != nullptr
+		&& PlayerMesh != nullptr
+		&& AdversaryMesh != nullptr
+		&& LastKnownMesh != nullptr
+		&& SmokeMesh != nullptr
+		&& FireMesh != nullptr
+		&& GroundMesh != PlayerMesh
+		&& PlayerMesh != AdversaryMesh
+		&& AdversaryMesh != LastKnownMesh
+		&& SmokeMesh == LastKnownMesh
+		&& FireMesh == AdversaryMesh;
 }

@@ -49,6 +49,8 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 		TestWorld.DestroyTestWorld(false);
 		return false;
 	}
+	TestTrue(TEXT("Tactical board loads semantic primitive geometry for marker and effect layers"),
+		Board->UsesSemanticMarkerGeometry());
 	Board->ApplyAccessibilityPalette(EUEGTColorVisionMode::Tritanopia, false);
 	TestEqual(TEXT("Tactical board accepts the selected color-vision palette"),
 		Board->GetColorVisionMode(), EUEGTColorVisionMode::Tritanopia);

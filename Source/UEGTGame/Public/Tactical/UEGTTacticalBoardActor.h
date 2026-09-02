@@ -75,6 +75,8 @@ public:
 	int32 GetRenderedAdversaryUnitCount() const;
 	int32 GetRenderedLastKnownAdversaryCount() const;
 	int32 GetRenderedObjectiveCount() const;
+	/** Returns whether the board has loaded the semantic primitive profile for tactical markers. */
+	bool UsesSemanticMarkerGeometry() const;
 	EUEGTColorVisionMode GetColorVisionMode() const { return ColorVisionMode; }
 	bool IsHighContrastPaletteEnabled() const { return bUseHighContrast; }
 
