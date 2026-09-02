@@ -424,6 +424,19 @@ namespace StrategicPresentationPrivate
 		return Left - Right;
 	}
 
+	int64 SaturatingSubtract(const int64 Left, const int64 Right)
+	{
+		if (Right > 0 && Left < MIN_int64 + Right)
+		{
+			return MIN_int64;
+		}
+		if (Right < 0 && Left > MAX_int64 + Right)
+		{
+			return MAX_int64;
+		}
+		return Left - Right;
+	}
+
 	int64 CeilScaledWorkSeconds(
 		const int64 RemainingWork,
 		const int32 AssignedStaff,
@@ -3350,7 +3363,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 	{
 		return GuidLess(Left.EntityId, Right.EntityId);
 	});
-	Snapshot.NetMonthlyFunding = Snapshot.MonthlyFunding - Snapshot.MonthlyOutgoings;
+	Snapshot.NetMonthlyFunding = SaturatingSubtract(
+		Snapshot.MonthlyFunding, Snapshot.MonthlyOutgoings);
 	Snapshot.bSucceeded = true;
 	return Snapshot;
 }

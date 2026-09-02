@@ -831,6 +831,17 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	Config.ResilienceCharterCost = 250;
 	const FStrategicDashboardSnapshot Snapshot = FStrategicPresentationService::BuildDashboard(Campaign, Rules, Config);
 	TestTrue(TEXT("Valid strategic state produces a dashboard"), Snapshot.bSucceeded);
+	FResolvedRuleSet ExtremeNetRules = Rules;
+	ExtremeNetRules.Facilities.FindChecked(Operations.Identity.RuleId).MonthlyMaintenance = MAX_int32;
+	FCampaignState ExtremeNetCampaign = Campaign;
+	ExtremeNetCampaign.MonthlyFunding = MIN_int64;
+	const FStrategicDashboardSnapshot ExtremeNetSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			ExtremeNetCampaign, ExtremeNetRules, Config);
+	TestTrue(TEXT("Dashboard net funding saturates when monthly funding minus outgoings underflows"),
+		ExtremeNetSnapshot.bSucceeded
+		&& ExtremeNetSnapshot.MonthlyOutgoings > 0
+		&& ExtremeNetSnapshot.NetMonthlyFunding == MIN_int64);
 	TestTrue(TEXT("Dashboard exposes the global compact gate before enough charters are signed"),
 		!Snapshot.HorizonCompact.bRatified
 		&& !Snapshot.HorizonCompact.bEnabled
