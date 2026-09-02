@@ -6,6 +6,8 @@
 
 namespace TacticalCombatPrivate
 {
+	static constexpr int64 MaxTacticalCellCount = 8192;
+
 	struct FAttackProfile
 	{
 		FName RuleId;
@@ -57,13 +59,37 @@ namespace TacticalCombatPrivate
 		return Battle.IsWithinGrid(X, Y, Z);
 	}
 
+	bool TryGetCellCount(const FTacticalBattleState& Battle, int64& OutCellCount)
+	{
+		if (Battle.Width <= 0 || Battle.Height <= 0 || Battle.Levels <= 0 || Battle.Levels > 4)
+		{
+			return false;
+		}
+
+		const int64 LayerArea = static_cast<int64>(Battle.Width) * static_cast<int64>(Battle.Height);
+		if (LayerArea > MaxTacticalCellCount / static_cast<int64>(Battle.Levels))
+		{
+			return false;
+		}
+
+		OutCellCount = LayerArea * static_cast<int64>(Battle.Levels);
+		return true;
+	}
+
 	int32 CeilDistance(const int32 DeltaX, const int32 DeltaY, const int32 DeltaZ)
 	{
-		const int32 ScaledZ = DeltaZ * 2;
-		const int32 DistanceSquared = DeltaX * DeltaX + DeltaY * DeltaY + ScaledZ * ScaledZ;
+		const int64 AbsX = DeltaX < 0 ? -static_cast<int64>(DeltaX) : static_cast<int64>(DeltaX);
+		const int64 AbsY = DeltaY < 0 ? -static_cast<int64>(DeltaY) : static_cast<int64>(DeltaY);
+		const int64 AbsZ = DeltaZ < 0 ? -static_cast<int64>(DeltaZ) : static_cast<int64>(DeltaZ);
+		if (AbsX > 128 || AbsY > 128 || AbsZ > 64)
+		{
+			return MAX_int32;
+		}
+		const int64 ScaledZ = AbsZ * 2;
+		const int64 DistanceSquared = AbsX * AbsX + AbsY * AbsY + ScaledZ * ScaledZ;
 		for (int32 Distance = 0; Distance <= 128; ++Distance)
 		{
-			if (Distance * Distance >= DistanceSquared)
+			if (static_cast<int64>(Distance) * Distance >= DistanceSquared)
 			{
 				return Distance;
 			}
@@ -217,6 +243,11 @@ namespace TacticalCombatPrivate
 		if (OutAttacker->CurrentHealth <= 0 || OutAttacker->bExtracted)
 		{
 			AddDiagnostic(Result, TEXT("incapacitated_tactical_unit"), TEXT("Only a living, deployed combatant can attack."));
+			return false;
+		}
+		if (!IsWithin(OutAttacker->X, OutAttacker->Y, OutAttacker->Z, Battle))
+		{
+			AddDiagnostic(Result, TEXT("invalid_tactical_unit"), TEXT("Tactical attacks require a living, deployed combatant on the grid."));
 			return false;
 		}
 		if (OutAttacker->Team != Battle.ActiveTeam)
@@ -465,6 +496,11 @@ FTacticalSignalPreview FTacticalCombatService::PreviewSignalProjection(
 		AddDiagnostic(Result, TEXT("incapacitated_tactical_unit"), TEXT("Only a living, deployed combatant can project a signal."));
 		return Result;
 	}
+	if (!IsWithin(Attacker->X, Attacker->Y, Attacker->Z, Battle))
+	{
+		AddDiagnostic(Result, TEXT("invalid_tactical_unit"), TEXT("Signal projection requires a living, deployed projecting unit on the grid."));
+		return Result;
+	}
 	if (Attacker->Team != Battle.ActiveTeam)
 	{
 		AddDiagnostic(Result, TEXT("inactive_tactical_unit"), TEXT("Only a unit on the active tactical team can project a signal."));
@@ -536,6 +572,11 @@ FTacticalSignalPreview FTacticalCombatService::PreviewSignalProjection(
 		AddDiagnostic(Result, TEXT("invalid_tactical_target"), TEXT("Signal projection requires a living, deployed target unit."));
 		return Result;
 	}
+	if (!IsWithin(Target->X, Target->Y, Target->Z, Battle))
+	{
+		AddDiagnostic(Result, TEXT("invalid_tactical_target"), TEXT("Signal projection requires a target unit on the battlefield."));
+		return Result;
+	}
 	if (Target->Team == Attacker->Team)
 	{
 		AddDiagnostic(Result, TEXT("friendly_tactical_target"), TEXT("Signal pressure cannot be projected against the operator's own team."));
@@ -594,9 +635,18 @@ int32 FTacticalCombatService::ComputeUnitDamage(
 	const int32 DefenderArmor,
 	const int32 VariancePercent)
 {
-	const int32 ScaledPower = FMath::Max(1, AttackPower + FMath::Max(0, AttackerStrength) / 10);
-	const int32 VariedPower = FMath::Max(1, ScaledPower * FMath::Clamp(VariancePercent, 80, 120) / 100);
-	return FMath::Max(1, VariedPower - FMath::Max(0, DefenderStrength) / 12 - FMath::Max(0, DefenderArmor));
+	const int64 ScaledPower = FMath::Max<int64>(
+		1,
+		static_cast<int64>(AttackPower) + FMath::Max<int64>(0, static_cast<int64>(AttackerStrength)) / 10);
+	const int64 VariedPower = FMath::Max<int64>(
+		1,
+		ScaledPower * FMath::Clamp<int64>(static_cast<int64>(VariancePercent), 80, 120) / 100);
+	return static_cast<int32>(FMath::Clamp<int64>(
+		VariedPower
+			- FMath::Max<int64>(0, static_cast<int64>(DefenderStrength)) / 12
+			- FMath::Max<int64>(0, static_cast<int64>(DefenderArmor)),
+		1,
+		MAX_int32));
 }
 
 int32 FTacticalCombatService::ComputeTerrainDamage(
@@ -604,15 +654,22 @@ int32 FTacticalCombatService::ComputeTerrainDamage(
 	const int32 AttackerStrength,
 	const int32 VariancePercent)
 {
-	const int32 ScaledPower = FMath::Max(1, AttackPower + FMath::Max(0, AttackerStrength) / 10);
-	return FMath::Max(1, ScaledPower * FMath::Clamp(VariancePercent, 80, 120) / 100);
+	const int64 ScaledPower = FMath::Max<int64>(
+		1,
+		static_cast<int64>(AttackPower) + FMath::Max<int64>(0, static_cast<int64>(AttackerStrength)) / 10);
+	return static_cast<int32>(FMath::Clamp<int64>(
+		ScaledPower * FMath::Clamp<int64>(static_cast<int64>(VariancePercent), 80, 120) / 100,
+		1,
+		MAX_int32));
 }
 
 int32 FTacticalCombatService::ComputeBlastEffectPercent(
 	const int32 Distance,
 	const int32 FalloffPercentPerCell)
 {
-	return FMath::Clamp(100 - FMath::Max(0, Distance) * FMath::Clamp(FalloffPercentPerCell, 0, 100), 0, 100);
+	const int64 Falloff = FMath::Max<int64>(0, static_cast<int64>(Distance))
+		* FMath::Clamp<int64>(static_cast<int64>(FalloffPercentPerCell), 0, 100);
+	return static_cast<int32>(FMath::Clamp<int64>(100 - Falloff, 0, 100));
 }
 
 int32 FTacticalCombatService::ComputeBlastTransmissionPercent(
@@ -625,10 +682,11 @@ int32 FTacticalCombatService::ComputeBlastTransmissionPercent(
 	const int32 ImpactZ,
 	const int32 TargetZ)
 {
-	const int64 ExpectedCells = static_cast<int64>(Battle.Width) * Battle.Height * Battle.Levels;
-	if (!TacticalCombatPrivate::IsWithin(ImpactX, ImpactY, ImpactZ, Battle)
+	int64 ExpectedCells = 0;
+	if (!TacticalCombatPrivate::TryGetCellCount(Battle, ExpectedCells)
+		|| !TacticalCombatPrivate::IsWithin(ImpactX, ImpactY, ImpactZ, Battle)
 		|| !TacticalCombatPrivate::IsWithin(TargetX, TargetY, TargetZ, Battle)
-		|| ExpectedCells <= 0 || Battle.Cells.Num() != ExpectedCells)
+		|| Battle.Cells.Num() != ExpectedCells)
 	{
 		return 0;
 	}

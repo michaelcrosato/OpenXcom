@@ -5,6 +5,7 @@
 #include "Tactical/TacticalPresentationService.h"
 
 #include "Misc/AutomationTest.h"
+#include "Tactical/TacticalCombatService.h"
 
 namespace TacticalPresentationTests
 {
@@ -656,6 +657,55 @@ bool FTacticalNavigationGridStateValidationTest::RunTest(const FString& Paramete
 	TestFalse(TEXT("Navigation rejects over-range persisted fire state"), ExcessFireVisibility.bSucceeded);
 	TestTrue(TEXT("Over-range fire state has the shared grid diagnostic"),
 		ExcessFireVisibility.HasDiagnostic(TEXT("invalid_tactical_grid")));
+
+	FTacticalBattleState ExtremeDimensions;
+	ExtremeDimensions.Width = MAX_int32;
+	ExtremeDimensions.Height = MAX_int32;
+	ExtremeDimensions.Levels = 4;
+	const FTacticalVisibilityResult ExtremeVisibility = FTacticalNavigationService::ComputePlayerVisibility(
+		ExtremeDimensions, Fixture.Rules);
+	TestFalse(TEXT("Navigation rejects extreme dimensions before a cell-count product can wrap"), ExtremeVisibility.bSucceeded);
+	TestTrue(TEXT("Extreme tactical dimensions have the shared grid diagnostic"),
+		ExtremeVisibility.HasDiagnostic(TEXT("invalid_tactical_grid")));
+	TestEqual(TEXT("Smoke queries reject extreme dimensions without indexing cells"),
+		FTacticalNavigationService::ComputeSmokeObscuration(ExtremeDimensions, 0, 0, 0, 0), 0);
+	TestEqual(TEXT("Blast transmission rejects extreme dimensions without indexing cells"),
+		FTacticalCombatService::ComputeBlastTransmissionPercent(ExtremeDimensions, Fixture.Rules, 0, 0, 0, 0), 0);
+
+	FTacticalBattleState InvalidAttackerBattle = Fixture.Campaign.TacticalBattles[0];
+	FTacticalUnitState* InvalidAttacker = InvalidAttackerBattle.Units.FindByPredicate(
+		[&Fixture](const FTacticalUnitState& Unit) { return Unit.UnitId == Fixture.PlayerUnitId; });
+	if (InvalidAttacker != nullptr)
+	{
+		InvalidAttacker->X = MIN_int32;
+		const FTacticalAttackPreview InvalidAttackerPreview = FTacticalCombatService::PreviewUnitAttack(
+			InvalidAttackerBattle,
+			Fixture.Campaign,
+			Fixture.Rules,
+			Fixture.PlayerUnitId,
+			Fixture.VisibleAdversaryId,
+			TEXT("item.presentation-rifle"));
+		TestFalse(TEXT("Combat previews reject an attacker outside the battlefield before distance arithmetic"),
+			InvalidAttackerPreview.bSucceeded);
+		TestTrue(TEXT("Out-of-grid attackers have a stable tactical-unit diagnostic"),
+			InvalidAttackerPreview.HasDiagnostic(TEXT("invalid_tactical_unit")));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FTacticalCombatNumericBoundaryTest,
+	"UEGT.Core.Tactical.Combat.NumericBoundaries",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FTacticalCombatNumericBoundaryTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Unit damage saturates large attack inputs instead of wrapping"),
+		FTacticalCombatService::ComputeUnitDamage(MAX_int32, MAX_int32, 0, 0, 120), MAX_int32);
+	TestEqual(TEXT("Terrain damage saturates large attack inputs instead of wrapping"),
+		FTacticalCombatService::ComputeTerrainDamage(MAX_int32, MAX_int32, 120), MAX_int32);
+	TestEqual(TEXT("Blast falloff saturates large products at zero effect"),
+		FTacticalCombatService::ComputeBlastEffectPercent(MAX_int32, MAX_int32), 0);
 	return true;
 }
 

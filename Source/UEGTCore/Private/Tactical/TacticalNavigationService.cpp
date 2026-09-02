@@ -6,11 +6,30 @@
 
 namespace TacticalNavigationPrivate
 {
+	static constexpr int64 MaxTacticalCellCount = 8192;
+
 	struct FOpenNode
 	{
 		int32 CellIndex = INDEX_NONE;
 		int32 Cost = 0;
 	};
+
+	bool TryGetCellCount(const FTacticalBattleState& Battle, int64& OutCellCount)
+	{
+		if (Battle.Width <= 0 || Battle.Height <= 0 || Battle.Levels <= 0 || Battle.Levels > 4)
+		{
+			return false;
+		}
+
+		const int64 LayerArea = static_cast<int64>(Battle.Width) * static_cast<int64>(Battle.Height);
+		if (LayerArea > MaxTacticalCellCount / static_cast<int64>(Battle.Levels))
+		{
+			return false;
+		}
+
+		OutCellCount = LayerArea * static_cast<int64>(Battle.Levels);
+		return true;
+	}
 
 	void AddDiagnostic(TArray<FTacticalNavigationDiagnostic>& Diagnostics, const FName Code, FString Message)
 	{
@@ -24,14 +43,13 @@ namespace TacticalNavigationPrivate
 		const FResolvedRuleSet& Rules,
 		TArray<FTacticalNavigationDiagnostic>& Diagnostics)
 	{
-		const int64 CellCount = static_cast<int64>(Battle.Width) * Battle.Height * Battle.Levels;
-		if (Battle.Width <= 0 || Battle.Height <= 0 || Battle.Levels <= 0
-			|| Battle.Levels > 4 || CellCount > 8192 || Battle.Cells.Num() != CellCount)
+		int64 CellCount = 0;
+		if (!TryGetCellCount(Battle, CellCount) || Battle.Cells.Num() != CellCount)
 		{
 			AddDiagnostic(Diagnostics, TEXT("invalid_tactical_grid"), TEXT("Tactical grid dimensions and cell population are inconsistent."));
 			return false;
 		}
-		const int32 LayerArea = Battle.Width * Battle.Height;
+		const int32 LayerArea = static_cast<int32>(CellCount / static_cast<int64>(Battle.Levels));
 		for (int32 Index = 0; Index < Battle.Cells.Num(); ++Index)
 		{
 			const FTacticalCellState& Cell = Battle.Cells[Index];
@@ -805,10 +823,11 @@ int32 FTacticalNavigationService::ComputeSmokeObscuration(
 {
 	using namespace TacticalNavigationPrivate;
 
-	const int64 CellCount = static_cast<int64>(Battle.Width) * Battle.Height * Battle.Levels;
+	int64 CellCount = 0;
 	return Battle.IsWithinGrid(OriginX, OriginY, OriginZ)
 		&& Battle.IsWithinGrid(TargetX, TargetY, TargetZ)
-		&& CellCount > 0 && CellCount <= 8192 && Battle.Cells.Num() == CellCount
+		&& TryGetCellCount(Battle, CellCount)
+		&& Battle.Cells.Num() == CellCount
 		? FMath::Clamp(
 			TraceSmokeObscuration(Battle, OriginX, OriginY, OriginZ, TargetX, TargetY, TargetZ),
 			0,
