@@ -831,7 +831,7 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 			SelectedUnit->Y,
 			Query.HoveredX,
 			Query.HoveredY,
-			SelectedDevice->TacticalThrowArcHeight,
+			FMath::Clamp(SelectedDevice->TacticalThrowArcHeight, 1, 8),
 			SelectedUnit->Z,
 			Query.HoveredZ);
 	}
@@ -1121,13 +1121,16 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 		}
 		else
 		{
-			Device.ActionPointCost = DeviceRule->TacticalActionPointCost;
+			const int32 EffectiveDeviceActionPointCost = FMath::Clamp(DeviceRule->TacticalActionPointCost, 1, 20);
+			const int32 EffectiveDeviceRange = FMath::Clamp(DeviceRule->TacticalRange, 1, 64);
+			const bool bHasThrowArc = DeviceRule->HasTacticalThrowArc();
+			Device.ActionPointCost = EffectiveDeviceActionPointCost;
 			const int64 DeltaX = static_cast<int64>(Query.HoveredX) - SelectedUnit->X;
 			const int64 DeltaY = static_cast<int64>(Query.HoveredY) - SelectedUnit->Y;
 			const int64 DeltaZ = (static_cast<int64>(Query.HoveredZ) - SelectedUnit->Z) * 2;
 			const bool bInRange = DeltaX * DeltaX + DeltaY * DeltaY + DeltaZ * DeltaZ
-				<= static_cast<int64>(DeviceRule->TacticalRange) * DeviceRule->TacticalRange;
-			const bool bTrajectoryValid = DeviceRule->HasTacticalThrowArc()
+				<= static_cast<int64>(EffectiveDeviceRange) * EffectiveDeviceRange;
+			const bool bTrajectoryValid = bHasThrowArc
 				? Snapshot.Hover.bHasDeviceTrajectory && Snapshot.Hover.DeviceTrajectory.bSucceeded
 				: FTacticalNavigationService::HasLineOfSight(
 					Battle,
@@ -1144,7 +1147,7 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 			}
 			else if (!bTrajectoryValid)
 			{
-				SetUnavailable(Device, DeviceRule->HasTacticalThrowArc()
+				SetUnavailable(Device, bHasThrowArc
 					? FName(TEXT("invalid_tactical_throw_trajectory"))
 					: FName(TEXT("no_tactical_line_of_sight")), TEXT("The device cannot reach the selected cell."));
 			}

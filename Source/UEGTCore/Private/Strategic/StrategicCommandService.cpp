@@ -10091,6 +10091,20 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("invalid_tactical_device"), TEXT("Tactical device item has no valid area-effect profile."));
 		return Result;
 	}
+	const int32 EffectiveDeviceRange = FMath::Clamp(Device->TacticalRange, 1, 64);
+	const int32 EffectiveDeviceActionPointCost = FMath::Clamp(Device->TacticalActionPointCost, 1, 20);
+	const int32 EffectiveDeviceRadius = FMath::Clamp(Device->TacticalRadius, 1, 8);
+	const bool bHasThrowArc = Device->HasTacticalThrowArc();
+	const int32 EffectiveThrowArcHeight = bHasThrowArc
+		? FMath::Clamp(Device->TacticalThrowArcHeight, 1, 8)
+		: 0;
+	const int32 EffectiveSmoke = FMath::Clamp(Device->TacticalSmoke, 0, 100);
+	const int32 EffectiveFire = FMath::Clamp(Device->TacticalFire, 0, 100);
+	const int32 EffectiveSuppression = FMath::Clamp(Device->TacticalSuppression, 0, 100);
+	const int32 EffectiveSmokeReduction = FMath::Clamp(Device->TacticalSmokeReduction, 0, 100);
+	const int32 EffectiveFireReduction = FMath::Clamp(Device->TacticalFireReduction, 0, 100);
+	const int32 EffectiveSuppressionReduction = FMath::Clamp(Device->TacticalSuppressionReduction, 0, 100);
+	const int32 EffectiveMoraleRecovery = FMath::Clamp(Device->TacticalMoraleRecovery, 0, 100);
 	const FInventoryStack* ExistingDeviceStack = ExistingUnit->CarriedItems.FindByPredicate(
 		[&Command](const FInventoryStack& Stack)
 		{
@@ -10110,7 +10124,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	const int64 DeltaY = static_cast<int64>(Command.TargetY) - ExistingUnit->Y;
 	const int64 DeltaZ = (static_cast<int64>(Command.TargetZ) - ExistingUnit->Z) * 2;
 	if (DeltaX * DeltaX + DeltaY * DeltaY + DeltaZ * DeltaZ
-		> static_cast<int64>(Device->TacticalRange) * Device->TacticalRange)
+		> static_cast<int64>(EffectiveDeviceRange) * EffectiveDeviceRange)
 	{
 		AddError(Result, TEXT("tactical_target_out_of_range"), TEXT("Tactical device target exceeds the device deployment range."));
 		return Result;
@@ -10119,7 +10133,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	int32 LandingY = Command.TargetY;
 	int32 LandingZ = Command.TargetZ;
 	FTacticalThrowTrajectoryResult ThrowTrajectory;
-	if (Device->HasTacticalThrowArc())
+	if (bHasThrowArc)
 	{
 		ThrowTrajectory = FTacticalNavigationService::PreviewThrowTrajectory(
 			*ExistingBattle,
@@ -10128,7 +10142,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			ExistingUnit->Y,
 			Command.TargetX,
 			Command.TargetY,
-			Device->TacticalThrowArcHeight,
+			EffectiveThrowArcHeight,
 			ExistingUnit->Z,
 			Command.TargetZ);
 		if (!ThrowTrajectory.bSucceeded)
@@ -10146,7 +10160,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("no_tactical_line_of_sight"), TEXT("Intact terrain blocks tactical device deployment."));
 		return Result;
 	}
-	if (ExistingUnit->RemainingActionPoints < Device->TacticalActionPointCost)
+	if (ExistingUnit->RemainingActionPoints < EffectiveDeviceActionPointCost)
 	{
 		AddError(Result, TEXT("insufficient_action_points"), TEXT("Unit lacks the action points required to deploy this tactical device."));
 		return Result;
@@ -10161,11 +10175,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	FInventoryStack* DeviceStack = Unit->CarriedItems.FindByPredicate(
 		[&Command](const FInventoryStack& Stack) { return Stack.ItemId == Command.DeviceItemId; });
 	check(DeviceStack != nullptr && DeviceStack->Quantity > 0);
-	Unit->RemainingActionPoints -= Device->TacticalActionPointCost;
+	Unit->RemainingActionPoints -= EffectiveDeviceActionPointCost;
 	--DeviceStack->Quantity;
 	Unit->CarriedItems.RemoveAll([](const FInventoryStack& Stack) { return Stack.Quantity == 0; });
 
-	const int64 RadiusSquared = static_cast<int64>(Device->TacticalRadius) * Device->TacticalRadius;
+	const int64 RadiusSquared = static_cast<int64>(EffectiveDeviceRadius) * EffectiveDeviceRadius;
 	int32 AffectedCellCount = 0;
 	int32 RemovedSmoke = 0;
 	int32 RemovedFire = 0;
@@ -10180,21 +10194,20 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		}
 		const int32 PreviousSmoke = Cell.Smoke;
 		const int32 PreviousFire = Cell.Fire;
-		Cell.Smoke = FMath::Clamp(
-			Cell.Smoke + Device->TacticalSmoke - Device->TacticalSmokeReduction,
+		Cell.Smoke = static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(Cell.Smoke) + EffectiveSmoke - EffectiveSmokeReduction,
 			0,
-			100);
-		Cell.Fire = FMath::Clamp(
-			Cell.Fire + Device->TacticalFire - Device->TacticalFireReduction,
+			100));
+		Cell.Fire = static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(Cell.Fire) + EffectiveFire - EffectiveFireReduction,
 			0,
-			100);
+			100));
 		RemovedSmoke += FMath::Max(0, PreviousSmoke - Cell.Smoke);
 		RemovedFire += FMath::Max(0, PreviousFire - Cell.Fire);
 		++AffectedCellCount;
 	}
 	TArray<FTacticalEnvironmentUnitOutcome> UnitOutcomes;
-	if (Device->TacticalSuppression > 0 || Device->TacticalSuppressionReduction > 0
-		|| Device->TacticalMoraleRecovery > 0)
+	if (EffectiveSuppression > 0 || EffectiveSuppressionReduction > 0 || EffectiveMoraleRecovery > 0)
 	{
 		for (FTacticalUnitState& AffectedUnit : Battle->Units)
 		{
@@ -10211,18 +10224,19 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			}
 			const int32 PreviousSuppression = AffectedUnit.Suppression;
 			const int32 PreviousMorale = AffectedUnit.CurrentMorale;
-			AffectedUnit.Suppression = FMath::Clamp(
-				AffectedUnit.Suppression + Device->TacticalSuppression - Device->TacticalSuppressionReduction,
+			AffectedUnit.Suppression = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(AffectedUnit.Suppression)
+					+ EffectiveSuppression - EffectiveSuppressionReduction,
 				0,
-				100);
-			if (Device->TacticalSuppression > 0)
+				100));
+			if (EffectiveSuppression > 0)
 			{
-				const int32 MoraleLoss = FMath::Max(1, Device->TacticalSuppression / 2 - AffectedUnit.Resolve / 10);
+				const int32 MoraleLoss = FMath::Max(1, EffectiveSuppression / 2 - AffectedUnit.Resolve / 10);
 				AffectedUnit.CurrentMorale = FMath::Max(0, AffectedUnit.CurrentMorale - MoraleLoss);
 			}
-			AffectedUnit.CurrentMorale = FMath::Min(
+			AffectedUnit.CurrentMorale = static_cast<int32>(FMath::Min<int64>(
 				AffectedUnit.MaxMorale,
-				AffectedUnit.CurrentMorale + Device->TacticalMoraleRecovery);
+				static_cast<int64>(AffectedUnit.CurrentMorale) + EffectiveMoraleRecovery));
 			FTacticalEnvironmentUnitOutcome& Outcome = UnitOutcomes.AddDefaulted_GetRef();
 			Outcome.UnitId = AffectedUnit.UnitId;
 			Outcome.UnitRuleId = AffectedUnit.SourceRuleId;
@@ -10258,7 +10272,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Deployed.ToY = LandingY;
 	Deployed.ToZ = LandingZ;
 	Deployed.bSuccessful = true;
-	Deployed.Amount = -Device->TacticalActionPointCost;
+	Deployed.Amount = -EffectiveDeviceActionPointCost;
 	Deployed.Quantity = AffectedCellCount;
 	if (ThrowTrajectory.bIntercepted)
 	{
@@ -10274,7 +10288,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		Intercepted.ToX = LandingX;
 		Intercepted.ToY = LandingY;
 		Intercepted.ToZ = LandingZ;
-		Intercepted.Amount = Device->TacticalThrowArcHeight;
+		Intercepted.Amount = EffectiveThrowArcHeight;
 		Intercepted.Quantity = ThrowTrajectory.InterceptedObstacleHeight;
 	}
 	if (RemovedSmoke > 0 || RemovedFire > 0)

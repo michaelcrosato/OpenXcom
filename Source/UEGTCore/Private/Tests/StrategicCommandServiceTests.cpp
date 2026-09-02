@@ -17968,6 +17968,53 @@ bool FTacticalAmmunitionReloadArmorAndSaveTest::RunTest(const FString& Parameter
 		MakeTacticalBattleFingerprint(Replay.TacticalBattles[0]),
 		MakeTacticalBattleFingerprint(First.TacticalBattles[0]));
 
+	FResolvedRuleSet ExtremeDeviceRules = Rules;
+	FResolvedRuleSet BoundaryDeviceRules = Rules;
+	FItemRule* ExtremeDevice = ExtremeDeviceRules.Items.Find(TEXT("item.test-aerosol-charge"));
+	FItemRule* BoundaryDevice = BoundaryDeviceRules.Items.Find(TEXT("item.test-aerosol-charge"));
+	TestTrue(TEXT("Tactical device boundary fixtures resolve their device rules"),
+		ExtremeDevice != nullptr && BoundaryDevice != nullptr);
+	if (ExtremeDevice != nullptr && BoundaryDevice != nullptr)
+	{
+		ExtremeDevice->TacticalRange = MAX_int32;
+		ExtremeDevice->TacticalRadius = MAX_int32;
+		ExtremeDevice->TacticalThrowArcHeight = MAX_int32;
+		ExtremeDevice->TacticalSmoke = MAX_int32;
+		ExtremeDevice->TacticalFire = MAX_int32;
+		ExtremeDevice->TacticalSuppression = MAX_int32;
+		ExtremeDevice->TacticalMoraleRecovery = MAX_int32;
+		BoundaryDevice->TacticalRange = 64;
+		BoundaryDevice->TacticalRadius = 8;
+		BoundaryDevice->TacticalThrowArcHeight = 8;
+		BoundaryDevice->TacticalSmoke = 100;
+		BoundaryDevice->TacticalFire = 100;
+		BoundaryDevice->TacticalSuppression = 100;
+		BoundaryDevice->TacticalMoraleRecovery = 100;
+		FCampaignState ExtremeDeviceCampaign = First;
+		FCampaignState BoundaryDeviceCampaign = First;
+		FDeployTacticalDeviceCommand ExtremeDeviceCommand;
+		ExtremeDeviceCommand.ExpectedSequence = ExtremeDeviceCampaign.CommandSequence;
+		ExtremeDeviceCommand.BattleId = BattleId;
+		ExtremeDeviceCommand.UnitId = PlayerUnitId;
+		ExtremeDeviceCommand.DeviceItemId = TEXT("item.test-aerosol-charge");
+		ExtremeDeviceCommand.TargetX = 2;
+		ExtremeDeviceCommand.TargetY = 4;
+		FDeployTacticalDeviceCommand BoundaryDeviceCommand = ExtremeDeviceCommand;
+		BoundaryDeviceCommand.ExpectedSequence = BoundaryDeviceCampaign.CommandSequence;
+		const FStrategicCommandResult ExtremeDeviceResult = FStrategicCommandService::Execute(
+			ExtremeDeviceCampaign, ExtremeDeviceRules, ExtremeDeviceCommand);
+		const FStrategicCommandResult BoundaryDeviceResult = FStrategicCommandService::Execute(
+			BoundaryDeviceCampaign, BoundaryDeviceRules, BoundaryDeviceCommand);
+		TestTrue(TEXT("Extreme tactical device fields execute as a bounded supported profile"),
+			ExtremeDeviceResult.bAccepted && BoundaryDeviceResult.bAccepted);
+		if (ExtremeDeviceResult.bAccepted && BoundaryDeviceResult.bAccepted)
+		{
+			TestEqual(TEXT("Extreme tactical device execution matches the supported boundary replay"),
+				MakeTacticalBattleFingerprint(ExtremeDeviceCampaign.TacticalBattles[0]),
+				MakeTacticalBattleFingerprint(BoundaryDeviceCampaign.TacticalBattles[0]));
+		}
+	}
+
 	FDeployTacticalDeviceCommand DeployThrowProbe;
 	DeployThrowProbe.ExpectedSequence = First.CommandSequence;
 	DeployThrowProbe.BattleId = BattleId;

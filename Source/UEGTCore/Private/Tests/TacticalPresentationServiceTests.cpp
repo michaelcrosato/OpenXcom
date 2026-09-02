@@ -349,6 +349,29 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 		&& ExtremeReservePlayer->Weapons[0].ReserveAmmunition == MAX_int32
 		&& ExtremeReservePlayer->Weapons[0].FullReserveMagazines == MAX_int32
 		&& ExtremeReservePlayer->Weapons[0].ReserveMagazines == MAX_int32);
+	FResolvedRuleSet ExtremeDeviceRules = Fixture.Rules;
+	FItemRule* ExtremeDevice = ExtremeDeviceRules.Items.Find(TEXT("item.presentation-smoke"));
+	TestNotNull(TEXT("HUD device boundary fixture resolves its device rule"), ExtremeDevice);
+	if (ExtremeDevice != nullptr)
+	{
+		ExtremeDevice->TacticalRange = MAX_int32;
+		ExtremeDevice->TacticalRadius = MAX_int32;
+		ExtremeDevice->TacticalThrowArcHeight = MAX_int32;
+		ExtremeDevice->TacticalSmoke = MAX_int32;
+		const FTacticalHudSnapshot ExtremeDeviceSnapshot = FTacticalPresentationService::BuildHudSnapshot(
+			Fixture.Campaign.TacticalBattles[0],
+			Fixture.Campaign,
+			ExtremeDeviceRules,
+			Query);
+		const FTacticalHudActionAvailability* ExtremeDeviceAction = ExtremeDeviceSnapshot.FindAction(
+			ETacticalHudActionType::DeployDevice);
+		TestTrue(TEXT("HUD clamps extreme device range, action cost, and throw arc consistently"),
+			ExtremeDeviceSnapshot.bSucceeded && ExtremeDeviceSnapshot.Hover.bHasDeviceTrajectory
+				&& ExtremeDeviceSnapshot.Hover.DeviceTrajectory.bSucceeded
+				&& ExtremeDeviceSnapshot.Hover.DeviceTrajectory.PeakHeight == 8
+				&& ExtremeDeviceAction != nullptr && ExtremeDeviceAction->bAvailable
+				&& ExtremeDeviceAction->ActionPointCost == 2);
+	}
 	const FTacticalHudActionAvailability* Objective = Snapshot.FindAction(ETacticalHudActionType::InteractObjective);
 	TestTrue(TEXT("Adjacent active objective is selected without leaking pointer state"), Objective != nullptr && Objective->bAvailable
 		&& Objective->ObjectiveId == FName(TEXT("objective.presentation-control")));
