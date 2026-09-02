@@ -108,6 +108,35 @@ namespace TacticalAiPrivate
 		return MAX_int32;
 	}
 
+	int32 ManhattanDistance(
+		const int32 OriginX,
+		const int32 OriginY,
+		const int32 OriginZ,
+		const int32 TargetX,
+		const int32 TargetY,
+		const int32 TargetZ)
+	{
+		const int64 DeltaX = static_cast<int64>(TargetX) - OriginX;
+		const int64 DeltaY = static_cast<int64>(TargetY) - OriginY;
+		const int64 DeltaZ = static_cast<int64>(TargetZ) - OriginZ;
+		const int64 AbsX = DeltaX < 0 ? -DeltaX : DeltaX;
+		const int64 AbsY = DeltaY < 0 ? -DeltaY : DeltaY;
+		const int64 AbsZ = DeltaZ < 0 ? -DeltaZ : DeltaZ;
+		return static_cast<int32>(FMath::Min<int64>(
+			MAX_int32,
+			AbsX + AbsY + AbsZ));
+	}
+
+	int32 ComputeMovementBudget(const int32 RemainingActionPoints, const int32 MovementBudgetPercent)
+	{
+		const int64 Budget = static_cast<int64>(RemainingActionPoints) * MovementBudgetPercent / 100;
+		const int64 MaximumSupportedBudget = FMath::Min<int64>(RemainingActionPoints, 1000);
+		return static_cast<int32>(FMath::Clamp<int64>(
+			Budget,
+			1,
+			MaximumSupportedBudget));
+	}
+
 	int32 CoverAt(
 		const FTacticalBattleState& Battle,
 		const FResolvedRuleSet& Rules,
@@ -321,10 +350,16 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 		});
 	if (Mission != nullptr && ControlObjective != nullptr && Unit->RemainingActionPoints > 0)
 	{
+		if (!Battle.IsWithinGrid(ControlObjective->X, ControlObjective->Y, ControlObjective->Z))
+		{
+			AddDiagnostic(Decision, TEXT("invalid_tactical_ai_objective"), TEXT("Tactical AI requires an active control objective on the grid."));
+			Decision.bSucceeded = false;
+			return Decision;
+		}
 		Decision.ObjectiveId = ControlObjective->ObjectiveId;
-		const int32 ObjectiveDistance = FMath::Abs(Unit->X - ControlObjective->X)
-			+ FMath::Abs(Unit->Y - ControlObjective->Y)
-			+ FMath::Abs(Unit->Z - ControlObjective->Z);
+		const int32 ObjectiveDistance = ManhattanDistance(
+			Unit->X, Unit->Y, Unit->Z,
+			ControlObjective->X, ControlObjective->Y, ControlObjective->Z);
 		if (ObjectiveDistance <= 1 && Unit->RemainingActionPoints >= Mission->ObjectiveActionPointCost)
 		{
 			Decision.Goal = ETacticalAiGoal::ControlObjective;
@@ -332,16 +367,15 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 			Decision.DestinationX = ControlObjective->X;
 			Decision.DestinationY = ControlObjective->Y;
 			Decision.DestinationZ = ControlObjective->Z;
-			Decision.UtilityScore = 100000
-				+ (ControlObjective->AdversaryInteractions - ControlObjective->CompletedInteractions) * 1000;
+			Decision.UtilityScore = ClampUtility(
+				100000
+				+ (static_cast<int64>(ControlObjective->AdversaryInteractions)
+					- ControlObjective->CompletedInteractions) * 1000);
 			return Decision;
 		}
 		if (Hostiles.IsEmpty() || Decision.Posture == ETacticalAiPosture::ObjectivePush)
 		{
-			const int32 MovementBudget = FMath::Clamp(
-				Unit->RemainingActionPoints * Policy.MovementBudgetPercent / 100,
-				1,
-				Unit->RemainingActionPoints);
+			const int32 MovementBudget = ComputeMovementBudget(Unit->RemainingActionPoints, Policy.MovementBudgetPercent);
 			const FTacticalReachabilityResult Reachability = FTacticalNavigationService::ComputeReachableCells(
 				Battle, Rules, UnitId, MovementBudget);
 			if (!Reachability.bSucceeded)
@@ -362,9 +396,9 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 					continue;
 				}
 				const FTacticalCellState& CandidateCell = Battle.Cells[Candidate.CellIndex];
-				const int32 Distance = FMath::Abs(Candidate.X - ControlObjective->X)
-					+ FMath::Abs(Candidate.Y - ControlObjective->Y)
-					+ FMath::Abs(Candidate.Z - ControlObjective->Z);
+				const int32 Distance = ManhattanDistance(
+					Candidate.X, Candidate.Y, Candidate.Z,
+					ControlObjective->X, ControlObjective->Y, ControlObjective->Z);
 				const int64 Score = -static_cast<int64>(Distance) * 10000
 					- static_cast<int64>(CandidateCell.Fire) * 500
 					- static_cast<int64>(CandidateCell.Smoke) * 10
@@ -546,10 +580,7 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 		}
 	}
 
-	const int32 MovementBudget = FMath::Clamp(
-		Unit->RemainingActionPoints * Policy.MovementBudgetPercent / 100,
-		1,
-		Unit->RemainingActionPoints);
+	const int32 MovementBudget = ComputeMovementBudget(Unit->RemainingActionPoints, Policy.MovementBudgetPercent);
 	const FTacticalReachabilityResult Reachability = FTacticalNavigationService::ComputeReachableCells(
 		Battle, Rules, UnitId, MovementBudget);
 	if (!Reachability.bSucceeded)

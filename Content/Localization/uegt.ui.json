@@ -5655,6 +5655,11 @@
       "translations": { "en": "Tactical AI selected an unsupported action.", "fr": "L'IA tactique a sélectionné une action non prise en charge.", "de": "Die taktische KI hat eine nicht unterstützte Aktion ausgewählt.", "es": "La IA táctica seleccionó una acción no admitida.", "ja": "戦術AIがサポートされていない行動を選択しました。" }
     },
     {
+      "key": "diagnostic.invalid-tactical-ai-objective",
+      "source": "Tactical AI requires an active control objective on the grid.",
+      "translations": { "en": "Tactical AI requires an active control objective on the grid.", "fr": "L'IA tactique exige un objectif de contrôle actif sur la grille.", "de": "Die taktische KI benötigt ein aktives Kontrollziel im Raster.", "es": "La IA táctica requiere un objetivo de control activo en la cuadrícula.", "ja": "戦術AIにはグリッド上の有効な制圧目標が必要です。" }
+    },
+    {
       "key": "diagnostic.tactical-ai-action-failed",
       "source": "Tactical AI action was rejected; the turn was rolled back.",
       "translations": { "en": "Tactical AI action was rejected; the turn was rolled back.", "fr": "L'action de l'IA tactique a été refusée ; le tour a été annulé.", "de": "Die Aktion der taktischen KI wurde abgelehnt; der Zug wurde zurückgesetzt.", "es": "La acción de la IA táctica fue rechazada; el turno se revirtió.", "ja": "戦術AIの行動が拒否されたため、ターンをロールバックしました。" }

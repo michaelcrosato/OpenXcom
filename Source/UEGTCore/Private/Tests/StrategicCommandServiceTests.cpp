@@ -15184,6 +15184,48 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 		&& ObjectiveDecision.MovementCost > 0
 		&& ObjectiveDecisionDistance < ObjectiveStartDistance);
 
+	FTacticalBattleState InvalidObjectiveProbe = ObjectiveProbe;
+	FTacticalObjectiveState* InvalidObjective = InvalidObjectiveProbe.Objectives.FindByPredicate(
+		[](const FTacticalObjectiveState& Entry)
+		{
+			return Entry.Type == ETacticalObjectiveType::Control;
+		});
+	FTacticalUnitState* InvalidObjectiveAi = InvalidObjectiveProbe.Units.FindByPredicate(
+		[&ObjectiveAiId](const FTacticalUnitState& Entry) { return Entry.UnitId == ObjectiveAiId; });
+	TestNotNull(TEXT("Objective probe contains its control objective"), InvalidObjective);
+	TestNotNull(TEXT("Objective probe contains its adversary unit"), InvalidObjectiveAi);
+	if (InvalidObjective != nullptr && InvalidObjectiveAi != nullptr)
+	{
+		InvalidObjectiveAi->X = 0;
+		InvalidObjective->X = MIN_int32;
+		const FTacticalAiDecision InvalidObjectiveDecision = FTacticalAiService::ChooseAction(
+			InvalidObjectiveProbe, ProbeCampaign, ObjectiveRules, ObjectiveAiId);
+		TestFalse(TEXT("AI rejects an out-of-grid control objective before Manhattan-distance arithmetic"),
+			InvalidObjectiveDecision.bSucceeded);
+		TestTrue(TEXT("Out-of-grid AI objectives have a stable diagnostic"),
+			InvalidObjectiveDecision.HasDiagnostic(TEXT("invalid_tactical_ai_objective")));
+	}
+
+	FTacticalBattleState LargeBudgetProbe = ObjectiveProbe;
+	FTacticalUnitState* LargeBudgetAi = LargeBudgetProbe.Units.FindByPredicate(
+		[&ObjectiveAiId](const FTacticalUnitState& Entry) { return Entry.UnitId == ObjectiveAiId; });
+	TestNotNull(TEXT("Large-budget probe contains its adversary unit"), LargeBudgetAi);
+	if (LargeBudgetAi != nullptr)
+	{
+		LargeBudgetAi->RemainingActionPoints = MAX_int32;
+		FCampaignState ApexObjectiveCampaign = ProbeCampaign;
+		ApexObjectiveCampaign.Difficulty = ECampaignDifficulty::Apex;
+		const FTacticalAiDecision LargeBudgetDecision = FTacticalAiService::ChooseAction(
+			LargeBudgetProbe, ApexObjectiveCampaign, ObjectiveRules, ObjectiveAiId);
+		TestTrue(TEXT("AI widens movement-budget multiplication for extreme action-point snapshots"),
+			LargeBudgetDecision.bSucceeded
+			&& LargeBudgetDecision.Goal == ETacticalAiGoal::ControlObjective
+			&& LargeBudgetDecision.ActionType == ETacticalAiActionType::Move
+			&& LargeBudgetDecision.DestinationX == Objective.X
+			&& LargeBudgetDecision.DestinationY == Objective.Y
+			&& LargeBudgetDecision.DestinationZ == Objective.Z);
+	}
+
 	FResolvedRuleSet SentinelRules = Rules;
 	FTacticalUnitRule* SentinelScout = SentinelRules.TacticalUnits.Find(TEXT("unit.test-scout"));
 	FTacticalMissionRule* SentinelMission = SentinelRules.TacticalMissions.Find(TEXT("tactical.test-recovery"));
