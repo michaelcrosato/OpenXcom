@@ -86,13 +86,21 @@ namespace TacticalAiPrivate
 		const int32 TargetY,
 		const int32 TargetZ)
 	{
-		const int32 DeltaX = TargetX - OriginX;
-		const int32 DeltaY = TargetY - OriginY;
-		const int32 DeltaZ = (TargetZ - OriginZ) * 2;
-		const int32 DistanceSquared = DeltaX * DeltaX + DeltaY * DeltaY + DeltaZ * DeltaZ;
+		const int64 DeltaX = static_cast<int64>(TargetX) - OriginX;
+		const int64 DeltaY = static_cast<int64>(TargetY) - OriginY;
+		const int64 DeltaZ = static_cast<int64>(TargetZ) - OriginZ;
+		const int64 AbsX = DeltaX < 0 ? -DeltaX : DeltaX;
+		const int64 AbsY = DeltaY < 0 ? -DeltaY : DeltaY;
+		const int64 AbsZ = DeltaZ < 0 ? -DeltaZ : DeltaZ;
+		if (AbsX > 128 || AbsY > 128 || AbsZ > 64)
+		{
+			return MAX_int32;
+		}
+		const int64 ScaledZ = AbsZ * 2;
+		const int64 DistanceSquared = AbsX * AbsX + AbsY * AbsY + ScaledZ * ScaledZ;
 		for (int32 Distance = 0; Distance <= 128; ++Distance)
 		{
-			if (Distance * Distance >= DistanceSquared)
+			if (static_cast<int64>(Distance) * Distance >= DistanceSquared)
 			{
 				return Distance;
 			}
@@ -257,6 +265,11 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 		AddDiagnostic(Decision, TEXT("invalid_tactical_ai_unit"), TEXT("Tactical AI requires a living, deployed adversary unit."));
 		return Decision;
 	}
+	if (!Battle.IsWithinGrid(Unit->X, Unit->Y, Unit->Z))
+	{
+		AddDiagnostic(Decision, TEXT("invalid_tactical_ai_unit"), TEXT("Tactical AI requires a living, deployed adversary unit on the grid."));
+		return Decision;
+	}
 	const FTacticalUnitRule* UnitRule = Rules.TacticalUnits.Find(Unit->SourceRuleId);
 	if (UnitRule == nullptr)
 	{
@@ -383,7 +396,8 @@ FTacticalAiDecision FTacticalAiService::ChooseAction(
 		return Decision;
 	}
 
-	const bool bWithdraw = Unit->CurrentHealth * 100 <= Unit->MaxHealth * Policy.RetreatHealthPercent
+	const bool bWithdraw = static_cast<int64>(Unit->CurrentHealth) * 100
+		<= static_cast<int64>(Unit->MaxHealth) * Policy.RetreatHealthPercent
 		|| Unit->CurrentMorale <= FMath::Max(10, Unit->MaxMorale / 5)
 		|| Unit->Suppression >= 80;
 	const FTacticalUnitState* PrimaryTarget = nullptr;

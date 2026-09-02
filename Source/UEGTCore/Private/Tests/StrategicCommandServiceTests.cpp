@@ -15260,6 +15260,33 @@ bool FTacticalAiPerceptionGoalsActionsAndReplayTest::RunTest(const FString& Para
 		&& RetreatDecision.MovementCost > 0
 		&& RetreatDeltaX * RetreatDeltaX + RetreatDeltaY * RetreatDeltaY > 1);
 
+	FTacticalBattleState InvalidPositionProbe = AttackProbe;
+	FTacticalUnitState* InvalidPositionAi = InvalidPositionProbe.Units.FindByPredicate(
+		[&AttackAiId](const FTacticalUnitState& Unit) { return Unit.UnitId == AttackAiId; });
+	if (InvalidPositionAi != nullptr)
+	{
+		InvalidPositionAi->X = MIN_int32;
+		const FTacticalAiDecision InvalidPositionDecision = FTacticalAiService::ChooseAction(
+			InvalidPositionProbe, ProbeCampaign, Rules, AttackAiId);
+		TestFalse(TEXT("AI rejects an adversary outside the battlefield before distance arithmetic"),
+			InvalidPositionDecision.bSucceeded);
+		TestTrue(TEXT("Out-of-grid AI units have a stable tactical-unit diagnostic"),
+			InvalidPositionDecision.HasDiagnostic(TEXT("invalid_tactical_ai_unit")));
+	}
+
+	FTacticalBattleState ExtremeHealthProbe = AttackProbe;
+	FTacticalUnitState* ExtremeHealthAi = ExtremeHealthProbe.Units.FindByPredicate(
+		[&AttackAiId](const FTacticalUnitState& Unit) { return Unit.UnitId == AttackAiId; });
+	if (ExtremeHealthAi != nullptr)
+	{
+		ExtremeHealthAi->MaxHealth = MAX_int32;
+		ExtremeHealthAi->CurrentHealth = 1;
+		const FTacticalAiDecision ExtremeHealthDecision = FTacticalAiService::ChooseAction(
+			ExtremeHealthProbe, ProbeCampaign, Rules, AttackAiId);
+		TestTrue(TEXT("AI widens health-ratio arithmetic and withdraws from a minimally healthy unit"),
+			ExtremeHealthDecision.bSucceeded && ExtremeHealthDecision.Goal == ETacticalAiGoal::Withdraw);
+	}
+
 	FResolvedRuleSet VerticalRules = Rules;
 	FTacticalUnitRule* ShortRangeScout = VerticalRules.TacticalUnits.Find(TEXT("unit.test-scout"));
 	check(ShortRangeScout != nullptr);
