@@ -38,6 +38,8 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 	AdversaryUnitInstances = MakeInstances(TEXT("AdversaryUnitInstances"));
 	LastKnownAdversaryInstances = MakeInstances(TEXT("LastKnownAdversaryInstances"));
 	ObjectiveInstances = MakeInstances(TEXT("ObjectiveInstances"));
+	CompletedObjectiveInstances = MakeInstances(TEXT("CompletedObjectiveInstances"));
+	FailedObjectiveInstances = MakeInstances(TEXT("FailedObjectiveInstances"));
 	PathInstances = MakeInstances(TEXT("PathInstances"));
 	HoverInstances = MakeInstances(TEXT("HoverInstances"));
 	SelectionInstances = MakeInstances(TEXT("SelectionInstances"));
@@ -63,6 +65,7 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 	{
 		PlayerUnitInstances->SetStaticMesh(CylinderMesh.Object);
 		ObjectiveInstances->SetStaticMesh(CylinderMesh.Object);
+		CompletedObjectiveInstances->SetStaticMesh(CylinderMesh.Object);
 		ConnectorInstances->SetStaticMesh(CylinderMesh.Object);
 		CoverInstances->SetStaticMesh(CylinderMesh.Object);
 		SuppressionInstances->SetStaticMesh(CylinderMesh.Object);
@@ -70,6 +73,7 @@ AUEGTTacticalBoardActor::AUEGTTacticalBoardActor()
 	if (ConeMesh.Succeeded())
 	{
 		AdversaryUnitInstances->SetStaticMesh(ConeMesh.Object);
+		FailedObjectiveInstances->SetStaticMesh(ConeMesh.Object);
 		FireInstances->SetStaticMesh(ConeMesh.Object);
 	}
 	if (SphereMesh.Succeeded())
@@ -111,6 +115,8 @@ void AUEGTTacticalBoardActor::BeginPlay()
 	ConfigureMeshComponent(AdversaryUnitInstances, true);
 	ConfigureMeshComponent(LastKnownAdversaryInstances, false);
 	ConfigureMeshComponent(ObjectiveInstances, true);
+	ConfigureMeshComponent(CompletedObjectiveInstances, false);
+	ConfigureMeshComponent(FailedObjectiveInstances, false);
 	ConfigureMeshComponent(PathInstances, false);
 	ConfigureMeshComponent(HoverInstances, false);
 	ConfigureMeshComponent(SelectionInstances, false);
@@ -215,6 +221,8 @@ void AUEGTTacticalBoardActor::ApplyPalette()
 		{ AdversaryUnitInstances, TEXT("AdversaryMaterial"), Tone(AdversaryColor) },
 		{ LastKnownAdversaryInstances, TEXT("LastKnownAdversaryMaterial"), Tone(FLinearColor(AdversaryColor.R * 0.38f, AdversaryColor.G * 0.38f, AdversaryColor.B * 0.38f)) },
 		{ ObjectiveInstances, TEXT("ObjectiveMaterial"), Tone(ObjectiveColor) },
+		{ CompletedObjectiveInstances, TEXT("CompletedObjectiveMaterial"), FLinearColor(0.16f, 0.9f, 0.42f) },
+		{ FailedObjectiveInstances, TEXT("FailedObjectiveMaterial"), FLinearColor(0.95f, 0.18f, 0.28f) },
 		{ PathInstances, TEXT("PathMaterial"), FLinearColor(0.1f, 0.9f, 0.55f) },
 		{ HoverInstances, TEXT("HoverMaterial"), FLinearColor(0.85f, 0.95f, 1.0f) },
 		{ SelectionInstances, TEXT("SelectionMaterial"), FLinearColor(0.0f, 0.95f, 1.0f) },
@@ -503,7 +511,7 @@ void AUEGTTacticalBoardActor::ClearBoard()
 {
 	for (UInstancedStaticMeshComponent* Component : {
 		GroundInstances.Get(), FogMemoryInstances.Get(), BlockerInstances.Get(), DoorInstances.Get(), ConnectorInstances.Get(), CoverInstances.Get(), SuppressionInstances.Get(), DeploymentInstances.Get(), ExtractionInstances.Get(), PlayerUnitInstances.Get(),
-		AdversaryUnitInstances.Get(), LastKnownAdversaryInstances.Get(), ObjectiveInstances.Get(), PathInstances.Get(), HoverInstances.Get(),
+		AdversaryUnitInstances.Get(), LastKnownAdversaryInstances.Get(), ObjectiveInstances.Get(), CompletedObjectiveInstances.Get(), FailedObjectiveInstances.Get(), PathInstances.Get(), HoverInstances.Get(),
 		SelectionInstances.Get(), SmokeInstances.Get(), FireInstances.Get() })
 	{
 		if (Component != nullptr)
@@ -608,19 +616,30 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 
 	for (const FTacticalHudObjectiveView& Objective : Snapshot.Objectives)
 	{
-		if (Objective.Z != Snapshot.ViewedLevel || Objective.Status != ETacticalObjectiveStatus::Active)
+		if (Objective.Z != Snapshot.ViewedLevel)
 		{
 			continue;
 		}
 		const FIntVector Cell(Objective.X, Objective.Y, Objective.Z);
-		ObjectiveIds.Add(Objective.ObjectiveId);
-		ObjectiveCells.Add(Cell);
-		AddCellMarker(
-			ObjectiveInstances,
-			Cell,
-			30.0f,
-			0.34f,
-			CalculateObjectiveMarkerHeightScale(Objective));
+		if (Objective.Status == ETacticalObjectiveStatus::Active)
+		{
+			ObjectiveIds.Add(Objective.ObjectiveId);
+			ObjectiveCells.Add(Cell);
+			AddCellMarker(
+				ObjectiveInstances,
+				Cell,
+				30.0f,
+				0.34f,
+				CalculateObjectiveMarkerHeightScale(Objective));
+		}
+		else if (Objective.Status == ETacticalObjectiveStatus::Completed)
+		{
+			AddCellMarker(CompletedObjectiveInstances, Cell, 30.0f, 0.38f, 0.2f);
+		}
+		else if (Objective.Status == ETacticalObjectiveStatus::Failed)
+		{
+			AddCellMarker(FailedObjectiveInstances, Cell, 30.0f, 0.38f, 0.42f);
+		}
 	}
 
 	for (const FTacticalHudUnitView& Unit : Snapshot.Units)
@@ -775,6 +794,16 @@ int32 AUEGTTacticalBoardActor::GetRenderedObjectiveCount() const
 	return ObjectiveInstances != nullptr ? ObjectiveInstances->GetInstanceCount() : 0;
 }
 
+int32 AUEGTTacticalBoardActor::GetRenderedCompletedObjectiveCount() const
+{
+	return CompletedObjectiveInstances != nullptr ? CompletedObjectiveInstances->GetInstanceCount() : 0;
+}
+
+int32 AUEGTTacticalBoardActor::GetRenderedFailedObjectiveCount() const
+{
+	return FailedObjectiveInstances != nullptr ? FailedObjectiveInstances->GetInstanceCount() : 0;
+}
+
 int32 AUEGTTacticalBoardActor::GetRenderedPathCount() const
 {
 	return PathInstances != nullptr ? PathInstances->GetInstanceCount() : 0;
@@ -835,6 +864,12 @@ bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const
 		: nullptr;
 	const UStaticMesh* SmokeMesh = SmokeInstances != nullptr ? SmokeInstances->GetStaticMesh() : nullptr;
 	const UStaticMesh* FireMesh = FireInstances != nullptr ? FireInstances->GetStaticMesh() : nullptr;
+	const UStaticMesh* CompletedObjectiveMesh = CompletedObjectiveInstances != nullptr
+		? CompletedObjectiveInstances->GetStaticMesh()
+		: nullptr;
+	const UStaticMesh* FailedObjectiveMesh = FailedObjectiveInstances != nullptr
+		? FailedObjectiveInstances->GetStaticMesh()
+		: nullptr;
 	return GroundMesh != nullptr
 		&& PlayerMesh != nullptr
 		&& AdversaryMesh != nullptr
@@ -846,6 +881,8 @@ bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const
 		&& ExtractionMesh != nullptr
 		&& SmokeMesh != nullptr
 		&& FireMesh != nullptr
+		&& CompletedObjectiveMesh != nullptr
+		&& FailedObjectiveMesh != nullptr
 		&& GroundMesh != PlayerMesh
 		&& PlayerMesh != AdversaryMesh
 		&& AdversaryMesh != LastKnownMesh

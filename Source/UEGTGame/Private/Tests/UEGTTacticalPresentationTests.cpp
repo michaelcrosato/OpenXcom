@@ -233,6 +233,16 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	Objective.AdversaryInteractions = 1;
 	Objective.RequiredInteractions = 3;
 	Objective.Status = ETacticalObjectiveStatus::Active;
+	FTacticalHudObjectiveView& CompletedObjective = Snapshot.Objectives.AddDefaulted_GetRef();
+	CompletedObjective.ObjectiveId = TEXT("objective.runtime-complete");
+	CompletedObjective.X = 1;
+	CompletedObjective.Y = 1;
+	CompletedObjective.Status = ETacticalObjectiveStatus::Completed;
+	FTacticalHudObjectiveView& FailedObjective = Snapshot.Objectives.AddDefaulted_GetRef();
+	FailedObjective.ObjectiveId = TEXT("objective.runtime-failed");
+	FailedObjective.X = 2;
+	FailedObjective.Y = 1;
+	FailedObjective.Status = ETacticalObjectiveStatus::Failed;
 	Snapshot.Hover.bHasCell = true;
 	Snapshot.Hover.bCellVisible = true;
 	Snapshot.Hover.X = 2;
@@ -258,6 +268,8 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Visible adversary presentation uses its own instance set"), Board->GetRenderedAdversaryUnitCount(), 1);
 	TestEqual(TEXT("Last-known adversary presentation uses a separate subdued instance set"), Board->GetRenderedLastKnownAdversaryCount(), 1);
 	TestEqual(TEXT("Active objective receives a board marker"), Board->GetRenderedObjectiveCount(), 1);
+	TestEqual(TEXT("Completed objectives retain a non-interactive terminal marker"), Board->GetRenderedCompletedObjectiveCount(), 1);
+	TestEqual(TEXT("Failed objectives retain a non-interactive terminal marker"), Board->GetRenderedFailedObjectiveCount(), 1);
 	TestEqual(TEXT("Path previews render every visible-level step"), Board->GetRenderedPathCount(), 2);
 	TestEqual(TEXT("Selected units receive a dedicated emphasis marker"), Board->GetRenderedSelectionCount(), 1);
 	TestEqual(TEXT("Vertical connector cells receive a dedicated traversal marker"), Board->GetRenderedConnectorCount(), 1);
@@ -547,6 +559,8 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Board clears generated instances atomically"), Board->GetRenderedGroundCount(), 0);
 	TestEqual(TEXT("Board also clears fog-memory instances atomically"), Board->GetRenderedFogMemoryCount(), 0);
 	TestEqual(TEXT("Board also clears last-known adversary markers atomically"), Board->GetRenderedLastKnownAdversaryCount(), 0);
+	TestEqual(TEXT("Board clears completed objective markers atomically"), Board->GetRenderedCompletedObjectiveCount(), 0);
+	TestEqual(TEXT("Board clears failed objective markers atomically"), Board->GetRenderedFailedObjectiveCount(), 0);
 	TestTrue(TEXT("Temporary game world shuts down cleanly"), TestWorld.DestroyTestWorld(false));
 	return true;
 }
