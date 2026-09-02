@@ -2169,6 +2169,7 @@ namespace CampaignSavePrivate
 		{
 			TSet<FGuid> SeenBases;
 			TSet<FGuid> SeenFacilityInstances;
+			TSet<FString> SeenFacilityOrigins;
 			for (const FStrategicBaseState& Base : State.Bases)
 			{
 				if (!Base.BaseId.IsValid() || SeenBases.Contains(Base.BaseId))
@@ -2247,7 +2248,11 @@ namespace CampaignSavePrivate
 				{
 					for (const FBaseFacilityState& Facility : Base.Facilities)
 					{
+						const FString FacilityOrigin = FString::Printf(
+							TEXT("%s|%d|%d"),
+							*Base.BaseId.ToString(EGuidFormats::Digits), Facility.GridX, Facility.GridY);
 						if (!Facility.InstanceId.IsValid() || SeenFacilityInstances.Contains(Facility.InstanceId)
+							|| SeenFacilityOrigins.Contains(FacilityOrigin)
 							|| !FContentPackageResolver::IsValidPackageId(Facility.FacilityId)
 							|| Facility.GridX < 0 || Facility.GridY < 0
 							|| (Header.FormatVersion >= 19
@@ -2259,6 +2264,7 @@ namespace CampaignSavePrivate
 							AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_facility_placement"), FString::Printf(TEXT("Base '%s' has an invalid positioned facility '%s'."), *Base.Name, *Facility.FacilityId.ToString()));
 						}
 						SeenFacilityInstances.Add(Facility.InstanceId);
+						SeenFacilityOrigins.Add(FacilityOrigin);
 					}
 				}
 				if (Header.FormatVersion >= 4)
@@ -2492,8 +2498,12 @@ namespace CampaignSavePrivate
 				TSet<FGuid> SeenConstructionProjects;
 				for (const FFacilityConstructionProjectState& Project : State.FacilityConstructionProjects)
 				{
+					const FString ProjectOrigin = FString::Printf(
+						TEXT("%s|%d|%d"),
+						*Project.BaseId.ToString(EGuidFormats::Digits), Project.GridX, Project.GridY);
 					if (!Project.ProjectId.IsValid() || SeenConstructionProjects.Contains(Project.ProjectId)
 						|| !Project.FacilityInstanceId.IsValid() || SeenFacilityInstances.Contains(Project.FacilityInstanceId)
+						|| SeenFacilityOrigins.Contains(ProjectOrigin)
 						|| !SeenBases.Contains(Project.BaseId)
 						|| !FContentPackageResolver::IsValidPackageId(Project.FacilityId)
 						|| Project.GridX < 0 || Project.GridY < 0
@@ -2503,6 +2513,7 @@ namespace CampaignSavePrivate
 					}
 					SeenConstructionProjects.Add(Project.ProjectId);
 					SeenFacilityInstances.Add(Project.FacilityInstanceId);
+					SeenFacilityOrigins.Add(ProjectOrigin);
 				}
 			}
 

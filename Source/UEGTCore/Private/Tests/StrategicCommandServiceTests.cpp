@@ -6767,6 +6767,39 @@ bool FStrategicFacilityConstructionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Construction project round-trips"), ActiveRead.Envelope.State.FacilityConstructionProjects.Num(), 1);
 	TestEqual(TEXT("Positioned starting facility round-trips"), ActiveRead.Envelope.State.Bases[0].Facilities.Num(), 1);
 
+	if (State.Bases.Num() == 1 && State.Bases[0].Facilities.Num() == 1
+		&& State.FacilityConstructionProjects.Num() == 1)
+	{
+		FCampaignState DuplicateInstalledState = State;
+		FBaseFacilityState& DuplicateInstalled = DuplicateInstalledState.Bases[0].Facilities.AddDefaulted_GetRef();
+		DuplicateInstalled = DuplicateInstalledState.Bases[0].Facilities[0];
+		DuplicateInstalled.InstanceId = FGuid(121, 122, 123, 125);
+		const FCampaignSaveValidationResult DuplicateInstalledValidation = FCampaignSaveCodec::Validate(
+			FCampaignSaveCodec::CreateNew(
+				DuplicateInstalledState,
+				MakePackages(),
+				TEXT("0.5.0-duplicate-installed-facility-origin"),
+				DuplicateInstalledState.StrategicTime.Utc,
+				FGuid(126, 127, 128, 129)),
+			MakePackages());
+		TestFalse(TEXT("Saves reject installed facilities at the same grid origin"), DuplicateInstalledValidation.bSucceeded);
+		TestTrue(TEXT("Duplicate installed facility origins are diagnosed"), DuplicateInstalledValidation.HasDiagnostic(TEXT("invalid_facility_placement")));
+
+		FCampaignState DuplicateProjectState = State;
+		DuplicateProjectState.FacilityConstructionProjects[0].GridX = DuplicateProjectState.Bases[0].Facilities[0].GridX;
+		DuplicateProjectState.FacilityConstructionProjects[0].GridY = DuplicateProjectState.Bases[0].Facilities[0].GridY;
+		const FCampaignSaveValidationResult DuplicateProjectValidation = FCampaignSaveCodec::Validate(
+			FCampaignSaveCodec::CreateNew(
+				DuplicateProjectState,
+				MakePackages(),
+				TEXT("0.5.0-duplicate-project-facility-origin"),
+				DuplicateProjectState.StrategicTime.Utc,
+				FGuid(130, 131, 132, 133)),
+			MakePackages());
+		TestFalse(TEXT("Saves reject construction at an installed facility origin"), DuplicateProjectValidation.bSucceeded);
+		TestTrue(TEXT("Installed and pending facility origin collisions are diagnosed"), DuplicateProjectValidation.HasDiagnostic(TEXT("invalid_construction_project")));
+	}
+
 	FAdvanceStrategicTimeCommand Advance;
 	Advance.ExpectedSequence = State.CommandSequence;
 	Advance.Rate = EStrategicTimeRate::OneHour;
