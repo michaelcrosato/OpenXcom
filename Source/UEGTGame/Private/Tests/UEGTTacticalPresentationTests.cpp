@@ -574,9 +574,12 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	const FVector GridLocation = Board->GridToWorld(2, 3, 1, 10.0f);
 	TestTrue(TEXT("Grid projection uses stable cell and level spacing"), GridLocation.Equals(FVector(250.0f, 350.0f, 190.0f)));
 
+	Camera->OrbitGlobe(20.0f, 1000.0f);
 	Camera->FocusBoard(20, 28, 0, Board->GetCellSize(), Board->GetLevelHeight());
 	TestTrue(TEXT("Board focus selects a bounded useful zoom"), Camera->GetZoomDistance() >= 650.0f
 		&& Camera->GetZoomDistance() <= 3600.0f);
+	TestEqual(TEXT("Board focus restores the tactical camera pitch after globe viewing"),
+		Camera->GetCameraPitch(), -55.0f);
 	const float FocusedZoom = Camera->GetZoomDistance();
 	Camera->FocusCell(2, 3, 1, Board->GetCellSize(), Board->GetLevelHeight());
 	TestTrue(TEXT("Selection focus centers the exact tactical cell"),

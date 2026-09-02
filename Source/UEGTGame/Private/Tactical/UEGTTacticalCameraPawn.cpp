@@ -43,6 +43,7 @@ void AUEGTTacticalCameraPawn::FocusBoard(
 		FMath::Max(1, Height) * CellSize * 0.5f,
 		ViewedLevel * LevelHeight);
 	SetActorLocation(Focus);
+	SpringArm->SetRelativeRotation(FRotator(-55.0f, -45.0f, 0.0f));
 	const float BoardSpan = FMath::Max(Width, Height) * CellSize;
 	SpringArm->TargetArmLength = FMath::Clamp(BoardSpan * 1.2f, MinimumZoom, MaximumZoom);
 }
