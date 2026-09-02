@@ -301,6 +301,68 @@ void AUEGTTacticalBoardActor::UpdateAnimatedEffects(const bool bAnimate)
 		7.0f,
 		2.25f,
 		1.17f);
+	const auto UpdateEmphasis = [this, bAnimate](
+		UInstancedStaticMeshComponent* Component,
+		const TArray<FIntVector>& Cells,
+		const float BaseHeight,
+		const float BaseXYScale,
+		const float BaseZScale,
+		const float XYAmplitude,
+		const float ZAmplitude,
+		const float HeightAmplitude,
+		const float Frequency,
+		const float PhaseStep)
+	{
+		if (Component == nullptr)
+		{
+			return;
+		}
+		const int32 Count = FMath::Min(Component->GetInstanceCount(), Cells.Num());
+		for (int32 Index = 0; Index < Count; ++Index)
+		{
+			const float Pulse = bAnimate
+				? FMath::Sin(PresentationAnimationTimeSeconds * Frequency + Index * PhaseStep)
+				: 0.0f;
+			const FIntVector& Cell = Cells[Index];
+			const FVector Local(
+				(static_cast<float>(Cell.X) + 0.5f) * CellSize,
+				(static_cast<float>(Cell.Y) + 0.5f) * CellSize,
+				static_cast<float>(Cell.Z) * LevelHeight + BaseHeight + Pulse * HeightAmplitude);
+			const float XYScale = BaseXYScale * (1.0f + Pulse * XYAmplitude);
+			const float ZScale = BaseZScale * (1.0f + Pulse * ZAmplitude);
+			Component->UpdateInstanceTransform(
+				Index,
+				FTransform(
+					FRotator::ZeroRotator,
+					Local,
+					FVector(XYScale * CellSize / 100.0f, XYScale * CellSize / 100.0f, ZScale)),
+				false,
+				true,
+				false);
+		}
+	};
+	UpdateEmphasis(
+		ObjectiveInstances,
+		ObjectiveCells,
+		30.0f,
+		0.34f,
+		0.55f,
+		0.08f,
+		0.12f,
+		3.0f,
+		1.8f,
+		0.83f);
+	UpdateEmphasis(
+		SelectionInstances,
+		SelectionCells,
+		5.0f,
+		0.76f,
+		0.025f,
+		0.06f,
+		0.08f,
+		1.0f,
+		2.4f,
+		1.13f);
 }
 
 FVector AUEGTTacticalBoardActor::GridToWorld(
@@ -388,6 +450,7 @@ void AUEGTTacticalBoardActor::ClearBoard()
 	AdversaryUnitCells.Reset();
 	ObjectiveIds.Reset();
 	ObjectiveCells.Reset();
+	SelectionCells.Reset();
 }
 
 void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot)
@@ -478,6 +541,7 @@ void AUEGTTacticalBoardActor::ApplySnapshot(const FTacticalHudSnapshot& Snapshot
 		}
 		if (Unit.bSelected)
 		{
+			SelectionCells.Add(Cell);
 			AddCellMarker(SelectionInstances, Cell, 5.0f, 0.76f, 0.025f);
 		}
 	}
@@ -588,6 +652,11 @@ int32 AUEGTTacticalBoardActor::GetRenderedLastKnownAdversaryCount() const
 int32 AUEGTTacticalBoardActor::GetRenderedObjectiveCount() const
 {
 	return ObjectiveInstances != nullptr ? ObjectiveInstances->GetInstanceCount() : 0;
+}
+
+int32 AUEGTTacticalBoardActor::GetRenderedSelectionCount() const
+{
+	return SelectionInstances != nullptr ? SelectionInstances->GetInstanceCount() : 0;
 }
 
 bool AUEGTTacticalBoardActor::UsesSemanticMarkerGeometry() const

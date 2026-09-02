@@ -79,6 +79,7 @@ public:
 	int32 GetRenderedAdversaryUnitCount() const;
 	int32 GetRenderedLastKnownAdversaryCount() const;
 	int32 GetRenderedObjectiveCount() const;
+	int32 GetRenderedSelectionCount() const;
 	/** Returns whether the board has loaded the semantic primitive profile for tactical markers. */
 	bool UsesSemanticMarkerGeometry() const;
 	/** Deterministic height encoding for a currently visible unit's stance and health. */
@@ -170,6 +171,7 @@ private:
 	TArray<FIntVector> AdversaryUnitCells;
 	TArray<FName> ObjectiveIds;
 	TArray<FIntVector> ObjectiveCells;
+	TArray<FIntVector> SelectionCells;
 	EUEGTColorVisionMode ColorVisionMode = EUEGTColorVisionMode::Standard;
 	bool bUseHighContrast = true;
 	bool bReduceMotion = true;

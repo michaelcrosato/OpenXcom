@@ -168,6 +168,7 @@ bool FUEGTTacticalRuntimePresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Visible adversary presentation uses its own instance set"), Board->GetRenderedAdversaryUnitCount(), 1);
 	TestEqual(TEXT("Last-known adversary presentation uses a separate subdued instance set"), Board->GetRenderedLastKnownAdversaryCount(), 1);
 	TestEqual(TEXT("Active objective receives a board marker"), Board->GetRenderedObjectiveCount(), 1);
+	TestEqual(TEXT("Selected units receive a dedicated emphasis marker"), Board->GetRenderedSelectionCount(), 1);
 	UUEGTTacticalHudWidget* Hud = CreateWidget<UUEGTTacticalHudWidget>(
 		World, UUEGTTacticalHudWidget::StaticClass());
 	TestNotNull(TEXT("Native tactical HUD constructs without a widget blueprint"), Hud);
