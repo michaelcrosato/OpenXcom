@@ -166,6 +166,29 @@ bool FCampaignSaveBaseAssaultRoundTripTest::RunTest(const FString& Parameters)
 		&& Read.Envelope.State.BaseAssaults[0].AssaultId == AssaultId
 		&& Read.Envelope.State.BaseAssaults[0].ContactId == ContactId
 		&& Read.Envelope.State.BaseAssaults[0].ArrivedUtc == State.StrategicTime.Utc);
+	FCampaignSaveEnvelope InvalidContactPosition = Write.Envelope;
+	InvalidContactPosition.State.BaseAssaults.Reset();
+	FStrategicContactState* InFlightContact =
+		InvalidContactPosition.State.StrategicContacts.FindByPredicate(
+			[&ContactId](FStrategicContactState& Entry)
+			{
+				return Entry.ContactId == ContactId;
+			});
+	TestNotNull(TEXT("In-flight contact remains addressable for position validation"),
+		InFlightContact);
+	if (InFlightContact != nullptr)
+	{
+		InFlightContact->ElapsedRouteSeconds = InFlightContact->TotalRouteSeconds / 2;
+		InFlightContact->LongitudeMilliDegrees =
+			InFlightContact->DestinationLongitudeMilliDegrees;
+		InFlightContact->LatitudeMilliDegrees =
+			InFlightContact->DestinationLatitudeMilliDegrees;
+		const FCampaignSaveValidationResult InvalidPositionValidation =
+			FCampaignSaveCodec::Validate(InvalidContactPosition);
+		TestTrue(TEXT("Persisted in-flight contacts must use their deterministic route position"),
+			!InvalidPositionValidation.bSucceeded
+			&& InvalidPositionValidation.HasDiagnostic(TEXT("invalid_strategic_contact")));
+	}
 	return true;
 }
 

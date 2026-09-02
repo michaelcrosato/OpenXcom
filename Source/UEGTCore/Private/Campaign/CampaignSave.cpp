@@ -2031,6 +2031,49 @@ namespace CampaignSavePrivate
 			&& LatitudeMilliDegrees >= -90000 && LatitudeMilliDegrees <= 90000;
 	}
 
+	bool IsContactPositionConsistent(const FStrategicContactState& Contact)
+	{
+		if (Contact.TotalRouteSeconds <= 0 || Contact.ElapsedRouteSeconds < 0
+			|| Contact.ElapsedRouteSeconds > Contact.TotalRouteSeconds)
+		{
+			return false;
+		}
+		int64 LongitudeDelta = static_cast<int64>(Contact.DestinationLongitudeMilliDegrees)
+			- Contact.OriginLongitudeMilliDegrees;
+		if (LongitudeDelta > 180000)
+		{
+			LongitudeDelta -= 360000;
+		}
+		else if (LongitudeDelta < -180000)
+		{
+			LongitudeDelta += 360000;
+		}
+		const int64 LatitudeDelta = static_cast<int64>(Contact.DestinationLatitudeMilliDegrees)
+			- Contact.OriginLatitudeMilliDegrees;
+		const int64 ClampedElapsed = Contact.ElapsedRouteSeconds;
+		if ((LongitudeDelta != 0
+				&& ClampedElapsed > MAX_int64 / FMath::Abs(LongitudeDelta))
+			|| (LatitudeDelta != 0
+				&& ClampedElapsed > MAX_int64 / FMath::Abs(LatitudeDelta)))
+		{
+			return false;
+		}
+		int64 ExpectedLongitude = static_cast<int64>(Contact.OriginLongitudeMilliDegrees)
+			+ LongitudeDelta * ClampedElapsed / Contact.TotalRouteSeconds;
+		while (ExpectedLongitude > 180000)
+		{
+			ExpectedLongitude -= 360000;
+		}
+		while (ExpectedLongitude < -180000)
+		{
+			ExpectedLongitude += 360000;
+		}
+		const int64 ExpectedLatitude = static_cast<int64>(Contact.OriginLatitudeMilliDegrees)
+			+ LatitudeDelta * ClampedElapsed / Contact.TotalRouteSeconds;
+		return Contact.LongitudeMilliDegrees == ExpectedLongitude
+			&& Contact.LatitudeMilliDegrees == ExpectedLatitude;
+	}
+
 	FCampaignSaveValidationResult ValidateInternal(
 		const FCampaignSaveEnvelope& Envelope,
 		const TArray<FCampaignContentVersion>* ExpectedContentPackages,
@@ -2728,6 +2771,7 @@ namespace CampaignSavePrivate
 							|| (bPendingAssault
 								? Contact.ElapsedRouteSeconds != Contact.TotalRouteSeconds
 								: Contact.ElapsedRouteSeconds >= Contact.TotalRouteSeconds)
+							|| !IsContactPositionConsistent(Contact)
 							|| Contact.CurrentHull <= 0
 							|| (Header.FormatVersion >= 9
 								&& (Contact.CompletedCombatRounds < 0 || Contact.RemainingAttackCooldownSeconds < 0)))
