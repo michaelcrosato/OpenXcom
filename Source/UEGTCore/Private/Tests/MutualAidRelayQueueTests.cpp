@@ -157,6 +157,299 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMutualAidRelayQueueBalanceCorpusTest,
+	"UEGT.Core.Strategic.MutualAidRelayQueue.SeededPressureCorpus",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMutualAidRelayQueueBalanceCorpusTest::RunTest(const FString& Parameters)
+{
+	FResolvedRuleSet Rules;
+	const auto AddFacilityRule = [&Rules](
+		const FName RuleId,
+		const int32 DetectionStrength,
+		const int32 MaxIntegrity)
+	{
+		FFacilityRule Rule;
+		Rule.Identity.RuleId = RuleId;
+		Rule.DisplayName = RuleId.ToString();
+		Rule.DetectionStrength = DetectionStrength;
+		Rule.MaxIntegrity = MaxIntegrity;
+		Rules.Facilities.Add(Rule.Identity.RuleId, Rule);
+	};
+	AddFacilityRule(TEXT("facility.corpus-relay-hub"), 20, 100);
+	AddFacilityRule(TEXT("facility.corpus-relay-array"), 50, 200);
+	AddFacilityRule(TEXT("facility.corpus-relay-lattice"), 100, 300);
+
+	constexpr int32 ScenarioCount = 256;
+	int32 ScenariosWithPressure = 0;
+	int32 ScenariosWithoutCapacity = 0;
+	int32 ScenariosWithMultipleChannels = 0;
+	int32 MaximumPressure = 0;
+	int64 TotalWaitingConvoys = 0;
+	bool bCorpusValid = true;
+	bool bReportedFailure = false;
+	for (int32 Seed = 0; Seed < ScenarioCount; ++Seed)
+	{
+		bool bScenarioValid = true;
+		int32 FirstFailureKind = 0;
+		FCampaignState Campaign;
+		Campaign.CommandSequence = 10000 + Seed;
+		const uint64 InitialSimulationState = Campaign.SimulationRandom.GetStateForSave();
+		const int64 InitialSimulationDraws = Campaign.SimulationRandom.DrawCount;
+		FStrategicBaseState& Source = Campaign.Bases.AddDefaulted_GetRef();
+		Source.BaseId = FGuid(
+			static_cast<uint32>(0x6c000000 + Seed), 0x6c000001, 0x6c000002, 0x6c000003);
+		Source.Name = TEXT("Corpus Relay Source");
+
+		const int32 FacilityCount = 1 + (Seed % 4);
+		for (int32 FacilityIndex = 0; FacilityIndex < FacilityCount; ++FacilityIndex)
+		{
+			const int32 RuleIndex = (Seed + FacilityIndex) % 3;
+			const FName RuleId = RuleIndex == 0
+				? FName(TEXT("facility.corpus-relay-hub"))
+				: RuleIndex == 1
+					? FName(TEXT("facility.corpus-relay-array"))
+					: FName(TEXT("facility.corpus-relay-lattice"));
+			const FFacilityRule& Rule = Rules.Facilities.FindChecked(RuleId);
+			FBaseFacilityState& Facility = Source.Facilities.AddDefaulted_GetRef();
+			Facility.InstanceId = FGuid(
+				static_cast<uint32>(0x6c100000 + Seed),
+				static_cast<uint32>(0x6c200000 + FacilityIndex), 0x6c300000, 0x6c400000);
+			Facility.FacilityId = RuleId;
+			Facility.Damage = Seed % 11 == 0
+				? Rule.MaxIntegrity
+				: ((Seed + 3) * (FacilityIndex + 5) * 17) % (Rule.MaxIntegrity + 1);
+		}
+
+		const int32 ConvoyCount = 1 + (Seed % 7);
+		for (int32 ConvoyIndex = 0; ConvoyIndex < ConvoyCount; ++ConvoyIndex)
+		{
+			FMutualAidConvoyState& Convoy = Campaign.MutualAidConvoys.AddDefaulted_GetRef();
+			Convoy.ConvoyId = FGuid(
+				static_cast<uint32>(0x6c500000 + Seed),
+				static_cast<uint32>(0x6c600000 + ConvoyIndex), 0x6c700000, 0x6c800000);
+			Convoy.SourceBaseId = Source.BaseId;
+			Convoy.DestinationBaseId = FGuid(0x6c900000, 0x6c900001, 0x6c900002, 0x6c900003);
+			Convoy.DispatchSequence = 100 + ConvoyIndex;
+			Convoy.TotalTransitSeconds = static_cast<int64>(
+				12 + ((Seed * 11 + ConvoyIndex * 19) % 85)) * 3600;
+			Convoy.RemainingTransitSeconds = Convoy.TotalTransitSeconds;
+			Convoy.bInterdictionResolved = (Seed + ConvoyIndex) % 3 != 0;
+			Convoy.ForecastInterdictionDelaySeconds = static_cast<int64>(
+				6 + ((Seed + ConvoyIndex * 5) % 19)) * 3600;
+		}
+		Algo::Reverse(Campaign.MutualAidConvoys);
+
+		const FMutualAidRelayQueueSnapshot Snapshot =
+			FMutualAidRelayQueue::Evaluate(Campaign, Rules);
+		const FMutualAidRelayQueueBaseView* BaseView = Snapshot.FindBase(Source.BaseId);
+		const int32 RelayChannelCount = FMutualAidRelayQueue::EvaluateRelayChannelCount(
+			Source, Rules);
+		const int32 ExpectedActiveCount = FMath::Min(RelayChannelCount, ConvoyCount);
+		const int32 ExpectedWaitingCount = FMath::Max(0, ConvoyCount - ExpectedActiveCount);
+		const int32 ExpectedPressure = ConvoyCount <= 0
+			? 0
+			: FMath::Clamp<int32>(static_cast<int32>(
+				(static_cast<int64>(ExpectedWaitingCount) * 100 + ConvoyCount - 1) / ConvoyCount), 0, 100);
+		ScenariosWithPressure += ExpectedWaitingCount > 0 ? 1 : 0;
+		ScenariosWithoutCapacity += RelayChannelCount <= 0 ? 1 : 0;
+		ScenariosWithMultipleChannels += RelayChannelCount >= 2 ? 1 : 0;
+		MaximumPressure = FMath::Max(MaximumPressure, ExpectedPressure);
+		TotalWaitingConvoys += ExpectedWaitingCount;
+
+		TArray<int32> OrderedIndices;
+		OrderedIndices.Reserve(ConvoyCount);
+		for (int32 Index = 0; Index < ConvoyCount; ++Index)
+		{
+			OrderedIndices.Add(Index);
+		}
+		OrderedIndices.Sort(
+			[&Campaign](const int32 Left, const int32 Right)
+			{
+				return Campaign.MutualAidConvoys[Left].DispatchSequence
+					< Campaign.MutualAidConvoys[Right].DispatchSequence;
+			});
+
+		TArray<int64> ChannelAvailableSeconds;
+		ChannelAvailableSeconds.Init(0, ExpectedActiveCount);
+		int64 ExpectedTailArrivalSeconds = 0;
+		for (int32 JobIndex = 0; JobIndex < OrderedIndices.Num(); ++JobIndex)
+		{
+			const FMutualAidConvoyState& Convoy =
+				Campaign.MutualAidConvoys[OrderedIndices[JobIndex]];
+			const FMutualAidRelayQueueView* View = Snapshot.FindConvoy(Convoy.ConvoyId);
+			const int64 JourneySeconds = FMutualAidRelayQueue::ProjectedJourneySeconds(Convoy);
+			const bool bAvailable = ExpectedActiveCount > 0;
+			int32 ExpectedChannelIndex = INDEX_NONE;
+			int64 ExpectedWaitSeconds = 0;
+			int64 ExpectedArrivalSeconds = 0;
+			if (bAvailable)
+			{
+				ExpectedChannelIndex = 0;
+				for (int32 Candidate = 1; Candidate < ChannelAvailableSeconds.Num(); ++Candidate)
+				{
+					if (ChannelAvailableSeconds[Candidate] < ChannelAvailableSeconds[ExpectedChannelIndex])
+					{
+						ExpectedChannelIndex = Candidate;
+					}
+				}
+				ExpectedWaitSeconds = ChannelAvailableSeconds[ExpectedChannelIndex];
+				ExpectedArrivalSeconds = ExpectedWaitSeconds + JourneySeconds;
+				ChannelAvailableSeconds[ExpectedChannelIndex] = ExpectedArrivalSeconds;
+				ExpectedTailArrivalSeconds = FMath::Max(
+					ExpectedTailArrivalSeconds, ExpectedArrivalSeconds);
+			}
+			const bool bExpectedInTransit = bAvailable && ExpectedWaitSeconds == 0;
+			const int32 ExpectedWaitingPosition = bAvailable
+				? bExpectedInTransit ? 0 : JobIndex - ExpectedActiveCount + 1
+				: JobIndex + 1;
+			const bool bViewValid = View != nullptr
+				&& View->QueuePosition == JobIndex + 1
+				&& View->WaitingPosition == ExpectedWaitingPosition
+				&& View->WaitingConvoyCount == ExpectedWaitingCount
+				&& View->QueuePressurePercent == ExpectedPressure
+				&& View->bRelayAvailable == bAvailable
+				&& View->bInTransit == bExpectedInTransit
+				&& View->RelayChannelNumber == (bAvailable ? ExpectedChannelIndex + 1 : 0)
+				&& View->EstimatedWaitSeconds == ExpectedWaitSeconds
+				&& View->EstimatedArrivalSeconds == (bAvailable ? ExpectedArrivalSeconds : 0);
+			bScenarioValid &= bViewValid;
+			if (!bViewValid && FirstFailureKind == 0)
+			{
+				FirstFailureKind = 1;
+			}
+		}
+		const bool bBaseValid = BaseView != nullptr
+			&& BaseView->RelayChannelCount == RelayChannelCount
+			&& BaseView->ActiveConvoyCount == ExpectedActiveCount
+			&& BaseView->TotalConvoyCount == ConvoyCount
+			&& BaseView->WaitingConvoyCount == ExpectedWaitingCount
+			&& BaseView->QueuePressurePercent == ExpectedPressure
+			&& BaseView->QueueTailArrivalSeconds == ExpectedTailArrivalSeconds;
+		bScenarioValid &= bBaseValid;
+		if (!bBaseValid && FirstFailureKind == 0)
+		{
+			FirstFailureKind = 2;
+		}
+
+		const FMutualAidRelayQueueView Prospective = FMutualAidRelayQueue::ProjectNext(
+			Campaign, Rules, Source.BaseId, static_cast<int64>(24 + Seed % 72) * 3600);
+		const int32 ExpectedNextTotal = ConvoyCount + 1;
+		const int32 ExpectedNextActiveCount = FMath::Min(
+			RelayChannelCount, ExpectedNextTotal);
+		TArray<int64> ExpectedNextChannelAvailableSeconds;
+		ExpectedNextChannelAvailableSeconds.Init(0, ExpectedNextActiveCount);
+		for (const int32 OrderedIndex : OrderedIndices)
+		{
+			if (ExpectedNextActiveCount <= 0)
+			{
+				break;
+			}
+			int32 ChannelIndex = 0;
+			for (int32 Candidate = 1;
+				Candidate < ExpectedNextChannelAvailableSeconds.Num(); ++Candidate)
+			{
+				if (ExpectedNextChannelAvailableSeconds[Candidate]
+					< ExpectedNextChannelAvailableSeconds[ChannelIndex])
+				{
+					ChannelIndex = Candidate;
+				}
+			}
+			ExpectedNextChannelAvailableSeconds[ChannelIndex] =
+				ExpectedNextChannelAvailableSeconds[ChannelIndex]
+				+ FMutualAidRelayQueue::ProjectedJourneySeconds(
+					Campaign.MutualAidConvoys[OrderedIndex]);
+		}
+		int32 ExpectedNextChannelIndex = INDEX_NONE;
+		int64 ExpectedNextWaitSeconds = 0;
+		int64 ExpectedNextArrivalSeconds = 0;
+		if (ExpectedNextActiveCount > 0)
+		{
+			ExpectedNextChannelIndex = 0;
+			for (int32 Candidate = 1;
+				Candidate < ExpectedNextChannelAvailableSeconds.Num(); ++Candidate)
+			{
+				if (ExpectedNextChannelAvailableSeconds[Candidate]
+					< ExpectedNextChannelAvailableSeconds[ExpectedNextChannelIndex])
+				{
+					ExpectedNextChannelIndex = Candidate;
+				}
+			}
+			ExpectedNextWaitSeconds = ExpectedNextChannelAvailableSeconds[ExpectedNextChannelIndex];
+			ExpectedNextArrivalSeconds = ExpectedNextWaitSeconds
+				+ static_cast<int64>(24 + Seed % 72) * 3600;
+		}
+		const int32 ExpectedNextWaiting = FMath::Max(
+			0, ExpectedNextTotal - ExpectedNextActiveCount);
+		const int32 ExpectedNextPressure = FMath::Clamp<int32>(static_cast<int32>(
+			(static_cast<int64>(ExpectedNextWaiting) * 100 + ExpectedNextTotal - 1)
+			/ ExpectedNextTotal), 0, 100);
+		const bool bNextAvailable = ExpectedNextActiveCount > 0;
+		const bool bProspectiveValid = Prospective.bValid
+			&& Prospective.QueuePosition == ExpectedNextTotal
+			&& Prospective.WaitingPosition == (bNextAvailable
+				&& ExpectedNextTotal <= ExpectedNextActiveCount
+				? 0 : bNextAvailable
+					? ExpectedNextTotal - ExpectedNextActiveCount : ExpectedNextTotal)
+			&& Prospective.WaitingConvoyCount == ExpectedNextWaiting
+			&& Prospective.QueuePressurePercent == ExpectedNextPressure
+			&& Prospective.bRelayAvailable == bNextAvailable
+			&& Prospective.bInTransit == (bNextAvailable && ExpectedNextWaitSeconds == 0)
+			&& Prospective.RelayChannelNumber == (bNextAvailable ? ExpectedNextChannelIndex + 1 : 0)
+			&& Prospective.EstimatedWaitSeconds == ExpectedNextWaitSeconds
+			&& Prospective.EstimatedArrivalSeconds == (bNextAvailable ? ExpectedNextArrivalSeconds : 0);
+		bScenarioValid &= bProspectiveValid;
+		if (!bProspectiveValid && FirstFailureKind == 0)
+		{
+			FirstFailureKind = 3;
+		}
+
+		FCampaignState ReorderedCampaign = Campaign;
+		Algo::Reverse(ReorderedCampaign.MutualAidConvoys);
+		const FMutualAidRelayQueueSnapshot Reordered = FMutualAidRelayQueue::Evaluate(
+			ReorderedCampaign, Rules);
+		for (const FMutualAidConvoyState& Convoy : Campaign.MutualAidConvoys)
+		{
+			const FMutualAidRelayQueueView* Before = Snapshot.FindConvoy(Convoy.ConvoyId);
+			const FMutualAidRelayQueueView* After = Reordered.FindConvoy(Convoy.ConvoyId);
+			const bool bReorderedValid = Before != nullptr && After != nullptr
+				&& Before->QueuePosition == After->QueuePosition
+				&& Before->RelayChannelNumber == After->RelayChannelNumber
+				&& Before->EstimatedWaitSeconds == After->EstimatedWaitSeconds
+				&& Before->EstimatedArrivalSeconds == After->EstimatedArrivalSeconds;
+			bScenarioValid &= bReorderedValid;
+			if (!bReorderedValid && FirstFailureKind == 0)
+			{
+				FirstFailureKind = 4;
+			}
+		}
+		const bool bRandomStateValid = Campaign.SimulationRandom.DrawCount == InitialSimulationDraws
+			&& Campaign.SimulationRandom.GetStateForSave() == InitialSimulationState;
+		bScenarioValid &= bRandomStateValid;
+		if (!bRandomStateValid && FirstFailureKind == 0)
+		{
+			FirstFailureKind = 5;
+		}
+		if (!bScenarioValid && !bReportedFailure)
+		{
+			AddError(FString::Printf(
+				TEXT("Seed %d violated Relay Weave invariant group %d."), Seed, FirstFailureKind));
+			bReportedFailure = true;
+		}
+		bCorpusValid &= bScenarioValid;
+	}
+
+	TestTrue(TEXT("256 seeded Relay Weave schedules preserve exact lanes, pressure, and prospective readiness"),
+		bCorpusValid
+		&& ScenariosWithPressure > 0
+		&& ScenariosWithoutCapacity > 0
+		&& ScenariosWithMultipleChannels > 0
+		&& MaximumPressure == 100
+		&& TotalWaitingConvoys > 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMutualAidSignalWatchEvaluationTest,
 	"UEGT.Core.Strategic.MutualAidRelayQueue.SignalWatchSurge",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
