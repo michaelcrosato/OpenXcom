@@ -4658,7 +4658,25 @@ void AUEGTTacticalPlayerController::PlayCommandAudio(
 {
 	if (AudioDirector != nullptr)
 	{
-		AudioDirector->PlayCue(UUEGTAudioDirector::SelectCommandCue(Result, bTacticalContext));
+		const EUEGTAudioCue Cue = UUEGTAudioDirector::SelectCommandCue(Result, bTacticalContext);
+		FIntVector TacticalCell;
+		if (bTacticalContext
+			&& BoardActor != nullptr
+			&& (Cue == EUEGTAudioCue::CommandAccepted || Cue == EUEGTAudioCue::CommandRejected)
+			&& UUEGTAudioDirector::TryGetLatestTacticalEventCell(Result, TacticalCell))
+		{
+			AudioDirector->PlayCueAtLocation(
+				Cue,
+				BoardActor->GridToWorld(
+					TacticalCell.X,
+					TacticalCell.Y,
+					TacticalCell.Z,
+					30.0f));
+		}
+		else
+		{
+			AudioDirector->PlayCue(Cue);
+		}
 	}
 }
 
@@ -8393,6 +8411,9 @@ void AUEGTTacticalPlayerController::SelectOrTargetTacticalUnit(const FGuid UnitI
 	{
 		return;
 	}
+	const int32 CueX = Unit->X;
+	const int32 CueY = Unit->Y;
+	const int32 CueZ = Unit->Z;
 	const bool bChanged = Unit->Team == ETacticalTeam::Player
 		? SelectedUnitId != UnitId
 		: HoveredUnitId != UnitId;
@@ -8417,7 +8438,16 @@ void AUEGTTacticalPlayerController::SelectOrTargetTacticalUnit(const FGuid UnitI
 	RefreshTacticalPresentation();
 	if (bChanged && AudioDirector != nullptr)
 	{
-		AudioDirector->PlayCue(EUEGTAudioCue::TacticalSelection);
+		if (BoardActor != nullptr)
+		{
+			AudioDirector->PlayCueAtLocation(
+				EUEGTAudioCue::TacticalSelection,
+				BoardActor->GridToWorld(CueX, CueY, CueZ, 42.0f));
+		}
+		else
+		{
+			AudioDirector->PlayCue(EUEGTAudioCue::TacticalSelection);
+		}
 	}
 	if (UnitId == SelectedUnitId)
 	{
@@ -8437,6 +8467,9 @@ void AUEGTTacticalPlayerController::TargetTacticalObjective(const FName Objectiv
 	{
 		return;
 	}
+	const int32 CueX = Objective->X;
+	const int32 CueY = Objective->Y;
+	const int32 CueZ = Objective->Z;
 	const bool bChanged = HoveredObjectiveId != ObjectiveId;
 	HoveredObjectiveId = ObjectiveId;
 	HoveredUnitId.Invalidate();
@@ -8448,7 +8481,16 @@ void AUEGTTacticalPlayerController::TargetTacticalObjective(const FName Objectiv
 	RefreshTacticalPresentation();
 	if (bChanged && AudioDirector != nullptr)
 	{
-		AudioDirector->PlayCue(EUEGTAudioCue::TacticalSelection);
+		if (BoardActor != nullptr)
+		{
+			AudioDirector->PlayCueAtLocation(
+				EUEGTAudioCue::TacticalSelection,
+				BoardActor->GridToWorld(CueX, CueY, CueZ, 30.0f));
+		}
+		else
+		{
+			AudioDirector->PlayCue(EUEGTAudioCue::TacticalSelection);
+		}
 	}
 }
 

@@ -10,6 +10,7 @@
 #include "UEGTAudioDirector.generated.h"
 
 class UAudioComponent;
+class USoundAttenuation;
 class USoundWaveProcedural;
 class UWorld;
 
@@ -56,6 +57,12 @@ struct UEGTGAME_API FUEGTAudioDirectorDiagnostics
 
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Audio")
 	bool bAmbientScheduled = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Audio")
+	bool bLastPlaybackPositional = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Audio")
+	FVector LastPlaybackLocation = FVector::ZeroVector;
 };
 
 /** Owns transient procedural waves and maps presentation state to a restrained runtime mix. */
@@ -72,6 +79,9 @@ public:
 	bool PlayCue(EUEGTAudioCue Cue);
 
 	UFUNCTION(BlueprintCallable, Category = "UEGT|Audio")
+	bool PlayCueAtLocation(EUEGTAudioCue Cue, FVector WorldLocation);
+
+	UFUNCTION(BlueprintCallable, Category = "UEGT|Audio")
 	void SetPresentationMode(EUEGTAudioPresentationMode Mode);
 
 	UFUNCTION(BlueprintPure, Category = "UEGT|Audio")
@@ -80,13 +90,17 @@ public:
 	static EUEGTAudioCue SelectCommandCue(
 		const FStrategicCommandResult& Result,
 		bool bTacticalContext);
+	static bool TryGetLatestTacticalEventCell(
+		const FStrategicCommandResult& Result,
+		FIntVector& OutCell);
 	static FName GetModeName(EUEGTAudioPresentationMode Mode);
 
 protected:
 	virtual void BeginDestroy() override;
 
 private:
-	bool PlayGeneratedCue(EUEGTAudioCue Cue, bool bAmbient);
+	bool PlayGeneratedCue(EUEGTAudioCue Cue, bool bAmbient, const FVector* WorldLocation = nullptr);
+	USoundAttenuation* GetOrCreateTacticalPositionalAttenuation();
 	void PlayAmbientPulse();
 	void StopAmbient();
 	void PruneFinishedAudio();
@@ -106,6 +120,9 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<USoundWaveProcedural>> AmbientWaves;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundAttenuation> TacticalPositionalAttenuation;
 
 	UPROPERTY(Transient)
 	FUEGTAudioDirectorDiagnostics Diagnostics;

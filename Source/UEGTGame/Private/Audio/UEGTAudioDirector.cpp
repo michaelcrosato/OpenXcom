@@ -5,7 +5,37 @@
 #include "Components/AudioComponent.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sound/SoundAttenuation.h"
 #include "Sound/SoundWaveProcedural.h"
+
+namespace UEGTAudioDirectorPrivate
+{
+	bool IsTacticalLocationEvent(const EStrategicEventType Type)
+	{
+		switch (Type)
+		{
+		case EStrategicEventType::TacticalDoorStateChanged:
+		case EStrategicEventType::TacticalUnitMoved:
+		case EStrategicEventType::TacticalAttackResolved:
+		case EStrategicEventType::TacticalSignalProjected:
+		case EStrategicEventType::TacticalBlastResolved:
+		case EStrategicEventType::TacticalTerrainDamaged:
+		case EStrategicEventType::TacticalTerrainDestroyed:
+		case EStrategicEventType::TacticalDeviceDeployed:
+		case EStrategicEventType::TacticalDeviceIntercepted:
+		case EStrategicEventType::TacticalEnvironmentSuppressed:
+		case EStrategicEventType::TacticalObjectiveProgressed:
+		case EStrategicEventType::TacticalObjectiveContested:
+		case EStrategicEventType::TacticalObjectiveCompleted:
+		case EStrategicEventType::TacticalObjectiveFailed:
+		case EStrategicEventType::TacticalUnitExtracted:
+		case EStrategicEventType::TacticalAiDecisionMade:
+			return true;
+		default:
+			return false;
+		}
+	}
+}
 
 void UUEGTAudioDirector::Initialize(UWorld* InWorld)
 {
@@ -26,6 +56,7 @@ void UUEGTAudioDirector::Shutdown()
 	}
 	ForegroundComponents.Reset();
 	ForegroundWaves.Reset();
+	TacticalPositionalAttenuation = nullptr;
 	PlaybackWorld.Reset();
 	Diagnostics.Mode = EUEGTAudioPresentationMode::None;
 }
@@ -33,6 +64,13 @@ void UUEGTAudioDirector::Shutdown()
 bool UUEGTAudioDirector::PlayCue(const EUEGTAudioCue Cue)
 {
 	return PlayGeneratedCue(Cue, false);
+}
+
+bool UUEGTAudioDirector::PlayCueAtLocation(
+	const EUEGTAudioCue Cue,
+	const FVector WorldLocation)
+{
+	return PlayGeneratedCue(Cue, false, &WorldLocation);
 }
 
 void UUEGTAudioDirector::SetPresentationMode(const EUEGTAudioPresentationMode Mode)
@@ -148,13 +186,33 @@ FName UUEGTAudioDirector::GetModeName(const EUEGTAudioPresentationMode Mode)
 	}
 }
 
+bool UUEGTAudioDirector::TryGetLatestTacticalEventCell(
+	const FStrategicCommandResult& Result,
+	FIntVector& OutCell)
+{
+	OutCell = FIntVector(0, 0, 0);
+	bool bFound = false;
+	for (const FStrategicEvent& Event : Result.Events)
+	{
+		if (UEGTAudioDirectorPrivate::IsTacticalLocationEvent(Event.Type))
+		{
+			OutCell = FIntVector(Event.ToX, Event.ToY, Event.ToZ);
+			bFound = true;
+		}
+	}
+	return bFound;
+}
+
 void UUEGTAudioDirector::BeginDestroy()
 {
 	Shutdown();
 	Super::BeginDestroy();
 }
 
-bool UUEGTAudioDirector::PlayGeneratedCue(const EUEGTAudioCue Cue, const bool bAmbient)
+bool UUEGTAudioDirector::PlayGeneratedCue(
+	const EUEGTAudioCue Cue,
+	const bool bAmbient,
+	const FVector* WorldLocation)
 {
 	PruneFinishedAudio();
 	const FUEGTGeneratedAudio Generated = FUEGTAudioSynthesisService::Generate(Cue);
@@ -165,8 +223,16 @@ bool UUEGTAudioDirector::PlayGeneratedCue(const EUEGTAudioCue Cue, const bool bA
 	Diagnostics.LastFingerprint = Generated.Fingerprint;
 	Diagnostics.bLastPlaybackComponentCreated = false;
 	Diagnostics.bLastPlaybackStarted = false;
+	Diagnostics.bLastPlaybackPositional = WorldLocation != nullptr;
+	Diagnostics.LastPlaybackLocation = WorldLocation != nullptr
+		? *WorldLocation
+		: FVector::ZeroVector;
 	UWorld* World = PlaybackWorld.Get();
-	if (!Generated.IsValid() || World == nullptr)
+	if (!Generated.IsValid() || World == nullptr
+		|| (WorldLocation != nullptr
+			&& (!FMath::IsFinite(WorldLocation->X)
+				|| !FMath::IsFinite(WorldLocation->Y)
+				|| !FMath::IsFinite(WorldLocation->Z))))
 	{
 		return false;
 	}
@@ -186,8 +252,31 @@ bool UUEGTAudioDirector::PlayGeneratedCue(const EUEGTAudioCue Cue, const bool bA
 		reinterpret_cast<const uint8*>(Generated.Samples.GetData()),
 		Diagnostics.LastQueuedBytes);
 
-	UAudioComponent* Component = UGameplayStatics::SpawnSound2D(
-		World, Wave, 1.0f, 1.0f, 0.0f, nullptr, false, true);
+	UAudioComponent* Component = nullptr;
+	if (WorldLocation != nullptr)
+	{
+		USoundAttenuation* Attenuation = GetOrCreateTacticalPositionalAttenuation();
+		if (Attenuation == nullptr)
+		{
+			return false;
+		}
+		Component = UGameplayStatics::SpawnSoundAtLocation(
+			World,
+			Wave,
+			*WorldLocation,
+			FRotator::ZeroRotator,
+			1.0f,
+			1.0f,
+			0.0f,
+			Attenuation,
+			nullptr,
+			true);
+	}
+	else
+	{
+		Component = UGameplayStatics::SpawnSound2D(
+			World, Wave, 1.0f, 1.0f, 0.0f, nullptr, false, true);
+	}
 	Diagnostics.bLastPlaybackComponentCreated = Component != nullptr;
 	Diagnostics.bLastPlaybackStarted = Component != nullptr && Component->IsPlaying();
 	if (Component == nullptr)
@@ -206,6 +295,29 @@ bool UUEGTAudioDirector::PlayGeneratedCue(const EUEGTAudioCue Cue, const bool bA
 		ForegroundWaves.Add(Wave);
 	}
 	return true;
+}
+
+USoundAttenuation* UUEGTAudioDirector::GetOrCreateTacticalPositionalAttenuation()
+{
+	if (IsValid(TacticalPositionalAttenuation))
+	{
+		return TacticalPositionalAttenuation;
+	}
+
+	TacticalPositionalAttenuation = NewObject<USoundAttenuation>(this);
+	if (!IsValid(TacticalPositionalAttenuation))
+	{
+		return nullptr;
+	}
+
+	FSoundAttenuationSettings& Settings = TacticalPositionalAttenuation->Attenuation;
+	Settings.bAttenuate = true;
+	Settings.bSpatialize = true;
+	Settings.DistanceAlgorithm = EAttenuationDistanceModel::Linear;
+	Settings.AttenuationShape = EAttenuationShape::Sphere;
+	Settings.AttenuationShapeExtents = FVector::ZeroVector;
+	Settings.FalloffDistance = 1800.0f;
+	return TacticalPositionalAttenuation;
 }
 
 void UUEGTAudioDirector::PlayAmbientPulse()

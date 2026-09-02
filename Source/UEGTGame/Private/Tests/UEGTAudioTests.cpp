@@ -130,6 +130,47 @@ bool FUEGTAudioEventRoutingTest::RunTest(const FString& Parameters)
 	Resolved.Type = EStrategicEventType::TacticalAiTurnCompleted;
 	TestEqual(TEXT("AI completion signals control returning to the player"),
 		UUEGTAudioDirector::SelectCommandCue(Result, true), EUEGTAudioCue::TacticalPlayerTurn);
+
+	FStrategicCommandResult TacticalResult;
+	TacticalResult.bAccepted = true;
+	FStrategicEvent MoveEvent;
+	MoveEvent.Type = EStrategicEventType::TacticalUnitMoved;
+	MoveEvent.ToX = 4;
+	MoveEvent.ToY = 7;
+	MoveEvent.ToZ = 1;
+	TacticalResult.Events.Add(MoveEvent);
+	FStrategicEvent AttackEvent;
+	AttackEvent.Type = EStrategicEventType::TacticalAttackResolved;
+	AttackEvent.ToX = 6;
+	AttackEvent.ToY = 2;
+	AttackEvent.ToZ = 0;
+	TacticalResult.Events.Add(AttackEvent);
+	FIntVector TacticalCell;
+	TestTrue(TEXT("Tactical audio routing selects the latest authoritative event cell"),
+		UUEGTAudioDirector::TryGetLatestTacticalEventCell(TacticalResult, TacticalCell)
+		&& TacticalCell == FIntVector(6, 2, 0));
+	FStrategicCommandResult StrategicOnlyResult;
+	FStrategicEvent StrategicEvent;
+	StrategicEvent.Type = EStrategicEventType::TimeAdvanced;
+	StrategicOnlyResult.Events.Add(StrategicEvent);
+	TestFalse(TEXT("Strategic-only results cannot invent a tactical audio location"),
+		UUEGTAudioDirector::TryGetLatestTacticalEventCell(StrategicOnlyResult, TacticalCell));
+
+	UUEGTAudioDirector* PositionalDirector = NewObject<UUEGTAudioDirector>();
+	TestNotNull(TEXT("Positional audio routing can be exercised without an audio device"), PositionalDirector);
+	if (PositionalDirector != nullptr)
+	{
+		PositionalDirector->Initialize(nullptr);
+		const FVector Location(400.0f, 700.0f, 210.0f);
+		TestFalse(TEXT("A positional cue reports unavailable playback without a world"),
+			PositionalDirector->PlayCueAtLocation(EUEGTAudioCue::CommandAccepted, Location));
+		const FUEGTAudioDirectorDiagnostics PositionalAudio = PositionalDirector->GetDiagnostics();
+		TestTrue(TEXT("Positional cue diagnostics retain the requested world location"),
+			PositionalAudio.PlayRequests == 1
+			&& PositionalAudio.bLastPlaybackPositional
+			&& PositionalAudio.LastPlaybackLocation == Location);
+		PositionalDirector->Shutdown();
+	}
 	return true;
 }
 
