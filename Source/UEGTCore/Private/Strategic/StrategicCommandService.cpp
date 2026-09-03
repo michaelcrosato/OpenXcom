@@ -3483,7 +3483,8 @@ namespace StrategicCommandServicePrivate
 		const FAdversaryMissionRule* BranchRule = Rules.AdversaryMissions.Find(BranchRuleId);
 		if (BranchRule == nullptr
 			|| BranchRule->PlanId != ResolvedRule.PlanId
-			|| BranchRule->PlanStage != ResolvedRule.PlanStage + 1)
+			|| static_cast<int64>(BranchRule->PlanStage)
+				!= static_cast<int64>(ResolvedRule.PlanStage) + 1)
 		{
 			return false;
 		}

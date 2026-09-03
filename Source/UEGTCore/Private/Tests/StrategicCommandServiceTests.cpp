@@ -10917,6 +10917,34 @@ bool FStrategicAdversaryBranchingPlanTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Plan-complete event retains terminal stage and failed outcome"), Completed != nullptr
 		&& Completed->RuleId == FName(TEXT("plan.mirror-rain"))
 		&& Completed->Quantity == 2 && !Completed->bSuccessful);
+
+	FResolvedRuleSet ExtremeStageRules = Rules;
+	ExtremeStageRules.AdversaryMissions.FindChecked(TEXT("mission.glass-tide-survey")).PlanStage = MAX_int32;
+	ExtremeStageRules.AdversaryMissions.FindChecked(TEXT("mission.nightglass-raid")).PlanStage = MIN_int32;
+	FCampaignState ExtremeStageState = MakeStateWithBase();
+	ExtremeStageState.SimulationRandom.Initialize(0x4d495252);
+	ExtremeStageState.NextAdversaryMissionSeconds = 5;
+	Advance.ExpectedSequence = ExtremeStageState.CommandSequence;
+	const FStrategicCommandResult ExtremeOpening =
+		FStrategicCommandService::Execute(
+			ExtremeStageState, ExtremeStageRules, Config, Advance);
+	const int64 ExtremeOpeningSequence = ExtremeStageState.CommandSequence;
+	if (ExtremeStageState.StrategicContacts.Num() == 1)
+	{
+		PrimeContactForArrival(ExtremeStageState.StrategicContacts[0]);
+	}
+	Advance.ExpectedSequence = ExtremeStageState.CommandSequence;
+	const FStrategicCommandResult ExtremeBranch =
+		FStrategicCommandService::Execute(
+			ExtremeStageState, ExtremeStageRules, Config, Advance);
+	TestTrue(TEXT("Malformed plan stages fail closed instead of wrapping into a false successor"),
+		ExtremeOpening.bAccepted && ExtremeStageState.StrategicContacts.Num() == 1
+		&& !ExtremeBranch.bAccepted
+		&& ExtremeBranch.HasDiagnostic(TEXT("simulation_overflow"))
+		&& ExtremeStageState.CommandSequence == ExtremeOpeningSequence
+		&& ExtremeStageState.AdversaryMissions.Num() == 1
+		&& ExtremeStageState.AdversaryMissions[0].MissionRuleId
+			== FName(TEXT("mission.glass-tide-survey")));
 	return true;
 }
 

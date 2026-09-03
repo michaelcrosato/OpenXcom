@@ -994,6 +994,19 @@ bool FRuleSetReferenceTest::RunTest(const FString& Parameters)
 	MissingPlan.PlanId = TEXT("plan.undefined");
 	MissingPlan.PlanStage = 1;
 	Package.AdversaryMissions.Add(MissingPlan);
+	FAdversaryMissionRule ExtremeStage = Mission;
+	ExtremeStage.Identity.RuleId = TEXT("mission.plan-max-stage");
+	ExtremeStage.DisplayName = TEXT("Maximum Stage");
+	ExtremeStage.PlanId = BranchingPlan.Identity.RuleId;
+	ExtremeStage.PlanStage = MAX_int32;
+	ExtremeStage.ThwartBranchMissionRuleId = TEXT("mission.plan-min-stage");
+	Package.AdversaryMissions.Add(ExtremeStage);
+	FAdversaryMissionRule ExtremeBranch = Mission;
+	ExtremeBranch.Identity.RuleId = TEXT("mission.plan-min-stage");
+	ExtremeBranch.DisplayName = TEXT("Minimum Stage");
+	ExtremeBranch.PlanId = BranchingPlan.Identity.RuleId;
+	ExtremeBranch.PlanStage = MIN_int32;
+	Package.AdversaryMissions.Add(ExtremeBranch);
 
 	FTacticalMissionRule TacticalMission;
 	TacticalMission.Identity.RuleId = TEXT("tactical.unresolved-recovery");
@@ -1029,6 +1042,13 @@ bool FRuleSetReferenceTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Missing mission plan is diagnosed"), Result.HasDiagnostic(TEXT("missing_adversary_plan_reference")));
 	TestTrue(TEXT("Missing plan branch is diagnosed"), Result.HasDiagnostic(TEXT("missing_adversary_plan_branch")));
 	TestTrue(TEXT("Non-sequential plan branch is diagnosed"), Result.HasDiagnostic(TEXT("invalid_adversary_plan_branch")));
+	bool bExtremeStageBranchDiagnosed = false;
+	for (const FContentDiagnostic& Diagnostic : Result.Diagnostics)
+	{
+		bExtremeStageBranchDiagnosed |= Diagnostic.Code == FName(TEXT("invalid_adversary_plan_branch"))
+			&& Diagnostic.Message.Contains(TEXT("mission.plan-max-stage"));
+	}
+	TestTrue(TEXT("Extreme plan stages are compared without signed wraparound"), bExtremeStageBranchDiagnosed);
 	TestTrue(TEXT("Unreachable plan mission is diagnosed"), Result.HasDiagnostic(TEXT("orphaned_adversary_plan_mission")));
 	TestTrue(TEXT("Missing tactical floor is diagnosed"), Result.HasDiagnostic(TEXT("invalid_tactical_floor_reference")));
 	TestTrue(TEXT("Missing tactical obstacle is diagnosed"), Result.HasDiagnostic(TEXT("invalid_tactical_obstacle_reference")));

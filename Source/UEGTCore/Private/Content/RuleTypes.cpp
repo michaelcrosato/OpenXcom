@@ -678,7 +678,8 @@ namespace RuleSetBuilderPrivate
 				}
 				else if (Pair.Value.PlanId.IsNone()
 					|| BranchMission->PlanId != Pair.Value.PlanId
-					|| BranchMission->PlanStage != Pair.Value.PlanStage + 1)
+					|| static_cast<int64>(BranchMission->PlanStage)
+						!= static_cast<int64>(Pair.Value.PlanStage) + 1)
 				{
 					AddError(Result, TEXT("invalid_adversary_plan_branch"), Origin,
 						FString::Printf(TEXT("Adversary mission '%s' %s branch '%s' must remain in the same plan at the next stage."),
@@ -745,7 +746,9 @@ namespace RuleSetBuilderPrivate
 			for (const FName BranchRuleId : { Mission.EscapeBranchMissionRuleId, Mission.ThwartBranchMissionRuleId })
 			{
 				const FAdversaryMissionRule* Branch = RuleSet.AdversaryMissions.Find(BranchRuleId);
-				if (Branch != nullptr && Branch->PlanId == Mission.PlanId && Branch->PlanStage == Mission.PlanStage + 1)
+				if (Branch != nullptr && Branch->PlanId == Mission.PlanId
+					&& static_cast<int64>(Branch->PlanStage)
+						== static_cast<int64>(Mission.PlanStage) + 1)
 				{
 					PendingPlanMissions.Add(BranchRuleId);
 				}
