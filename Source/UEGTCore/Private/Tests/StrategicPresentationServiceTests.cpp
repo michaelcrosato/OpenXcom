@@ -2470,6 +2470,28 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& RearmReadySnapshot.Craft[0].bCanLoadAvailableAmmunition
 		&& RearmReadySnapshot.Craft[0].TotalAmmunitionLoadable == 5
 		&& RearmReadySnapshot.Craft[0].TotalAmmunitionMissing == 8);
+	FCampaignState InvalidRearmWeaponCampaign = RearmReadyCampaign;
+	InvalidRearmWeaponCampaign.Craft[0].WeaponStates[0].Ammunition = -1;
+	FInventoryStack* InvalidRearmAmmunition =
+		InvalidRearmWeaponCampaign.Bases[0].Inventory.FindByPredicate(
+			[&CraftAmmunition](const FInventoryStack& Stack)
+			{
+				return Stack.ItemId == CraftAmmunition.Identity.RuleId;
+			});
+	if (InvalidRearmAmmunition != nullptr)
+	{
+		InvalidRearmAmmunition->Quantity = 20;
+	}
+	const FStrategicDashboardSnapshot InvalidRearmWeaponSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidRearmWeaponCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables rearm controls for invalid persisted weapon state"),
+		InvalidRearmWeaponSnapshot.bSucceeded
+		&& InvalidRearmWeaponSnapshot.Craft.Num() == 1
+		&& InvalidRearmWeaponSnapshot.Craft[0].TotalAmmunitionMissing == 12
+		&& InvalidRearmWeaponSnapshot.Craft[0].TotalAmmunitionLoadable == 12
+		&& !InvalidRearmWeaponSnapshot.Craft[0].bCanRearmFully
+		&& !InvalidRearmWeaponSnapshot.Craft[0].bCanLoadAvailableAmmunition);
 	FCampaignState ServicingCampaign = RearmReadyCampaign;
 	ServicingCampaign.Craft[0].Status = ECraftStatus::Servicing;
 	ServicingCampaign.Craft[0].CurrentHull = 98;

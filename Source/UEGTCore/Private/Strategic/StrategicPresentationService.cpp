@@ -186,6 +186,69 @@ namespace StrategicPresentationPrivate
 			|| Item.Category == FName(TEXT("device"));
 	}
 
+	bool IsEquippableCraftItem(const FItemRule& Item)
+	{
+		return Item.Category.ToString().StartsWith(TEXT("craft-"))
+			&& Item.Category != FName(TEXT("craft-ammunition"));
+	}
+
+	bool IsValidCraftWeaponRule(const FItemRule& Weapon, const FResolvedRuleSet& Rules)
+	{
+		const FItemRule* Ammunition = Rules.Items.Find(Weapon.AmmunitionItemId);
+		return Weapon.IsCraftWeapon()
+			&& Ammunition != nullptr
+			&& Ammunition->Category == FName(TEXT("craft-ammunition"))
+			&& Weapon.MagazineCapacity > 0
+			&& Weapon.SalvoSize > 0 && Weapon.SalvoSize <= 16
+			&& Weapon.InterceptionAccuracy > 0 && Weapon.InterceptionAccuracy <= 100
+			&& Weapon.InterceptionDamage > 0
+			&& Weapon.FireIntervalSeconds > 0;
+	}
+
+	bool IsCraftRearmStateValid(
+		const FCraftState& Craft,
+		const FCraftRule& Rule,
+		const FResolvedRuleSet& Rules)
+	{
+		if (Craft.EquipmentItems.Num() > Rule.EquipmentSlots)
+		{
+			return false;
+		}
+		for (const FName ItemId : Craft.EquipmentItems)
+		{
+			const FItemRule* Item = Rules.Items.Find(ItemId);
+			if (Item == nullptr || !IsEquippableCraftItem(*Item)
+				|| (Item->IsCraftWeapon() && !IsValidCraftWeaponRule(*Item, Rules)))
+			{
+				return false;
+			}
+		}
+		TSet<FName> SeenWeaponStates;
+		for (const FCraftWeaponState& WeaponState : Craft.WeaponStates)
+		{
+			const FItemRule* Weapon = Rules.Items.Find(WeaponState.WeaponItemId);
+			int32 MountCount = 0;
+			for (const FName ItemId : Craft.EquipmentItems)
+			{
+				MountCount += ItemId == WeaponState.WeaponItemId ? 1 : 0;
+			}
+			const int64 MaximumAmmunition = Weapon != nullptr
+				? static_cast<int64>(Weapon->MagazineCapacity) * MountCount
+				: -1;
+			if (Weapon == nullptr || !IsValidCraftWeaponRule(*Weapon, Rules)
+				|| MountCount <= 0 || SeenWeaponStates.Contains(WeaponState.WeaponItemId)
+				|| WeaponState.Ammunition < 0
+				|| WeaponState.Ammunition > MaximumAmmunition
+				|| WeaponState.RemainingCooldownSeconds < 0
+				|| WeaponState.RemainingCooldownSeconds > Weapon->FireIntervalSeconds)
+			{
+				return false;
+			}
+			SeenWeaponStates.Add(WeaponState.WeaponItemId);
+		}
+		return true;
+	}
+
 	bool RectanglesOverlap(
 		const int32 AX,
 		const int32 AY,
@@ -2536,12 +2599,15 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			View.TotalAmmunitionMissing += WeaponView.MissingAmmunition;
 			View.TotalAmmunitionLoadable += WeaponView.LoadableAmmunition;
 		}
+		const bool bRearmStateValid = Rule != nullptr
+			&& IsCraftRearmStateValid(Craft, *Rule, Rules);
 		const bool bTurnaroundAvailable = Craft.Status == ECraftStatus::Grounded
 			&& Craft.PendingSalvage.IsEmpty();
-		View.bCanRearmFully = CommandSequenceValidation.bAccepted
+		View.bCanRearmFully = CommandSequenceValidation.bAccepted && bRearmStateValid
 			&& bTurnaroundAvailable && View.TotalAmmunitionMissing > 0
 			&& View.TotalAmmunitionLoadable == View.TotalAmmunitionMissing;
 		View.bCanLoadAvailableAmmunition = CommandSequenceValidation.bAccepted
+			&& bRearmStateValid
 			&& bTurnaroundAvailable
 			&& View.TotalAmmunitionLoadable > 0;
 		for (const FInventoryStack& Stack : Craft.PendingSalvage)
