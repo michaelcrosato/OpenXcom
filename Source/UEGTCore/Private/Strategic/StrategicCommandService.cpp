@@ -4484,6 +4484,42 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateFacilityGridState(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		FStrategicCommandResult& Result)
+	{
+		if (!HasValidBaseGridDimensions(Config))
+		{
+			AddError(Result, TEXT("invalid_simulation_config"),
+				TEXT("Base grid dimensions must be positive and no larger than the supported limit."));
+			return false;
+		}
+		for (const FStrategicBaseState& Base : State.Bases)
+		{
+			for (const FBaseFacilityState& Facility : Base.Facilities)
+			{
+				const FFacilityRule* Rule = Rules.Facilities.Find(Facility.FacilityId);
+				if (Rule == nullptr)
+				{
+					continue;
+				}
+				if (Facility.GridX < 0 || Facility.GridY < 0
+					|| Rule->GridWidth <= 0 || Rule->GridHeight <= 0
+					|| static_cast<int64>(Facility.GridX) + Rule->GridWidth > Config.BaseGridWidth
+					|| static_cast<int64>(Facility.GridY) + Rule->GridHeight > Config.BaseGridHeight)
+				{
+					AddError(Result, TEXT("invalid_facility_state"), FString::Printf(
+						TEXT("Facility '%s' at base '%s' lies outside the configured base grid."),
+						*Facility.FacilityId.ToString(), *Base.Name));
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
 	bool ComputeMonthlyPersonnelSalaries(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -11073,6 +11109,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	{
 		return Result;
 	}
+	if (!ValidateFacilityGridState(State, Rules, Config, Result))
+	{
+		return Result;
+	}
 	if (!ValidateMutualAidConvoyState(State, Rules, Result))
 	{
 		return Result;
@@ -13697,6 +13737,10 @@ FFacilityDismantleEvaluation FStrategicCommandService::EvaluateFacilityDismantle
 	{
 		return Reject();
 	}
+	if (!ValidateFacilityGridState(State, Rules, Config, Validation))
+	{
+		return Reject();
+	}
 	if (!ValidateResearchProjects(State, Rules, Validation)
 		|| !ValidateManufacturingProjects(State, Rules, Validation))
 	{
@@ -14532,6 +14576,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Project.GridY = Command.GridY;
 	Project.RemainingBuildSeconds = CommittedBuildSeconds;
 	if (!ValidateFacilityState(Transaction, Rules, Result)
+		|| !ValidateFacilityGridState(Transaction, Rules, Config, Result)
 		|| !ValidateFacilityConstructionProjects(Transaction, Rules, Config, Result))
 	{
 		return Result;

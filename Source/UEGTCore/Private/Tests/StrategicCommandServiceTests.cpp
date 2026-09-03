@@ -7176,6 +7176,26 @@ bool FStrategicFacilityConstructionTest::RunTest(const FString& Parameters)
 		&& MalformedPendingStartState.FacilityConstructionProjects.Num() == 1
 		&& MalformedPendingStartState.FacilityConstructionProjects[0].RemainingBuildSeconds == 0);
 
+	FCampaignState MalformedInstalledStartState = State;
+	MalformedInstalledStartState.Bases[0].Facilities[0].GridX = Config.BaseGridWidth;
+	const int64 MalformedInstalledStartSequence = MalformedInstalledStartState.CommandSequence;
+	const int64 MalformedInstalledStartFunds = MalformedInstalledStartState.Funds;
+	FStartFacilityConstructionCommand StartWithMalformedInstalled = Build;
+	StartWithMalformedInstalled.ExpectedSequence = MalformedInstalledStartSequence;
+	StartWithMalformedInstalled.ProjectId = FGuid(0x5a610001, 0x5a610002, 0x5a610003, 0x5a610004);
+	StartWithMalformedInstalled.FacilityInstanceId = FGuid(0x5a620001, 0x5a620002, 0x5a620003, 0x5a620004);
+	StartWithMalformedInstalled.GridX = 2;
+	const FStrategicCommandResult MalformedInstalledStartResult =
+		FStrategicCommandService::Execute(
+			MalformedInstalledStartState, Rules, Config, StartWithMalformedInstalled);
+	TestTrue(TEXT("Construction start rejects an installed facility outside the configured grid"),
+		!MalformedInstalledStartResult.bAccepted
+		&& MalformedInstalledStartResult.HasDiagnostic(TEXT("invalid_facility_state"))
+		&& MalformedInstalledStartState.CommandSequence == MalformedInstalledStartSequence
+		&& MalformedInstalledStartState.Funds == MalformedInstalledStartFunds
+		&& MalformedInstalledStartState.FacilityConstructionProjects.Num() == 1
+		&& MalformedInstalledStartState.Bases[0].Facilities[0].GridX == Config.BaseGridWidth);
+
 	FStartFacilityConstructionCommand Overlap = Build;
 	Overlap.ExpectedSequence = State.CommandSequence;
 	Overlap.ProjectId = FGuid(91, 92, 93, 94);
