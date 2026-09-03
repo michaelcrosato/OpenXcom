@@ -1116,6 +1116,13 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 			{
 				return Option.Type == EStrategicActionOptionType::Facility;
 			});
+	const FStrategicActionOptionView* MalformedPersonnelOption =
+		MalformedFacilitySnapshot.ActionOptions.FindByPredicate(
+			[&FieldAgent](const FStrategicActionOptionView& Option)
+			{
+				return Option.Type == EStrategicActionOptionType::Personnel
+					&& Option.RuleId == FieldAgent.Identity.RuleId;
+			});
 	const FStrategicProjectView* MalformedResearchProject =
 		MalformedFacilitySnapshot.Projects.FindByPredicate(
 			[](const FStrategicProjectView& Project)
@@ -1141,6 +1148,10 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 			== FName(TEXT("craft_capacity_full"))
 		&& MalformedFacilityOption != nullptr
 		&& MalformedFacilityOption->ValidFacilityPlacements.IsEmpty()
+		&& MalformedPersonnelOption != nullptr
+		&& !MalformedPersonnelOption->bAvailable
+		&& MalformedPersonnelOption->UnavailableReasonCode
+			== FName(TEXT("invalid_facility_state"))
 		&& MalformedResearchProject != nullptr
 		&& MalformedResearchProject->bPaused
 		&& MalformedResearchProject->MissingFacilityIds.Contains(Operations.Identity.RuleId));

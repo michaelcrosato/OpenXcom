@@ -3564,8 +3564,15 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 						Campaign, Rules, PrimaryBase->BaseId, EPersonnelRoleCategory::Pilot));
 			}
 		}
-		FinishOption(Option, Campaign, bHasBase, Occupied < Capacity,
-			TEXT("personnel_capacity_full"), TEXT("The primary base has no capacity for this role."));
+		const bool bHasPersonnelCapacity = bPrimaryInfrastructureValid && Occupied < Capacity;
+		const FName PersonnelAvailabilityCode = !bPrimaryInfrastructureValid
+			? FName(TEXT("invalid_facility_state"))
+			: FName(TEXT("personnel_capacity_full"));
+		const FString PersonnelAvailabilityMessage = !bPrimaryInfrastructureValid
+			? TEXT("The primary base has invalid facility state.")
+			: TEXT("The primary base has no capacity for this role.");
+		FinishOption(Option, Campaign, bHasBase, bHasPersonnelCapacity,
+			PersonnelAvailabilityCode, PersonnelAvailabilityMessage);
 	}
 	for (const TPair<FName, FCraftRule>& Pair : Rules.Craft)
 	{
