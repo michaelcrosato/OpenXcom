@@ -1523,6 +1523,25 @@ bool FStrategicManufacturingWorkflowTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Engineer assignment above capacity is rejected"), CapacityRejected.bAccepted);
 	TestTrue(TEXT("Engineer capacity violation is diagnosed"), CapacityRejected.HasDiagnostic(TEXT("engineer_capacity_exceeded")));
 
+	FCampaignState MalformedStaffState = State;
+	MalformedStaffState.ManufacturingProjects[0].AccumulatedWorkSeconds = MIN_int64;
+	const int64 MalformedStaffSequence = MalformedStaffState.CommandSequence;
+	const int64 MalformedStaffFunds = MalformedStaffState.Funds;
+	FSetManufacturingStaffCommand MalformedStaff;
+	MalformedStaff.ExpectedSequence = MalformedStaffSequence;
+	MalformedStaff.ProjectId = Start.ProjectId;
+	MalformedStaff.AssignedEngineers = 1;
+	const FStrategicCommandResult MalformedStaffResult = FStrategicCommandService::Execute(
+		MalformedStaffState, Rules, MalformedStaff);
+	TestTrue(TEXT("Manufacturing staffing rejects malformed persisted progress atomically"),
+		!MalformedStaffResult.bAccepted
+		&& MalformedStaffResult.HasDiagnostic(TEXT("invalid_manufacturing_project"))
+		&& MalformedStaffState.CommandSequence == MalformedStaffSequence
+		&& MalformedStaffState.Funds == MalformedStaffFunds
+		&& MalformedStaffState.ManufacturingProjects.Num() == 1
+		&& MalformedStaffState.ManufacturingProjects[0].AssignedEngineers == 0
+		&& MalformedStaffState.ManufacturingProjects[0].AccumulatedWorkSeconds == MIN_int64);
+
 	FSetManufacturingStaffCommand Staff;
 	Staff.ExpectedSequence = State.CommandSequence;
 	Staff.ProjectId = Start.ProjectId;

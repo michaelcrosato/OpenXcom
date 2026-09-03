@@ -12744,6 +12744,16 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Manufacturing project references a missing base."));
 		return Result;
 	}
+	const FItemRule* Item = Rules.Items.Find(Project->ItemId);
+	if (!Project->ProjectId.IsValid() || Item == nullptr || !Item->IsManufacturable()
+		|| Item->ManufactureCost < 0 || Project->AssignedEngineers < 0
+		|| Project->UnitsRemaining <= 0 || Project->AccumulatedWorkSeconds < 0)
+	{
+		AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
+			TEXT("Manufacturing project '%s' has invalid persisted state."),
+			*Project->ProjectId.ToString()));
+		return Result;
+	}
 	if (!ValidateProjectStaffingForCategory(
 			Transaction, Base->BaseId, EPersonnelRoleCategory::Engineer, Result))
 	{
