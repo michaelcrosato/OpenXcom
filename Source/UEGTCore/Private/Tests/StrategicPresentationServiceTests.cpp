@@ -903,6 +903,41 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidSequenceSnapshot.bCanAdvanceTime
 		&& InvalidSequenceSnapshot.Diagnostics.Contains(
 			TEXT("Campaign command sequence cannot accept another command.")));
+	const FName InvalidSequenceCode(TEXT("invalid_campaign_sequence"));
+	TestTrue(TEXT("Dashboard disables every strategic action option for an invalid command sequence"),
+		InvalidSequenceSnapshot.ActionOptions.Num() >= 5
+		&& !InvalidSequenceSnapshot.ActionOptions.ContainsByPredicate(
+			[](const FStrategicActionOptionView& Option) { return Option.bAvailable; })
+		&& InvalidSequenceSnapshot.ActionOptions.ContainsByPredicate(
+			[&InvalidSequenceCode](const FStrategicActionOptionView& Option)
+			{
+				return Option.Type == EStrategicActionOptionType::Research
+					&& Option.UnavailableReasonCode == InvalidSequenceCode;
+			})
+		&& InvalidSequenceSnapshot.ActionOptions.ContainsByPredicate(
+			[&InvalidSequenceCode](const FStrategicActionOptionView& Option)
+			{
+				return Option.Type == EStrategicActionOptionType::Facility
+					&& Option.UnavailableReasonCode == InvalidSequenceCode;
+			})
+		&& InvalidSequenceSnapshot.ActionOptions.ContainsByPredicate(
+			[&InvalidSequenceCode](const FStrategicActionOptionView& Option)
+			{
+				return Option.Type == EStrategicActionOptionType::Personnel
+					&& Option.UnavailableReasonCode == InvalidSequenceCode;
+			})
+		&& InvalidSequenceSnapshot.ActionOptions.ContainsByPredicate(
+			[&InvalidSequenceCode](const FStrategicActionOptionView& Option)
+			{
+				return Option.Type == EStrategicActionOptionType::Craft
+					&& Option.UnavailableReasonCode == InvalidSequenceCode;
+			})
+		&& InvalidSequenceSnapshot.ActionOptions.ContainsByPredicate(
+			[&InvalidSequenceCode](const FStrategicActionOptionView& Option)
+			{
+				return Option.Type == EStrategicActionOptionType::Manufacturing
+					&& Option.UnavailableReasonCode == InvalidSequenceCode;
+			}));
 	FCampaignState InvalidTimestampCampaign = Campaign;
 	InvalidTimestampCampaign.StrategicTime.Utc = FDateTime::MinValue();
 	const FStrategicDashboardSnapshot InvalidTimestampSnapshot =

@@ -3743,6 +3743,19 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				: StorageUnavailableReason(PrimaryBaseView, Option.StorageDeltaPerUnit);
 		FinishOption(Option, Campaign, bHasBase, bAdditionalCondition, AdditionalCode, AdditionalMessage);
 	}
+	if (!CommandSequenceValidation.bAccepted)
+	{
+		const FName SequenceUnavailableReasonCode = CommandSequenceValidation.Diagnostics.IsEmpty()
+			? FName(TEXT("invalid_campaign_sequence"))
+			: CommandSequenceValidation.Diagnostics[0].Code;
+		const FString SequenceUnavailableReason = CommandSequenceValidation.Diagnostics.IsEmpty()
+			? TEXT("Campaign command sequence cannot accept another command.")
+			: CommandSequenceValidation.Diagnostics[0].Message;
+		for (FStrategicActionOptionView& Option : Snapshot.ActionOptions)
+		{
+			SetUnavailable(Option, SequenceUnavailableReasonCode, SequenceUnavailableReason);
+		}
+	}
 	Snapshot.ActionOptions.Sort([](const FStrategicActionOptionView& Left, const FStrategicActionOptionView& Right)
 	{
 		if (Left.Type != Right.Type)
