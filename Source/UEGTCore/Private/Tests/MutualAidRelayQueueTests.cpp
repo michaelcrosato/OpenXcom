@@ -102,6 +102,13 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 		&& Prospective.EstimatedWaitSeconds == 0
 		&& Prospective.EstimatedArrivalSeconds == 36 * 3600);
 
+	FCampaignState TerminalSequenceCampaign = Campaign;
+	TerminalSequenceCampaign.CommandSequence = MAX_int64 - 1;
+	const FMutualAidRelayQueueView TerminalProjection = FMutualAidRelayQueue::ProjectNext(
+		TerminalSequenceCampaign, Rules, Source.BaseId, 36 * 3600);
+	TestFalse(TEXT("Relay projection does not synthesize an unavailable terminal command sequence"),
+		TerminalProjection.bValid);
+
 	Algo::Reverse(Campaign.MutualAidConvoys);
 	const FMutualAidRelayQueueView Reordered = FMutualAidRelayQueue::ProjectNext(
 		Campaign, Rules, Source.BaseId, 36 * 3600);

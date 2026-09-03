@@ -183,7 +183,7 @@ namespace StrategicCommandServicePrivate
 
 	bool ValidateSequence(const FCampaignState& State, const int64 ExpectedSequence, FStrategicCommandResult& Result)
 	{
-		if (State.CommandSequence < 0 || State.CommandSequence == MAX_int64)
+		if (State.CommandSequence < 0 || State.CommandSequence >= MAX_int64 - 1)
 		{
 			AddError(Result, TEXT("invalid_campaign_sequence"), TEXT("Campaign command sequence cannot accept another command."));
 			return false;

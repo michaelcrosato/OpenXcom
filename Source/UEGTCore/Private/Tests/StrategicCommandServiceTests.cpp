@@ -746,6 +746,19 @@ bool FStrategicBaseTransactionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Rejected transaction does not change funds"), State.Funds, FundsBeforeRejectedCommand);
 	TestEqual(TEXT("Rejected transaction does not change sequence"), State.CommandSequence, int64(1));
 
+	FCampaignState TerminalSequenceState = State;
+	TerminalSequenceState.CommandSequence = MAX_int64 - 1;
+	FAdvanceStrategicTimeCommand TerminalSequenceCommand;
+	TerminalSequenceCommand.ExpectedSequence = TerminalSequenceState.CommandSequence;
+	TerminalSequenceCommand.Rate = EStrategicTimeRate::OneHour;
+	const FStrategicCommandResult TerminalSequence = FStrategicCommandService::Execute(
+		TerminalSequenceState, MakeRules(), MakeConfig(), TerminalSequenceCommand);
+	TestFalse(TEXT("A command cannot consume the final command-sequence value"), TerminalSequence.bAccepted);
+	TestTrue(TEXT("A terminal command sequence has a stable diagnostic"),
+		TerminalSequence.HasDiagnostic(TEXT("invalid_campaign_sequence")));
+	TestEqual(TEXT("Terminal sequence rejection leaves state unchanged"),
+		TerminalSequenceState.CommandSequence, MAX_int64 - 1);
+
 	FEstablishBaseCommand Expensive = MakeBaseCommand(1);
 	Expensive.BaseId = FGuid(5, 6, 7, 8);
 	FStrategicSimulationConfig ExpensiveConfig = MakeConfig();

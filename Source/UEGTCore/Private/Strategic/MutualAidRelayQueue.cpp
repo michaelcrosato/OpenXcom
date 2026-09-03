@@ -314,7 +314,7 @@ FMutualAidRelayQueueView FMutualAidRelayQueue::ProjectNext(
 			return Base.BaseId == SourceBaseId;
 		});
 	if (Source == nullptr || JourneySeconds <= 0
-		|| Campaign.CommandSequence < 0 || Campaign.CommandSequence == MAX_int64)
+		|| Campaign.CommandSequence < 0 || Campaign.CommandSequence >= MAX_int64 - 1)
 	{
 		return Projection;
 	}

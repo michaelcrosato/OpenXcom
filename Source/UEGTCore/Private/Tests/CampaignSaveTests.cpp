@@ -1259,6 +1259,10 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	const FCampaignSaveValidationResult ExhaustedSequenceValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("Exhausted command sequence fails validation"), ExhaustedSequenceValidation.bSucceeded);
 	TestTrue(TEXT("Exhausted command sequence is diagnosed"), ExhaustedSequenceValidation.HasDiagnostic(TEXT("invalid_command_sequence")));
+	Invalid.State.CommandSequence = MAX_int64 - 1;
+	const FCampaignSaveValidationResult LastSequenceValidation = FCampaignSaveCodec::Validate(Invalid);
+	TestFalse(TEXT("A command sequence with no room for another command fails validation"), LastSequenceValidation.bSucceeded);
+	TestTrue(TEXT("A last available command sequence is diagnosed"), LastSequenceValidation.HasDiagnostic(TEXT("invalid_command_sequence")));
 	Invalid.State.CommandSequence = Write.Envelope.State.CommandSequence;
 	Invalid.State.NextAdversaryMissionSerial = MAX_int64;
 	const FCampaignSaveValidationResult ExhaustedMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
