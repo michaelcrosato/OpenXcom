@@ -18,6 +18,28 @@
 #include "Tests/AutomationCommon.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FUEGTStrategicHudManufacturingQuantityArithmeticTest,
+	"UEGT.Core.Game.StrategicHudManufacturingQuantityArithmetic",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FUEGTStrategicHudManufacturingQuantityArithmeticTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Manufacturing quantity applies ordinary positive deltas"),
+		UUEGTStrategicHudWidget::CalculateManufacturingQuantity(2, 3), 5);
+	TestEqual(TEXT("Manufacturing quantity defaults an empty value to one"),
+		UUEGTStrategicHudWidget::CalculateManufacturingQuantity(0, 0), 1);
+	TestEqual(TEXT("Manufacturing quantity clamps ordinary decrements at one"),
+		UUEGTStrategicHudWidget::CalculateManufacturingQuantity(2, -5), 1);
+	TestEqual(TEXT("Manufacturing quantity clamps ordinary increments at ninety-nine"),
+		UUEGTStrategicHudWidget::CalculateManufacturingQuantity(98, 2), 99);
+	TestEqual(TEXT("Manufacturing quantity avoids positive int32 addition overflow"),
+		UUEGTStrategicHudWidget::CalculateManufacturingQuantity(MAX_int32, 1), 99);
+	TestEqual(TEXT("Manufacturing quantity avoids minimum int32 delta overflow"),
+		UUEGTStrategicHudWidget::CalculateManufacturingQuantity(1, MIN_int32), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FUEGTTacticalRuntimePresentationTest,
 	"UEGT.Core.Game.TacticalRuntimeBoardCameraHud",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

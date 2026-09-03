@@ -8590,12 +8590,23 @@ FReply UUEGTStrategicHudWidget::HandleCancelFacilityRepairClicked(
 	return FReply::Handled();
 }
 
+int32 UUEGTStrategicHudWidget::CalculateManufacturingQuantity(
+	const int32 CurrentQuantity,
+	const int32 Delta)
+{
+	const int64 BaseQuantity = CurrentQuantity <= 0 ? 1 : static_cast<int64>(CurrentQuantity);
+	return static_cast<int32>(FMath::Clamp<int64>(
+		BaseQuantity + static_cast<int64>(Delta),
+		1,
+		99));
+}
+
 FReply UUEGTStrategicHudWidget::HandleManufacturingQuantityClicked(
 	const FName RuleId,
 	const int32 Delta)
 {
 	int32& Quantity = ManufacturingQuantities.FindOrAdd(RuleId);
-	Quantity = FMath::Clamp((Quantity <= 0 ? 1 : Quantity) + Delta, 1, 99);
+	Quantity = CalculateManufacturingQuantity(Quantity, Delta);
 	RefreshSlate();
 	return FReply::Handled();
 }

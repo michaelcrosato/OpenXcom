@@ -106,6 +106,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UEGT|Strategic|HUD")
 	void CancelFacilityDismantle();
 
+	/** Clamps a manufacturing quantity after applying a signed UI delta. */
+	static int32 CalculateManufacturingQuantity(int32 CurrentQuantity, int32 Delta);
+
 	UFUNCTION(BlueprintPure, Category = "UEGT|Strategic|HUD")
 	FStrategicDashboardSnapshot GetCurrentSnapshot() const { return CurrentSnapshot; }
 
