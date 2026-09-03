@@ -514,11 +514,17 @@ namespace CampaignSavePrivate
 		};
 
 		const FTCHARToUTF8 Utf8(*Input);
+		const int32 Utf8Length = Utf8.Length();
+		if (Utf8Length < 0 || Utf8Length > MAX_int32 - 72)
+		{
+			// SHA-256 padding can add up to 72 bytes. Refuse a payload whose
+			// padded message would exceed TArray's signed index range.
+			return FString();
+		}
 		TArray<uint8> Message;
-		const int64 MessageCapacity = static_cast<int64>(Utf8.Length()) + 72;
-		Message.Reserve(static_cast<int32>(FMath::Min<int64>(MessageCapacity, MAX_int32)));
-		Message.Append(reinterpret_cast<const uint8*>(Utf8.Get()), Utf8.Length());
-		const uint64 BitLength = static_cast<uint64>(Utf8.Length()) * 8ULL;
+		Message.Reserve(Utf8Length + 72);
+		Message.Append(reinterpret_cast<const uint8*>(Utf8.Get()), Utf8Length);
+		const uint64 BitLength = static_cast<uint64>(Utf8Length) * 8ULL;
 		Message.Add(0x80U);
 		while (Message.Num() % 64 != 56)
 		{
