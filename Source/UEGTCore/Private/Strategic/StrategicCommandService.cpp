@@ -12848,7 +12848,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Manufacturing project references a missing base."));
 		return Result;
 	}
-	if (Project->AssignedEngineers < 0 || Project->UnitsRemaining <= 0
+	if (!Project->ProjectId.IsValid() || Project->AssignedEngineers < 0 || Project->UnitsRemaining <= 0
 		|| Project->AccumulatedWorkSeconds < 0)
 	{
 		AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
@@ -12955,7 +12955,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_manufacturing_project"), TEXT("Manufacturing project is not active."));
 		return Result;
 	}
-	if (Project->AssignedEngineers < 0 || Project->UnitsRemaining <= 0
+	if (!Project->ProjectId.IsValid() || Project->AssignedEngineers < 0 || Project->UnitsRemaining <= 0
 		|| Project->AccumulatedWorkSeconds < 0)
 	{
 		AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
@@ -12964,7 +12964,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	const FItemRule* Item = Rules.Items.Find(Project->ItemId);
-	if (Item == nullptr || Item->ManufactureCost < 0)
+	if (Item == nullptr || !Item->IsManufacturable() || Item->ManufactureCost < 0)
 	{
 		AddError(Result, TEXT("unknown_item"), TEXT("Manufacturing project references an unavailable item rule."));
 		return Result;

@@ -6923,6 +6923,74 @@ bool FStrategicEconomyDispositionTest::RunTest(const FString& Parameters)
 		&& MalformedCancellationState.ManufacturingProjects.Num() == 1
 		&& MalformedCancellationState.ManufacturingProjects[0].UnitsRemaining == MIN_int32);
 
+	FResolvedRuleSet NonManufacturableRules = Rules;
+	NonManufacturableRules.Items.FindChecked(TEXT("item.service-rifle")).ManufactureHours = 0;
+	FCampaignState NonManufacturableState = MakeStateWithBase();
+	FManufacturingProjectState& NonManufacturableProject =
+		NonManufacturableState.ManufacturingProjects.AddDefaulted_GetRef();
+	NonManufacturableProject.ProjectId = FGuid(0x197, 0x198, 0x199, 0x200);
+	NonManufacturableProject.ItemId = TEXT("item.service-rifle");
+	NonManufacturableProject.BaseId = TestBaseId;
+	NonManufacturableProject.UnitsRemaining = 1;
+	const int64 NonManufacturableFundsBefore = NonManufacturableState.Funds;
+	const int64 NonManufacturableSequenceBefore = NonManufacturableState.CommandSequence;
+	FAdjustManufacturingUnitsCommand NonManufacturableAdjust;
+	NonManufacturableAdjust.ExpectedSequence = NonManufacturableSequenceBefore;
+	NonManufacturableAdjust.ProjectId = NonManufacturableProject.ProjectId;
+	NonManufacturableAdjust.DeltaUnits = 1;
+	const FStrategicCommandResult NonManufacturableAdjustment =
+		FStrategicCommandService::Execute(
+			NonManufacturableState, NonManufacturableRules, NonManufacturableAdjust);
+	TestTrue(TEXT("Quantity editing rejects a project whose item is no longer manufacturable"),
+		!NonManufacturableAdjustment.bAccepted
+		&& NonManufacturableAdjustment.HasDiagnostic(TEXT("unknown_item"))
+		&& NonManufacturableState.Funds == NonManufacturableFundsBefore
+		&& NonManufacturableState.CommandSequence == NonManufacturableSequenceBefore
+		&& NonManufacturableState.ManufacturingProjects.Num() == 1);
+	FCancelManufacturingCommand NonManufacturableCancel;
+	NonManufacturableCancel.ExpectedSequence = NonManufacturableSequenceBefore;
+	NonManufacturableCancel.ProjectId = NonManufacturableProject.ProjectId;
+	const FStrategicCommandResult NonManufacturableCancellation =
+		FStrategicCommandService::Execute(
+			NonManufacturableState, NonManufacturableRules, NonManufacturableCancel);
+	TestTrue(TEXT("Cancellation rejects a project whose item is no longer manufacturable"),
+		!NonManufacturableCancellation.bAccepted
+		&& NonManufacturableCancellation.HasDiagnostic(TEXT("unknown_item"))
+		&& NonManufacturableState.Funds == NonManufacturableFundsBefore
+		&& NonManufacturableState.CommandSequence == NonManufacturableSequenceBefore
+		&& NonManufacturableState.ManufacturingProjects.Num() == 1);
+
+	FCampaignState InvalidIdentityState = MakeStateWithBase();
+	FManufacturingProjectState& InvalidIdentityProject =
+		InvalidIdentityState.ManufacturingProjects.AddDefaulted_GetRef();
+	InvalidIdentityProject.ItemId = TEXT("item.service-rifle");
+	InvalidIdentityProject.BaseId = TestBaseId;
+	InvalidIdentityProject.UnitsRemaining = 1;
+	const int64 InvalidIdentitySequenceBefore = InvalidIdentityState.CommandSequence;
+	FAdjustManufacturingUnitsCommand InvalidIdentityAdjust;
+	InvalidIdentityAdjust.ExpectedSequence = InvalidIdentitySequenceBefore;
+	InvalidIdentityAdjust.ProjectId = InvalidIdentityProject.ProjectId;
+	InvalidIdentityAdjust.DeltaUnits = 1;
+	const FStrategicCommandResult InvalidIdentityAdjustment =
+		FStrategicCommandService::Execute(
+			InvalidIdentityState, Rules, InvalidIdentityAdjust);
+	TestTrue(TEXT("Quantity editing rejects a project with an invalid identity"),
+		!InvalidIdentityAdjustment.bAccepted
+		&& InvalidIdentityAdjustment.HasDiagnostic(TEXT("invalid_manufacturing_project"))
+		&& InvalidIdentityState.CommandSequence == InvalidIdentitySequenceBefore
+		&& InvalidIdentityState.ManufacturingProjects.Num() == 1);
+	FCancelManufacturingCommand InvalidIdentityCancel;
+	InvalidIdentityCancel.ExpectedSequence = InvalidIdentitySequenceBefore;
+	InvalidIdentityCancel.ProjectId = InvalidIdentityProject.ProjectId;
+	const FStrategicCommandResult InvalidIdentityCancellation =
+		FStrategicCommandService::Execute(
+			InvalidIdentityState, Rules, InvalidIdentityCancel);
+	TestTrue(TEXT("Cancellation rejects a project with an invalid identity"),
+		!InvalidIdentityCancellation.bAccepted
+		&& InvalidIdentityCancellation.HasDiagnostic(TEXT("invalid_manufacturing_project"))
+		&& InvalidIdentityState.CommandSequence == InvalidIdentitySequenceBefore
+		&& InvalidIdentityState.ManufacturingProjects.Num() == 1);
+
 	Start.ExpectedSequence = State.CommandSequence;
 	Start.ProjectId = FGuid(189, 190, 191, 192);
 	TestTrue(TEXT("Partial-refund production order starts"),
