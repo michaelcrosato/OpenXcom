@@ -519,12 +519,12 @@ namespace StrategicCommandServiceTests
 		return Person;
 	}
 
-	void AddTestFlightDeck(FCampaignState& State)
+	void AddTestFlightDeck(FCampaignState& State, const int32 GridX = 1)
 	{
 		FBaseFacilityState& FlightDeck = State.Bases[0].Facilities.AddDefaulted_GetRef();
 		FlightDeck.InstanceId = FGuid(217, 218, 219, 220);
 		FlightDeck.FacilityId = TEXT("facility.flight-deck");
-		FlightDeck.GridX = 1;
+		FlightDeck.GridX = GridX;
 		FlightDeck.GridY = 0;
 	}
 
@@ -12915,7 +12915,7 @@ bool FAuthoredCoalitionCampaignBalanceTest::RunTest(const FString& Parameters)
 			return Campaign;
 		}
 
-		AddTestFlightDeck(Campaign.State);
+		AddTestFlightDeck(Campaign.State, 2);
 		FPersonnelState& Pilot = AddTestPilot(Campaign.State, BalancePilotId);
 		Pilot.Accuracy = 100;
 		FCraftState& Craft = AddTestCraft(Campaign.State, BalanceCraftId);
@@ -14125,6 +14125,79 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 		&& InvalidProgressDismantleResult.HasDiagnostic(TEXT("invalid_research_project"))
 		&& DismantleState.CommandSequence == Dismantle.ExpectedSequence
 		&& DismantleState.Bases[0].Facilities.Num() == 2);
+
+	FCampaignState MalformedFacilityState = MakeStateWithBase();
+	const FGuid ExistingFacilityInstanceId = MalformedFacilityState.Bases[0].Facilities[0].InstanceId;
+	FBaseFacilityState& DuplicateFacility = MalformedFacilityState.Bases[0].Facilities.AddDefaulted_GetRef();
+	DuplicateFacility.InstanceId = ExistingFacilityInstanceId;
+	DuplicateFacility.FacilityId = TEXT("facility.operations-hub");
+	DuplicateFacility.GridX = 0;
+	DuplicateFacility.GridY = 0;
+	AddTestFlightDeck(MalformedFacilityState);
+	const int64 MalformedFacilitySequence = MalformedFacilityState.CommandSequence;
+	const int64 MalformedFacilityFunds = MalformedFacilityState.Funds;
+	const FBaseStorageEvaluation MalformedFacilityStorage =
+		FStrategicCommandService::EvaluateBaseStorage(
+			MalformedFacilityState, Rules, TestBaseId);
+	TestTrue(TEXT("Storage projection rejects duplicate installed facility identity"),
+		!MalformedFacilityStorage.bValid
+		&& MalformedFacilityStorage.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_facility_state"));
+			})
+		&& MalformedFacilityState.CommandSequence == MalformedFacilitySequence);
+
+	FSetSignalWatchStaffCommand MalformedFacilityWatch;
+	MalformedFacilityWatch.ExpectedSequence = MalformedFacilitySequence;
+	MalformedFacilityWatch.BaseId = TestBaseId;
+	MalformedFacilityWatch.AssignedScientists = 0;
+	const FSignalWatchStaffEvaluation MalformedFacilityWatchEvaluation =
+		FStrategicCommandService::EvaluateSignalWatchStaff(
+			MalformedFacilityState, Rules, MalformedFacilityWatch);
+	const FStrategicCommandResult MalformedFacilityWatchResult =
+		FStrategicCommandService::Execute(
+			MalformedFacilityState, Rules, MalformedFacilityWatch);
+	TestTrue(TEXT("Signal Watch preview and execution reject duplicate installed facility identity"),
+		!MalformedFacilityWatchEvaluation.bAllowed
+		&& MalformedFacilityWatchEvaluation.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_facility_state"));
+			})
+		&& !MalformedFacilityWatchResult.bAccepted
+		&& MalformedFacilityWatchResult.HasDiagnostic(TEXT("invalid_facility_state"))
+		&& MalformedFacilityState.CommandSequence == MalformedFacilitySequence);
+
+	FStartResearchCommand MalformedFacilityResearch;
+	MalformedFacilityResearch.ExpectedSequence = MalformedFacilitySequence;
+	MalformedFacilityResearch.BaseId = TestBaseId;
+	MalformedFacilityResearch.ResearchId = TEXT("research.signal-analysis");
+	const FStrategicCommandResult MalformedFacilityResearchResult =
+		FStrategicCommandService::Execute(
+			MalformedFacilityState, Rules, MalformedFacilityResearch);
+	TestTrue(TEXT("Research start rejects duplicate installed facility identity before facility lookup"),
+		!MalformedFacilityResearchResult.bAccepted
+		&& MalformedFacilityResearchResult.HasDiagnostic(TEXT("invalid_facility_state"))
+		&& MalformedFacilityState.ResearchProjects.IsEmpty()
+		&& MalformedFacilityState.CommandSequence == MalformedFacilitySequence);
+
+	FAcquireCraftCommand MalformedFacilityAcquire;
+	MalformedFacilityAcquire.ExpectedSequence = MalformedFacilitySequence;
+	MalformedFacilityAcquire.OrderId = FGuid(0x7a180001, 0x7a180002, 0x7a180003, 0x7a180004);
+	MalformedFacilityAcquire.CraftId = FGuid(0x7a190001, 0x7a190002, 0x7a190003, 0x7a190004);
+	MalformedFacilityAcquire.BaseId = TestBaseId;
+	MalformedFacilityAcquire.CraftRuleId = TEXT("craft.sparrow-interceptor");
+	MalformedFacilityAcquire.DisplayName = TEXT("Malformed Facility Craft");
+	const FStrategicCommandResult MalformedFacilityAcquireResult =
+		FStrategicCommandService::Execute(
+			MalformedFacilityState, Rules, MalformedFacilityAcquire);
+	TestTrue(TEXT("Craft acquisition rejects duplicate installed facility identity before capacity arithmetic"),
+		!MalformedFacilityAcquireResult.bAccepted
+		&& MalformedFacilityAcquireResult.HasDiagnostic(TEXT("invalid_facility_state"))
+		&& MalformedFacilityState.Funds == MalformedFacilityFunds
+		&& MalformedFacilityState.CraftAcquisitionOrders.IsEmpty()
+		&& MalformedFacilityState.CommandSequence == MalformedFacilitySequence);
 	return true;
 }
 

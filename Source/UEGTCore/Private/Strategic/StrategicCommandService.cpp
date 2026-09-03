@@ -2428,6 +2428,11 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateFacilityState(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		FStrategicCommandResult& Result);
+
 	bool ValidateResearchProjects(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -2447,7 +2452,8 @@ namespace StrategicCommandServicePrivate
 	{
 		OutEvaluation = FBaseStorageEvaluation();
 		OutEvaluation.BaseId = Base.BaseId;
-		if (!ValidateResearchProjects(State, Rules, Result)
+		if (!ValidateFacilityState(State, Rules, Result)
+			|| !ValidateResearchProjects(State, Rules, Result)
 			|| !ValidateManufacturingProjects(State, Rules, Result))
 		{
 			return false;
@@ -4984,6 +4990,10 @@ namespace StrategicCommandServicePrivate
 		const FResolvedRuleSet& Rules,
 		FStrategicCommandResult& Result)
 	{
+		if (!ValidateFacilityState(State, Rules, Result))
+		{
+			return false;
+		}
 		TSet<FGuid> SeenCraftIds;
 		TSet<FGuid> SeenOrderIds;
 		TSet<FGuid> AssignedPilotIds;
@@ -9209,6 +9219,11 @@ FSignalWatchStaffEvaluation FStrategicCommandService::EvaluateSignalWatchStaff(
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
 	if (!ValidateResearchProjects(State, Rules, Validation)
 		|| !ValidateProjectStaffingForCategory(
 			State, Base->BaseId, EPersonnelRoleCategory::Scientist, Validation))
@@ -9329,6 +9344,11 @@ FWorksCadreStaffEvaluation FStrategicCommandService::EvaluateWorksCadreStaff(
 	{
 		AddError(Validation, TEXT("unknown_base"),
 			TEXT("Works Cadre staffing requires an established base."));
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
@@ -10891,6 +10911,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			return Result;
 		}
 	}
+	if (!ValidateFacilityState(State, Rules, Result))
+	{
+		return Result;
+	}
 	TArray<FName> MissingFacilityIds;
 	if (!HasOperationalResearchFacilities(*Base, Rules, *Research, &MissingFacilityIds))
 	{
@@ -10968,6 +10992,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	if (!ValidateResearchProjects(Transaction, Rules, Result))
+	{
+		return Result;
+	}
+	if (!ValidateFacilityState(Transaction, Rules, Result))
 	{
 		return Result;
 	}
@@ -12899,6 +12927,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("invalid_manufacturing_quantity"), TEXT("Manufacturing quantity must be positive."));
 		return Result;
 	}
+	if (!ValidateFacilityState(State, Rules, Result))
+	{
+		return Result;
+	}
 	if (!FContentPackageResolver::IsValidPackageId(Config.ManufacturingFacilityId)
 		|| !HasOperationalFacility(*Base, Rules, Config.ManufacturingFacilityId))
 	{
@@ -13017,6 +13049,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	if (!ValidateManufacturingProjects(Transaction, Rules, Result))
+	{
+		return Result;
+	}
+	if (!ValidateFacilityState(Transaction, Rules, Result))
 	{
 		return Result;
 	}
@@ -14696,6 +14732,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			return Result;
 		}
 	}
+	if (!ValidateFacilityState(State, Rules, Result))
+	{
+		return Result;
+	}
 
 	FBasePersonnelCapacityProfile PersonnelCapacity;
 	if ((Role->Category == EPersonnelRoleCategory::Scientist
@@ -14851,6 +14891,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	if (!ValidateResearchProjects(State, Rules, Result)
 		|| !ValidateManufacturingProjects(State, Rules, Result))
+	{
+		return Result;
+	}
+	if (!ValidateFacilityState(State, Rules, Result))
 	{
 		return Result;
 	}
@@ -15820,6 +15864,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			return Result;
 		}
 	}
+	if (!ValidateFacilityState(State, Rules, Result))
+	{
+		return Result;
+	}
 	int32 Capacity = 0;
 	if (!ComputeBaseCraftCapacity(*Base, Rules, Capacity, Result))
 	{
@@ -15910,6 +15958,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	if (Craft->BaseId == Command.DestinationBaseId)
 	{
 		AddError(Result, TEXT("craft_already_at_base"), TEXT("Craft is already stationed at the destination base."));
+		return Result;
+	}
+	if (!ValidateFacilityState(State, Rules, Result))
+	{
 		return Result;
 	}
 	int32 Capacity = 0;
