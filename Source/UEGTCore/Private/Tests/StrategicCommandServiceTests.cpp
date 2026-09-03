@@ -13964,6 +13964,29 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Personnel dismissal reports the malformed research project progress"),
 		DismissResult.HasDiagnostic(TEXT("invalid_research_project")));
 
+	const int64 MalformedResearchStorageSequence = ResearchState.CommandSequence;
+	const FBaseStorageEvaluation MalformedResearchStorage =
+		FStrategicCommandService::EvaluateBaseStorage(ResearchState, Rules, TestBaseId);
+	TestTrue(TEXT("Storage evaluation rejects malformed research project progress"),
+		!MalformedResearchStorage.bValid
+		&& MalformedResearchStorage.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_research_project"));
+			})
+		&& ResearchState.CommandSequence == MalformedResearchStorageSequence);
+
+	FSetPersonnelEquipmentCommand ClearEquipment;
+	ClearEquipment.ExpectedSequence = ResearchState.CommandSequence;
+	ClearEquipment.PersonnelId = ScientistId;
+	const FStrategicCommandResult ClearEquipmentResult =
+		FStrategicCommandService::Execute(ResearchState, Rules, ClearEquipment);
+	TestTrue(TEXT("Personnel equipment mutation rejects malformed research project progress"),
+		!ClearEquipmentResult.bAccepted
+		&& ClearEquipmentResult.HasDiagnostic(TEXT("invalid_research_project"))
+		&& ResearchState.CommandSequence == MalformedResearchStorageSequence
+		&& Scientist.EquippedItems.IsEmpty());
+
 	FCampaignState ManufacturingState = MakeStateWithBase();
 	const FGuid ManufacturingId(0x7a130001, 0x7a130002, 0x7a130003, 0x7a130004);
 	FManufacturingProjectState& InvalidManufacturing =
@@ -14031,6 +14054,31 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 		&& ManufacturingStartState.Funds == ManufacturingStartFunds
 		&& ManufacturingStartState.ManufacturingProjects.Num() == 1
 		&& ManufacturingStartState.ManufacturingProjects[0].AssignedEngineers == MIN_int32);
+
+	const FGuid ManufacturingEquipmentPersonnelId(0x7a170001, 0x7a170002, 0x7a170003, 0x7a170004);
+	FPersonnelState& ManufacturingEquipmentPersonnel = AddTestPersonnel(
+		ManufacturingState, ManufacturingEquipmentPersonnelId, TEXT("Invalid Manufacturing Storage Probe"));
+	const int64 MalformedManufacturingStorageSequence = ManufacturingState.CommandSequence;
+	const FBaseStorageEvaluation MalformedManufacturingStorage =
+		FStrategicCommandService::EvaluateBaseStorage(ManufacturingState, Rules, TestBaseId);
+	TestTrue(TEXT("Storage evaluation rejects malformed manufacturing project staffing"),
+		!MalformedManufacturingStorage.bValid
+		&& MalformedManufacturingStorage.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_manufacturing_project"));
+			})
+		&& ManufacturingState.CommandSequence == MalformedManufacturingStorageSequence);
+	FSetPersonnelEquipmentCommand ManufacturingEquipment;
+	ManufacturingEquipment.ExpectedSequence = ManufacturingState.CommandSequence;
+	ManufacturingEquipment.PersonnelId = ManufacturingEquipmentPersonnelId;
+	const FStrategicCommandResult ManufacturingEquipmentResult =
+		FStrategicCommandService::Execute(ManufacturingState, Rules, ManufacturingEquipment);
+	TestTrue(TEXT("Personnel equipment mutation rejects malformed manufacturing project staffing"),
+		!ManufacturingEquipmentResult.bAccepted
+		&& ManufacturingEquipmentResult.HasDiagnostic(TEXT("invalid_manufacturing_project"))
+		&& ManufacturingState.CommandSequence == MalformedManufacturingStorageSequence
+		&& ManufacturingEquipmentPersonnel.EquippedItems.IsEmpty());
 
 	FCampaignState DismantleState = MakeStateWithBase();
 	const FGuid AnnexId(0x7a140001, 0x7a140002, 0x7a140003, 0x7a140004);

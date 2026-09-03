@@ -2428,6 +2428,16 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateResearchProjects(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		FStrategicCommandResult& Result);
+
+	bool ValidateManufacturingProjects(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		FStrategicCommandResult& Result);
+
 	bool ComputeBaseStorage(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -2437,6 +2447,11 @@ namespace StrategicCommandServicePrivate
 	{
 		OutEvaluation = FBaseStorageEvaluation();
 		OutEvaluation.BaseId = Base.BaseId;
+		if (!ValidateResearchProjects(State, Rules, Result)
+			|| !ValidateManufacturingProjects(State, Rules, Result))
+		{
+			return false;
+		}
 		for (const TPair<FName, FFacilityRule>& Pair : Rules.Facilities)
 		{
 			OutEvaluation.bEnforced |= Pair.Value.StorageCapacity > 0;
