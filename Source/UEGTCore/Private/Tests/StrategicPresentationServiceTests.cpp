@@ -2645,6 +2645,27 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& NegativeProjectCampaign.FacilityConstructionProjects[0].RemainingBuildSeconds == -2
 		&& NegativeProjectCampaign.Bases[0].Inventory[0].Quantity == -7
 		&& NegativeProjectCampaign.Craft[0].PendingSalvage[0].Quantity == -6);
+	FCampaignState InvalidSalvageQuantityCampaign = Campaign;
+	InvalidSalvageQuantityCampaign.Craft[0].PendingSalvage[0].Quantity = -1;
+	const FStrategicDashboardSnapshot InvalidSalvageQuantitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidSalvageQuantityCampaign, Rules, Config);
+	const FStrategicCraftSalvageView* InvalidSalvageQuantityView =
+		InvalidSalvageQuantitySnapshot.Craft.Num() > 0
+			? InvalidSalvageQuantitySnapshot.Craft[0].PendingSalvage.FindByPredicate(
+				[&RecoveredMaterial](const FStrategicCraftSalvageView& Salvage)
+				{
+					return Salvage.ItemId == RecoveredMaterial.Identity.RuleId;
+				})
+			: nullptr;
+	TestTrue(TEXT("Dashboard disables disposition for non-positive persisted salvage quantities"),
+		InvalidSalvageQuantitySnapshot.bSucceeded
+		&& InvalidSalvageQuantityView != nullptr
+		&& InvalidSalvageQuantityView->Quantity == 0
+		&& InvalidSalvageQuantityView->TotalStorage == 0
+		&& InvalidSalvageQuantityView->TotalSellValue == 0
+		&& !InvalidSalvageQuantityView->bCanRetainAtBase
+		&& !InvalidSalvageQuantityView->bCanSell);
 	TestTrue(TEXT("Construction view exposes its progress-based cancellation refund"),
 		Snapshot.Projects[2].Type == EStrategicProjectType::Construction
 		&& Snapshot.Projects[2].CancellationRefund == 56);

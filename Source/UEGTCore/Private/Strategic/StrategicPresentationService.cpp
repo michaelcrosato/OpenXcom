@@ -2549,18 +2549,23 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			FStrategicCraftSalvageView& Salvage = View.PendingSalvage.AddDefaulted_GetRef();
 			Salvage.ItemId = Stack.ItemId;
 			Salvage.Quantity = FMath::Max(0, Stack.Quantity);
+			const FInventoryStack* CargoStack = Craft.Cargo.FindByPredicate(
+				[&Stack](const FInventoryStack& Entry) { return Entry.ItemId == Stack.ItemId; });
+			const bool bSalvageQuantityValid = Stack.Quantity > 0
+				&& CargoStack != nullptr && CargoStack->Quantity >= Stack.Quantity;
 			if (const FItemRule* Item = Rules.Items.Find(Stack.ItemId))
 			{
 				Salvage.DisplayName = RuleName(Item->DisplayName, Stack.ItemId);
 				Salvage.UnitStorage = FMath::Max(0, Item->Mass);
-				Salvage.TotalStorage = SafeProduct(Salvage.UnitStorage, Stack.Quantity);
+				Salvage.TotalStorage = SafeProduct(Salvage.UnitStorage, Salvage.Quantity);
 				Salvage.UnitSellValue = FMath::Max(0, Item->SellValue);
-				Salvage.TotalSellValue = SafeProduct(Salvage.UnitSellValue, Stack.Quantity);
+				Salvage.TotalSellValue = SafeProduct(Salvage.UnitSellValue, Salvage.Quantity);
 				Salvage.bCanRetainAtBase = CommandSequenceValidation.bAccepted
-					&& View.bSalvageDispositionAvailable
+					&& bSalvageQuantityValid && View.bSalvageDispositionAvailable
 					&& CanApplyStorageDelta(CraftBaseView, Salvage.TotalStorage);
 				Salvage.bCanSell = CommandSequenceValidation.bAccepted
-					&& View.bSalvageDispositionAvailable && Salvage.UnitSellValue > 0;
+					&& bSalvageQuantityValid && View.bSalvageDispositionAvailable
+					&& Salvage.UnitSellValue > 0;
 			}
 			else
 			{
