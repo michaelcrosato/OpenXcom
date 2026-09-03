@@ -1733,6 +1733,49 @@ bool FStrategicManufacturingSafetyTest::RunTest(const FString& Parameters)
 		&& OutputCapacityRejected.HasDiagnostic(TEXT("simulation_overflow"))
 		&& OutputCapacityState.ManufacturingProjects.Num() == 1
 		&& OutputCapacityState.Bases[0].Inventory.Last().Quantity == MAX_int32);
+	FCampaignState RepairReactivationState = OutputCapacityState;
+	FBaseFacilityState* RepairReactivationFabrication =
+		RepairReactivationState.Bases[0].Facilities.FindByPredicate(
+			[](const FBaseFacilityState& Facility)
+			{
+				return Facility.FacilityId == TEXT("facility.fabrication-bay");
+			});
+	FManufacturingProjectState* RepairReactivationProject =
+		RepairReactivationState.ManufacturingProjects.FindByPredicate(
+			[](const FManufacturingProjectState& Project)
+			{
+				return Project.ItemId == TEXT("item.service-rifle");
+			});
+	if (RepairReactivationFabrication != nullptr && RepairReactivationProject != nullptr)
+	{
+		RepairReactivationFabrication->Damage = 1;
+		RepairReactivationFabrication->ReservedRepairDamage = 1;
+		RepairReactivationFabrication->RemainingRepairSeconds = 5;
+		RepairReactivationProject->AccumulatedWorkSeconds = 3595;
+		const int64 RepairReactivationSequence = RepairReactivationState.CommandSequence;
+		const FStrategicCommandResult RepairReactivationValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceProductionCapacity(
+				RepairReactivationState, Rules, Config, 86400);
+		FAdvanceStrategicTimeCommand RepairReactivationAdvance;
+		RepairReactivationAdvance.ExpectedSequence = RepairReactivationSequence;
+		RepairReactivationAdvance.Rate = EStrategicTimeRate::OneDay;
+		const FStrategicCommandResult RepairReactivationRejected =
+			FStrategicCommandService::Execute(
+				RepairReactivationState, Rules, Config, RepairReactivationAdvance);
+		TestTrue(TEXT("Manufacturing capacity validation includes facilities repaired in the first simulation slice"),
+			!RepairReactivationValidation.bAccepted
+			&& RepairReactivationValidation.HasDiagnostic(TEXT("simulation_overflow")));
+		TestTrue(TEXT("Time advancement rejects manufacturing output after same-slice facility repair"),
+			!RepairReactivationRejected.bAccepted
+			&& RepairReactivationRejected.HasDiagnostic(TEXT("simulation_overflow"))
+			&& RepairReactivationState.CommandSequence == RepairReactivationSequence
+			&& RepairReactivationState.Bases[0].Inventory.Last().Quantity == MAX_int32
+			&& RepairReactivationState.ManufacturingProjects.Num() == 1);
+	}
+	else
+	{
+		AddError(TEXT("Repair-reactivation fixture could not resolve its facility or project."));
+	}
 
 	FResolvedRuleSet CombinedCapacityRules = Rules;
 	CombinedCapacityRules.AdversaryMissions.Reset();

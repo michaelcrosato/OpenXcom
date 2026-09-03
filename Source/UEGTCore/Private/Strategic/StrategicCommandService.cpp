@@ -1979,6 +1979,34 @@ namespace StrategicCommandServicePrivate
 			&& Base.BuiltFacilities.Contains(FacilityId);
 	}
 
+	bool HasOperationalFacilityAfterRepair(
+		const FStrategicBaseState& Base,
+		const FResolvedRuleSet& Rules,
+		const FName FacilityId,
+		const int64 RequestedSeconds)
+	{
+		if (HasOperationalFacility(Base, Rules, FacilityId))
+		{
+			return true;
+		}
+		if (RequestedSeconds <= 0)
+		{
+			return false;
+		}
+		return Base.Facilities.ContainsByPredicate(
+			[FacilityId, &Rules, RequestedSeconds](const FBaseFacilityState& Facility)
+			{
+				const FFacilityRule* Rule = Rules.Facilities.Find(Facility.FacilityId);
+				return Facility.FacilityId == FacilityId
+					&& Rule != nullptr
+					&& Facility.RemainingRepairSeconds > 0
+					&& Facility.RemainingRepairSeconds <= RequestedSeconds
+					&& Facility.ReservedRepairDamage > 0
+					&& Facility.Damage >= Facility.ReservedRepairDamage
+					&& Facility.Damage - Facility.ReservedRepairDamage < Rule->MaxIntegrity;
+			});
+	}
+
 	bool HasOperationalResearchFacilities(
 		const FStrategicBaseState& Base,
 		const FResolvedRuleSet& Rules,
@@ -2003,6 +2031,22 @@ namespace StrategicCommandServicePrivate
 			}
 		}
 		return bAllOperational;
+	}
+
+	bool HasOperationalResearchFacilitiesAfterRepair(
+		const FStrategicBaseState& Base,
+		const FResolvedRuleSet& Rules,
+		const FResearchRule& Research,
+		const int64 RequestedSeconds)
+	{
+		for (const FName FacilityId : Research.RequiredFacilityIds)
+		{
+			if (!HasOperationalFacilityAfterRepair(Base, Rules, FacilityId, RequestedSeconds))
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	FGuid MakeDeterministicFacilityId(const FGuid& BaseId, const FName FacilityId, const int32 Index)
@@ -5964,7 +6008,8 @@ namespace StrategicCommandServicePrivate
 					*Project.ResearchId.ToString()));
 				return false;
 			}
-			const int32 EffectiveScientists = HasOperationalResearchFacilities(*ResearchBase, Rules, *Research)
+			const int32 EffectiveScientists = HasOperationalResearchFacilitiesAfterRepair(
+				*ResearchBase, Rules, *Research, RequestedSeconds)
 				? Project.AssignedScientists : 0;
 			int64 MaximumAdditionalWork = 0;
 			int64 ScaledMaximumAdditionalWork = 0;
@@ -6039,7 +6084,8 @@ namespace StrategicCommandServicePrivate
 				return false;
 			}
 			const int64 RequiredWork = static_cast<int64>(Item->ManufactureHours) * 3600LL;
-			if (!HasOperationalFacility(*ManufacturingBase, Rules, Config.ManufacturingFacilityId)
+			if (!HasOperationalFacilityAfterRepair(
+					*ManufacturingBase, Rules, Config.ManufacturingFacilityId, RequestedSeconds)
 				|| (Project.AssignedEngineers == 0 && Project.AccumulatedWorkSeconds < RequiredWork))
 			{
 				continue;

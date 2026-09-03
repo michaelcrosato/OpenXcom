@@ -1174,6 +1174,46 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidManufacturingOutputSnapshot.bCanAdvanceTime
 		&& InvalidManufacturingOutputSnapshot.Diagnostics.Contains(
 			TEXT("Strategic simulation exceeded a persisted numeric range.")));
+	FCampaignState RepairReactivationManufacturingCampaign = InvalidManufacturingOutputCampaign;
+	FStrategicBaseState* RepairReactivationManufacturingBase =
+		RepairReactivationManufacturingCampaign.Bases.FindByPredicate(
+			[&BaseId](const FStrategicBaseState& BaseState)
+			{
+				return BaseState.BaseId == BaseId;
+			});
+	FBaseFacilityState* RepairReactivationManufacturingFacility =
+		RepairReactivationManufacturingBase != nullptr
+			? RepairReactivationManufacturingBase->Facilities.FindByPredicate(
+				[&Operations](const FBaseFacilityState& Facility)
+				{
+					return Facility.FacilityId == Operations.Identity.RuleId;
+				})
+			: nullptr;
+	FManufacturingProjectState* RepairReactivationManufacturingProject =
+		RepairReactivationManufacturingCampaign.ManufacturingProjects.FindByPredicate(
+			[&Manufactured](const FManufacturingProjectState& Project)
+			{
+				return Project.ItemId == Manufactured.Identity.RuleId;
+			});
+	if (RepairReactivationManufacturingFacility != nullptr
+		&& RepairReactivationManufacturingProject != nullptr)
+	{
+		RepairReactivationManufacturingFacility->Damage = 1;
+		RepairReactivationManufacturingFacility->ReservedRepairDamage = 1;
+		RepairReactivationManufacturingFacility->RemainingRepairSeconds = 5;
+		RepairReactivationManufacturingProject->AccumulatedWorkSeconds =
+			static_cast<int64>(Manufactured.ManufactureHours) * 3600 - 5;
+	}
+	const FStrategicDashboardSnapshot RepairReactivationManufacturingSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			RepairReactivationManufacturingCampaign, InvalidFinancialRules, ProgressConfig);
+	TestTrue(TEXT("Dashboard disables time advancement when a repaired manufacturing facility would overflow output"),
+		RepairReactivationManufacturingFacility != nullptr
+		&& RepairReactivationManufacturingProject != nullptr
+		&& RepairReactivationManufacturingSnapshot.bSucceeded
+		&& !RepairReactivationManufacturingSnapshot.bCanAdvanceTime
+		&& RepairReactivationManufacturingSnapshot.Diagnostics.Contains(
+			TEXT("Strategic simulation exceeded a persisted numeric range.")));
 	FResolvedRuleSet CombinedCapacityRules = Rules;
 	CombinedCapacityRules.AdversaryMissions.Reset();
 	FStrategicSimulationConfig CombinedCapacityConfig = Config;
