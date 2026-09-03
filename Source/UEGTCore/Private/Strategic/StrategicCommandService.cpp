@@ -2447,6 +2447,29 @@ namespace StrategicCommandServicePrivate
 		const FResolvedRuleSet& Rules,
 		FStrategicCommandResult& Result);
 
+	bool ValidateBaseInventory(
+		const FStrategicBaseState& Base,
+		const FResolvedRuleSet& Rules,
+		FStrategicCommandResult& Result)
+	{
+		TSet<FName> SeenItems;
+		for (const FInventoryStack& Stack : Base.Inventory)
+		{
+			const FItemRule* Item = Rules.Items.Find(Stack.ItemId);
+			int64 StackStorage = 0;
+			if (Item == nullptr || Item->Mass < 0 || Stack.ItemId.IsNone() || Stack.Quantity <= 0
+				|| SeenItems.Contains(Stack.ItemId)
+				|| !TryMultiplyNonNegative(Item->Mass, Stack.Quantity, StackStorage))
+			{
+				AddError(Result, TEXT("invalid_storage_inventory"), FString::Printf(
+					TEXT("Base '%s' contains invalid or overflowing inventory storage data."), *Base.Name));
+				return false;
+			}
+			SeenItems.Add(Stack.ItemId);
+		}
+		return true;
+	}
+
 	bool ComputeBaseStorage(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -2482,21 +2505,21 @@ namespace StrategicCommandServicePrivate
 			return false;
 		}
 
-		TSet<FName> SeenItems;
+		if (!ValidateBaseInventory(Base, Rules, Result))
+		{
+			return false;
+		}
 		for (const FInventoryStack& Stack : Base.Inventory)
 		{
 			const FItemRule* Item = Rules.Items.Find(Stack.ItemId);
 			int64 StackStorage = 0;
-			if (Item == nullptr || Item->Mass < 0 || Stack.ItemId.IsNone() || Stack.Quantity <= 0
-				|| SeenItems.Contains(Stack.ItemId)
-				|| !TryMultiplyNonNegative(Item->Mass, Stack.Quantity, StackStorage)
+			if (!TryMultiplyNonNegative(Item->Mass, Stack.Quantity, StackStorage)
 				|| !TryAdd(OutEvaluation.Used, StackStorage, OutEvaluation.Used))
 			{
 				AddError(Result, TEXT("invalid_storage_inventory"), FString::Printf(
 					TEXT("Base '%s' contains invalid or overflowing inventory storage data."), *Base.Name));
 				return false;
 			}
-			SeenItems.Add(Stack.ItemId);
 		}
 
 		for (const FManufacturingProjectState& Project : State.ManufacturingProjects)
@@ -7353,6 +7376,24 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicProjectState(
 	return Result;
 }
 
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicInventoryState(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	for (const FStrategicBaseState& Base : State.Bases)
+	{
+		if (!ValidateBaseInventory(Base, Rules, Result))
+		{
+			return Result;
+		}
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
 FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceConfig(
 	const FCampaignState& State,
 	const FStrategicSimulationConfig& Config)
@@ -11259,6 +11300,12 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	if (!ValidateMutualAidConvoyState(State, Rules, Result))
 	{
 		return Result;
+	}
+	const FStrategicCommandResult InventoryValidation =
+		FStrategicCommandService::ValidateStrategicInventoryState(State, Rules);
+	if (!InventoryValidation.bAccepted)
+	{
+		return InventoryValidation;
 	}
 	int64 MonthlyMaintenance = 0;
 	if (!ComputeMonthlyMaintenance(State, Rules, MonthlyMaintenance, Result))

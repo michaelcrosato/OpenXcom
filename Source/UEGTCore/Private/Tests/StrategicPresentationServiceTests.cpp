@@ -931,6 +931,19 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 				return Diagnostic.Contains(TEXT("Manufacturing project"))
 					&& Diagnostic.Contains(TEXT("invalid persisted state"));
 			}));
+	FCampaignState InvalidInventoryReadinessCampaign = Campaign;
+	InvalidInventoryReadinessCampaign.Bases[0].Inventory[0].Quantity = -7;
+	const FStrategicDashboardSnapshot InvalidInventoryReadinessSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidInventoryReadinessCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid base inventory state"),
+		InvalidInventoryReadinessSnapshot.bSucceeded
+		&& !InvalidInventoryReadinessSnapshot.bCanAdvanceTime
+		&& InvalidInventoryReadinessSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("invalid or overflowing inventory storage data"));
+			}));
 	FCampaignState MalformedFacilityCampaign = Campaign;
 	const FBaseFacilityState DuplicateFacility = MalformedFacilityCampaign.Bases[0].Facilities[0];
 	MalformedFacilityCampaign.Bases[0].Facilities.Add(DuplicateFacility);

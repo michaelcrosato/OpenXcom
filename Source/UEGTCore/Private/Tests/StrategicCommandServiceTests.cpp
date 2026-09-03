@@ -821,6 +821,29 @@ bool FStrategicBaseTransactionTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicTimeAdvanceInventoryValidationTest,
+	"UEGT.Core.StrategicCommands.TimeAdvanceInventoryValidation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicTimeAdvanceInventoryValidationTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	const FResolvedRuleSet Rules = MakeRules();
+	const FStrategicSimulationConfig Config = MakeConfig();
+	FCampaignState State = MakeStateWithBase();
+	State.Bases[0].Inventory.Add({ TEXT("item.service-rifle"), -1 });
+	FAdvanceStrategicTimeCommand Advance;
+	Advance.ExpectedSequence = State.CommandSequence;
+	Advance.Rate = EStrategicTimeRate::FiveSeconds;
+	const FStrategicCommandResult Result =
+		FStrategicCommandService::Execute(State, Rules, Config, Advance);
+	TestTrue(TEXT("Time advancement rejects invalid base inventory before simulation"),
+		!Result.bAccepted && Result.HasDiagnostic(TEXT("invalid_storage_inventory")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicResearchWorkflowTest,
 	"UEGT.Core.StrategicCommands.ResearchWorkflow",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

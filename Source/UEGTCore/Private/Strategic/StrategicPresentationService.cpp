@@ -1077,6 +1077,21 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	const FStrategicCommandResult InventoryStateValidation =
+		FStrategicCommandService::ValidateStrategicInventoryState(Campaign, Rules);
+	if (!InventoryStateValidation.bAccepted)
+	{
+		Snapshot.bCanAdvanceTime = false;
+		if (!InventoryStateValidation.Diagnostics.IsEmpty())
+		{
+			const FString& Diagnostic = InventoryStateValidation.Diagnostics[0].Message;
+			if (!Snapshot.Diagnostics.ContainsByPredicate(
+				[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+			{
+				Snapshot.Diagnostics.Add(Diagnostic);
+			}
+		}
+	}
 	TSet<const FStrategicBaseState*> BasesWithValidInfrastructure;
 	for (const FStrategicBaseState& Base : Campaign.Bases)
 	{
