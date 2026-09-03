@@ -16033,6 +16033,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Craft->Status = ECraftStatus::Servicing;
 	Craft->RemainingRepairSeconds = RepairSeconds;
 	Craft->RemainingRefuelSeconds = RefuelSeconds;
+	if (!ValidateCraftState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	const FGuid BaseId = Craft->BaseId;
 	const FName CraftRuleId = Craft->CraftRuleId;
 	++Transaction.CommandSequence;
@@ -16134,6 +16138,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Craft->Status = ECraftStatus::Grounded;
 	Craft->RemainingRepairSeconds = 0;
 	Craft->RemainingRefuelSeconds = 0;
+	if (!ValidateCraftState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	++Transaction.CommandSequence;
 	FStrategicEvent& Cancelled = AddEvent(Result, EStrategicEventType::CraftServiceCancelled,
 		Transaction.CommandSequence, Transaction.StrategicTime.Utc);

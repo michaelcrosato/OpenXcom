@@ -830,6 +830,32 @@ bool FStrategicResearchWorkflowTest::RunTest(const FString& Parameters)
 	using namespace StrategicCommandServiceTests;
 
 	const FResolvedRuleSet Rules = MakeRules();
+	FCampaignState InvalidBeginServiceState = MakeStateWithBase();
+	AddTestFlightDeck(InvalidBeginServiceState);
+	const FGuid InvalidBeginServiceCraftId(0x261, 0x262, 0x263, 0x264);
+	FCraftState& InvalidBeginServiceCraft = AddTestCraft(
+		InvalidBeginServiceState, InvalidBeginServiceCraftId);
+	InvalidBeginServiceCraft.CurrentHull = 98;
+	InvalidBeginServiceCraft.CurrentFuel = 350;
+	InvalidBeginServiceCraft.Cargo.Add({ TEXT("item.service-rifle"), 1 });
+	InvalidBeginServiceState.Funds = 1000;
+	const int64 InvalidBeginServiceSequence = InvalidBeginServiceState.CommandSequence;
+	FBeginCraftServiceCommand InvalidBeginService;
+	InvalidBeginService.ExpectedSequence = InvalidBeginServiceSequence;
+	InvalidBeginService.CraftId = InvalidBeginServiceCraftId;
+	const FStrategicCommandResult InvalidBeginServiceResult = FStrategicCommandService::Execute(
+		InvalidBeginServiceState, Rules, InvalidBeginService);
+	TestTrue(TEXT("Craft service rejects malformed persisted cargo before charging funds"),
+		!InvalidBeginServiceResult.bAccepted
+		&& InvalidBeginServiceResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidBeginServiceState.CommandSequence == InvalidBeginServiceSequence
+		&& InvalidBeginServiceState.Funds == 1000
+		&& InvalidBeginServiceState.Craft.Num() == 1
+		&& InvalidBeginServiceState.Craft[0].Status == ECraftStatus::Grounded
+		&& InvalidBeginServiceState.Craft[0].RemainingRepairSeconds == 0
+		&& InvalidBeginServiceState.Craft[0].RemainingRefuelSeconds == 0
+		&& InvalidBeginServiceState.Craft[0].Cargo.Num() == 1);
+
 	FCampaignState CancellationState = MakeStateWithBase();
 	AddTestFlightDeck(CancellationState);
 	const FGuid CancellationCraftId(265, 266, 267, 268);
@@ -845,6 +871,35 @@ bool FStrategicResearchWorkflowTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Grounded craft service cannot be cancelled"), InactiveCancellation.bAccepted);
 	TestTrue(TEXT("Inactive craft service cancellation has an exact diagnostic"),
 		InactiveCancellation.HasDiagnostic(TEXT("craft_service_not_active")));
+
+	FCampaignState InvalidCancelServiceState = MakeStateWithBase();
+	AddTestFlightDeck(InvalidCancelServiceState);
+	const FGuid InvalidCancelServiceCraftId(0x265, 0x266, 0x267, 0x268);
+	FCraftState& InvalidCancelServiceCraft = AddTestCraft(
+		InvalidCancelServiceState, InvalidCancelServiceCraftId);
+	InvalidCancelServiceCraft.CurrentHull = 98;
+	InvalidCancelServiceCraft.CurrentFuel = 350;
+	InvalidCancelServiceCraft.Status = ECraftStatus::Servicing;
+	InvalidCancelServiceCraft.RemainingRepairSeconds = 7200;
+	InvalidCancelServiceCraft.RemainingRefuelSeconds = 7200;
+	InvalidCancelServiceCraft.Cargo.Add({ TEXT("item.service-rifle"), 1 });
+	InvalidCancelServiceState.Funds = 1000;
+	const int64 InvalidCancelServiceSequence = InvalidCancelServiceState.CommandSequence;
+	FCancelCraftServiceCommand InvalidCancelService;
+	InvalidCancelService.ExpectedSequence = InvalidCancelServiceSequence;
+	InvalidCancelService.CraftId = InvalidCancelServiceCraftId;
+	const FStrategicCommandResult InvalidCancelServiceResult = FStrategicCommandService::Execute(
+		InvalidCancelServiceState, Rules, InvalidCancelService);
+	TestTrue(TEXT("Craft service cancellation rejects malformed persisted cargo before refunding funds"),
+		!InvalidCancelServiceResult.bAccepted
+		&& InvalidCancelServiceResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidCancelServiceState.CommandSequence == InvalidCancelServiceSequence
+		&& InvalidCancelServiceState.Funds == 1000
+		&& InvalidCancelServiceState.Craft.Num() == 1
+		&& InvalidCancelServiceState.Craft[0].Status == ECraftStatus::Servicing
+		&& InvalidCancelServiceState.Craft[0].RemainingRepairSeconds == 7200
+		&& InvalidCancelServiceState.Craft[0].RemainingRefuelSeconds == 7200
+		&& InvalidCancelServiceState.Craft[0].Cargo.Num() == 1);
 
 	FBeginCraftServiceCommand CancellableService;
 	CancellableService.ExpectedSequence = CancellationState.CommandSequence;
