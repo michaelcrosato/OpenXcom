@@ -1026,6 +1026,44 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidRandomSnapshot.bCanAdvanceTime
 		&& InvalidRandomSnapshot.Diagnostics.Contains(
 			TEXT("Deterministic random state is invalid.")));
+	FCampaignState InvalidResearchProgressCampaign = InvalidFinancialCampaign;
+	InvalidResearchProgressCampaign.SimulationRandom.Initialize(0);
+	InvalidResearchProgressCampaign.MonthlyFunding = 100;
+	FResearchProjectState& OverflowResearch =
+		InvalidResearchProgressCampaign.ResearchProjects.AddDefaulted_GetRef();
+	OverflowResearch.ResearchId = ActiveResearch.Identity.RuleId;
+	OverflowResearch.BaseId = BaseId;
+	OverflowResearch.AssignedScientists = 1;
+	OverflowResearch.AccumulatedWorkSeconds = MAX_int64;
+	const FStrategicDashboardSnapshot InvalidResearchProgressSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidResearchProgressCampaign, InvalidFinancialRules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for overflowing research progress"),
+		InvalidResearchProgressSnapshot.bSucceeded
+		&& !InvalidResearchProgressSnapshot.bCanAdvanceTime
+		&& InvalidResearchProgressSnapshot.Diagnostics.Contains(
+			TEXT("Research progress would exceed the campaign numeric range.")));
+	FCampaignState InvalidManufacturingProgressCampaign = InvalidFinancialCampaign;
+	InvalidManufacturingProgressCampaign.SimulationRandom.Initialize(0);
+	InvalidManufacturingProgressCampaign.MonthlyFunding = 100;
+	FManufacturingProjectState& OverflowManufacturing =
+		InvalidManufacturingProgressCampaign.ManufacturingProjects.AddDefaulted_GetRef();
+	OverflowManufacturing.ProjectId = FGuid(913, 914, 915, 916);
+	OverflowManufacturing.ItemId = Manufactured.Identity.RuleId;
+	OverflowManufacturing.BaseId = BaseId;
+	OverflowManufacturing.AssignedEngineers = 1;
+	OverflowManufacturing.UnitsRemaining = 1;
+	OverflowManufacturing.AccumulatedWorkSeconds = MAX_int64;
+	FStrategicSimulationConfig ProgressConfig = Config;
+	ProgressConfig.ManufacturingFacilityId = Operations.Identity.RuleId;
+	const FStrategicDashboardSnapshot InvalidManufacturingProgressSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidManufacturingProgressCampaign, InvalidFinancialRules, ProgressConfig);
+	TestTrue(TEXT("Dashboard disables time advancement for overflowing manufacturing progress"),
+		InvalidManufacturingProgressSnapshot.bSucceeded
+		&& !InvalidManufacturingProgressSnapshot.bCanAdvanceTime
+		&& InvalidManufacturingProgressSnapshot.Diagnostics.Contains(
+			TEXT("Manufacturing progress would exceed the campaign numeric range.")));
 	FCampaignState InvalidNoBaseLayoutCampaign = InvalidFinancialCampaign;
 	InvalidNoBaseLayoutCampaign.SimulationRandom.Initialize(0);
 	InvalidNoBaseLayoutCampaign.Bases.Reset();

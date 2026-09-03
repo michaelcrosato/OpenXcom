@@ -1175,6 +1175,28 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	if (ProjectStateValidation.bAccepted)
+	{
+		const int64 MaximumTimeAdvanceSeconds =
+			FStrategicClock::GetAdvanceForRate(EStrategicTimeRate::OneDay).GetTicks()
+			/ ETimespan::TicksPerSecond;
+		const FStrategicCommandResult ProjectProgressValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceProgress(
+				Campaign, Rules, MaximumTimeAdvanceSeconds);
+		if (!ProjectProgressValidation.bAccepted)
+		{
+			Snapshot.bCanAdvanceTime = false;
+			if (!ProjectProgressValidation.Diagnostics.IsEmpty())
+			{
+				const FString& Diagnostic = ProjectProgressValidation.Diagnostics[0].Message;
+				if (!Snapshot.Diagnostics.ContainsByPredicate(
+					[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+				{
+					Snapshot.Diagnostics.Add(Diagnostic);
+				}
+			}
+		}
+	}
 	const FStrategicCommandResult InventoryStateValidation =
 		FStrategicCommandService::ValidateStrategicInventoryState(Campaign, Rules);
 	if (!InventoryStateValidation.bAccepted)

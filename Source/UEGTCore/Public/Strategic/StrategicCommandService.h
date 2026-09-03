@@ -4053,6 +4053,12 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules);
 
+	/** Read-only validation that a positive strategic time slice cannot overflow project progress. */
+	static FStrategicCommandResult ValidateStrategicTimeAdvanceProgress(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		int64 RequestedSeconds);
+
 	/** Read-only validation of persisted base inventory stacks. */
 	static FStrategicCommandResult ValidateStrategicInventoryState(
 		const FCampaignState& State,

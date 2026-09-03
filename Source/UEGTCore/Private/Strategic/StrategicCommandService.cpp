@@ -5891,6 +5891,67 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateStrategicProjectProgress(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const int64 RequestedSeconds,
+		FStrategicCommandResult& Result)
+	{
+		constexpr int32 MaximumResearchRatePercent = 300;
+		constexpr int32 MaximumManufacturingRatePercent = 300;
+		for (const FResearchProjectState& Project : State.ResearchProjects)
+		{
+			const FResearchRule* Research = Rules.Research.Find(Project.ResearchId);
+			const FStrategicBaseState* ResearchBase = FindBase(State, Project.BaseId);
+			if (Research == nullptr || ResearchBase == nullptr
+				|| Project.AssignedScientists < 0 || Project.AccumulatedWorkSeconds < 0)
+			{
+				AddError(Result, TEXT("invalid_research_project"), FString::Printf(
+					TEXT("Research project '%s' has invalid persisted state."),
+					*Project.ResearchId.ToString()));
+				return false;
+			}
+			const int32 EffectiveScientists = HasOperationalResearchFacilities(*ResearchBase, Rules, *Research)
+				? Project.AssignedScientists : 0;
+			int64 MaximumAdditionalWork = 0;
+			int64 ScaledMaximumAdditionalWork = 0;
+			if (!TryMultiplyNonNegative(EffectiveScientists, RequestedSeconds, MaximumAdditionalWork)
+				|| !TryMultiplyNonNegative(MaximumAdditionalWork, MaximumResearchRatePercent,
+					ScaledMaximumAdditionalWork)
+				|| (ScaledMaximumAdditionalWork / 100) > MAX_int64 - Project.AccumulatedWorkSeconds)
+			{
+				AddError(Result, TEXT("research_progress_overflow"),
+					TEXT("Research progress would exceed the campaign numeric range."));
+				return false;
+			}
+		}
+		for (const FManufacturingProjectState& Project : State.ManufacturingProjects)
+		{
+			const FItemRule* Item = Rules.Items.Find(Project.ItemId);
+			if (Item == nullptr || !Item->IsManufacturable() || FindBase(State, Project.BaseId) == nullptr
+				|| !Project.ProjectId.IsValid() || Project.AssignedEngineers < 0
+				|| Project.UnitsRemaining <= 0 || Project.AccumulatedWorkSeconds < 0)
+			{
+				AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
+					TEXT("Manufacturing project '%s' has invalid persisted state."),
+					*Project.ProjectId.ToString()));
+				return false;
+			}
+			int64 MaximumAdditionalWork = 0;
+			int64 ScaledMaximumAdditionalWork = 0;
+			if (!TryMultiplyNonNegative(Project.AssignedEngineers, RequestedSeconds, MaximumAdditionalWork)
+				|| !TryMultiplyNonNegative(MaximumAdditionalWork, MaximumManufacturingRatePercent,
+					ScaledMaximumAdditionalWork)
+				|| (ScaledMaximumAdditionalWork / 100) > MAX_int64 - Project.AccumulatedWorkSeconds)
+			{
+				AddError(Result, TEXT("manufacturing_progress_overflow"),
+					TEXT("Manufacturing progress would exceed the campaign numeric range."));
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool WouldViolateStaffingCommitmentAfterRelease(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -7402,6 +7463,30 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicProjectState(
 	if (!ValidateResearchProjects(State, Rules, Result)
 		|| !ValidateManufacturingProjects(State, Rules, Result))
 	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceProgress(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules,
+	const int64 RequestedSeconds)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (RequestedSeconds <= 0
+		|| !ValidateResearchProjects(State, Rules, Result)
+		|| !ValidateManufacturingProjects(State, Rules, Result)
+		|| !ValidateStrategicProjectProgress(State, Rules, RequestedSeconds, Result))
+	{
+		if (RequestedSeconds <= 0 && Result.Diagnostics.IsEmpty())
+		{
+			AddError(Result, TEXT("invalid_time_advance"),
+				TEXT("Project progress validation requires a positive strategic time slice."));
+		}
 		return Result;
 	}
 	Result.bAccepted = true;
@@ -11543,50 +11628,9 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	{
 		return Result;
 	}
-	constexpr int32 MaximumResearchRatePercent = 300;
-	constexpr int32 MaximumManufacturingRatePercent = 300;
-	for (const FResearchProjectState& Project : State.ResearchProjects)
+	if (!ValidateStrategicProjectProgress(State, Rules, RequestedSeconds, Result))
 	{
-		const FResearchRule* Research = Rules.Research.Find(Project.ResearchId);
-		const FStrategicBaseState* ResearchBase = FindBase(State, Project.BaseId);
-		if (Research == nullptr || ResearchBase == nullptr
-			|| Project.AssignedScientists < 0 || Project.AccumulatedWorkSeconds < 0)
-		{
-			AddError(Result, TEXT("invalid_research_project"), FString::Printf(TEXT("Research project '%s' has invalid persisted state."), *Project.ResearchId.ToString()));
-			return Result;
-		}
-		const int32 EffectiveScientists = HasOperationalResearchFacilities(*ResearchBase, Rules, *Research)
-			? Project.AssignedScientists : 0;
-		int64 MaximumAdditionalWork = 0;
-		int64 ScaledMaximumAdditionalWork = 0;
-		if (!TryMultiplyNonNegative(EffectiveScientists, RequestedSeconds, MaximumAdditionalWork)
-			|| !TryMultiplyNonNegative(MaximumAdditionalWork, MaximumResearchRatePercent,
-				ScaledMaximumAdditionalWork)
-			|| (ScaledMaximumAdditionalWork / 100) > MAX_int64 - Project.AccumulatedWorkSeconds)
-		{
-			AddError(Result, TEXT("research_progress_overflow"), TEXT("Research progress would exceed the campaign numeric range."));
-			return Result;
-		}
-	}
-	for (const FManufacturingProjectState& Project : State.ManufacturingProjects)
-	{
-		const FItemRule* Item = Rules.Items.Find(Project.ItemId);
-		if (Item == nullptr || !Item->IsManufacturable() || FindBase(State, Project.BaseId) == nullptr
-			|| !Project.ProjectId.IsValid() || Project.AssignedEngineers < 0 || Project.UnitsRemaining <= 0 || Project.AccumulatedWorkSeconds < 0)
-		{
-			AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(TEXT("Manufacturing project '%s' has invalid persisted state."), *Project.ProjectId.ToString()));
-			return Result;
-		}
-		int64 MaximumAdditionalWork = 0;
-		int64 ScaledMaximumAdditionalWork = 0;
-		if (!TryMultiplyNonNegative(Project.AssignedEngineers, RequestedSeconds, MaximumAdditionalWork)
-			|| !TryMultiplyNonNegative(MaximumAdditionalWork, MaximumManufacturingRatePercent,
-				ScaledMaximumAdditionalWork)
-			|| (ScaledMaximumAdditionalWork / 100) > MAX_int64 - Project.AccumulatedWorkSeconds)
-		{
-			AddError(Result, TEXT("manufacturing_progress_overflow"), TEXT("Manufacturing progress would exceed the campaign numeric range."));
-			return Result;
-		}
+		return Result;
 	}
 	if (!ValidateFacilityConstructionProjects(State, Rules, Config, Result))
 	{
