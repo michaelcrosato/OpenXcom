@@ -6092,7 +6092,7 @@ namespace StrategicCommandServicePrivate
 					return Entry.ConvoyId == Queue.ConvoyId;
 				});
 			if (Convoy == nullptr || Convoy->RemainingTransitSeconds > RequestedSeconds
-				|| !Convoy->bInterdictionResolved)
+				|| (!Convoy->bInterdictionResolved && !Convoy->bSignalEscort))
 			{
 				continue;
 			}

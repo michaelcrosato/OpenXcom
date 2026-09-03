@@ -1839,6 +1839,51 @@ bool FStrategicManufacturingSafetyTest::RunTest(const FString& Parameters)
 			&& CombinedCapacityState.CommandSequence == CombinedCapacitySequence
 			&& CombinedCapacityDestinationStack.Quantity == MAX_int32 - 1
 			&& CombinedCapacityState.MutualAidConvoys.Num() == 1);
+
+		FCampaignState EscortedCombinedCapacityState = CombinedCapacityState;
+		FMutualAidConvoyState& EscortedCombinedCapacityConvoy =
+			EscortedCombinedCapacityState.MutualAidConvoys[0];
+		EscortedCombinedCapacityConvoy.TotalTransitSeconds = 6000;
+		EscortedCombinedCapacityConvoy.RemainingTransitSeconds = 3001;
+		EscortedCombinedCapacityConvoy.bInterdictionResolved = false;
+		EscortedCombinedCapacityConvoy.bSignalEscort = true;
+		EscortedCombinedCapacityConvoy.ForecastInterdictionDelaySeconds = 3000;
+		EscortedCombinedCapacityConvoy.InterdictionDelaySeconds = 0;
+		const int64 EscortedCombinedCapacitySequence =
+			EscortedCombinedCapacityState.CommandSequence;
+		const FStrategicCommandResult EscortedCombinedCapacityValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceProductionCapacity(
+				EscortedCombinedCapacityState, CombinedCapacityRules,
+				CombinedCapacityConfig, 86400);
+		FAdvanceStrategicTimeCommand EscortedCombinedCapacityAdvance;
+		EscortedCombinedCapacityAdvance.ExpectedSequence =
+			EscortedCombinedCapacitySequence;
+		EscortedCombinedCapacityAdvance.Rate = EStrategicTimeRate::OneDay;
+		const FStrategicCommandResult EscortedCombinedCapacityRejected =
+			FStrategicCommandService::Execute(
+				EscortedCombinedCapacityState, CombinedCapacityRules,
+				CombinedCapacityConfig, EscortedCombinedCapacityAdvance);
+		FStrategicBaseState* EscortedCombinedCapacityDestination =
+			EscortedCombinedCapacityState.Bases.FindByPredicate(
+				[CombinedCapacityDestinationId](const FStrategicBaseState& Base)
+				{
+					return Base.BaseId == CombinedCapacityDestinationId;
+				});
+		TestTrue(TEXT("Production capacity validation includes same-slice escorted convoy cargo"),
+			!EscortedCombinedCapacityValidation.bAccepted
+			&& EscortedCombinedCapacityValidation.HasDiagnostic(TEXT("simulation_overflow")));
+		TestTrue(TEXT("Time advancement rejects combined production and escorted convoy overflow atomically"),
+			!EscortedCombinedCapacityRejected.bAccepted
+			&& EscortedCombinedCapacityRejected.HasDiagnostic(TEXT("simulation_overflow"))
+			&& EscortedCombinedCapacityState.CommandSequence == EscortedCombinedCapacitySequence
+			&& EscortedCombinedCapacityDestination != nullptr
+			&& EscortedCombinedCapacityDestination->Inventory.FindByPredicate(
+				[](const FInventoryStack& Stack)
+				{
+					return Stack.ItemId == TEXT("item.service-rifle")
+						&& Stack.Quantity == MAX_int32 - 1;
+				}) != nullptr
+			&& EscortedCombinedCapacityState.MutualAidConvoys.Num() == 1);
 	}
 	Command.ItemId = TEXT("item.signal-probe");
 	const FStrategicCommandResult MissingResearch = FStrategicCommandService::Execute(State, Rules, Config, Command);

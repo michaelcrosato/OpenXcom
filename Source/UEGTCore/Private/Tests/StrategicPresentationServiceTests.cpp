@@ -1255,6 +1255,24 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !CombinedCapacitySnapshot.bCanAdvanceTime
 		&& CombinedCapacitySnapshot.Diagnostics.Contains(
 			TEXT("Strategic simulation exceeded a persisted numeric range.")));
+	FCampaignState EscortedCombinedCapacityCampaign = CombinedCapacityCampaign;
+	FMutualAidConvoyState& EscortedCombinedCapacityConvoy =
+		EscortedCombinedCapacityCampaign.MutualAidConvoys[0];
+	EscortedCombinedCapacityConvoy.TotalTransitSeconds = 6000;
+	EscortedCombinedCapacityConvoy.RemainingTransitSeconds = 3001;
+	EscortedCombinedCapacityConvoy.bInterdictionResolved = false;
+	EscortedCombinedCapacityConvoy.bSignalEscort = true;
+	EscortedCombinedCapacityConvoy.ForecastInterdictionDelaySeconds = 3000;
+	EscortedCombinedCapacityConvoy.InterdictionDelaySeconds = 0;
+	const FStrategicDashboardSnapshot EscortedCombinedCapacitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			EscortedCombinedCapacityCampaign,
+			CombinedCapacityRules, CombinedCapacityConfig);
+	TestTrue(TEXT("Dashboard disables time advancement for combined production and escorted convoy overflow"),
+		EscortedCombinedCapacitySnapshot.bSucceeded
+		&& !EscortedCombinedCapacitySnapshot.bCanAdvanceTime
+		&& EscortedCombinedCapacitySnapshot.Diagnostics.Contains(
+			TEXT("Strategic simulation exceeded a persisted numeric range.")));
 	FResolvedRuleSet InvalidCraftRules = Rules;
 	FPersonnelRoleRule PresentationPilot;
 	PresentationPilot.Identity.RuleId = TEXT("role.presentation-pilot");
