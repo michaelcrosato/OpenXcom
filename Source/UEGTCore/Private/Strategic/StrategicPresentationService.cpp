@@ -2468,7 +2468,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 					: 0;
 				View.ServiceCancellationRefund = RepairRefund > MAX_int64 - RefuelRefund
 					? MAX_int64 : RepairRefund + RefuelRefund;
-				View.bCanCancelService = true;
+				View.bCanCancelService = CommandSequenceValidation.bAccepted;
 			}
 			Snapshot.MonthlyOutgoings = SaturatingAdd(
 				Snapshot.MonthlyOutgoings, Rule->MonthlyMaintenance);
@@ -2538,9 +2538,11 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		}
 		const bool bTurnaroundAvailable = Craft.Status == ECraftStatus::Grounded
 			&& Craft.PendingSalvage.IsEmpty();
-		View.bCanRearmFully = bTurnaroundAvailable && View.TotalAmmunitionMissing > 0
+		View.bCanRearmFully = CommandSequenceValidation.bAccepted
+			&& bTurnaroundAvailable && View.TotalAmmunitionMissing > 0
 			&& View.TotalAmmunitionLoadable == View.TotalAmmunitionMissing;
-		View.bCanLoadAvailableAmmunition = bTurnaroundAvailable
+		View.bCanLoadAvailableAmmunition = CommandSequenceValidation.bAccepted
+			&& bTurnaroundAvailable
 			&& View.TotalAmmunitionLoadable > 0;
 		for (const FInventoryStack& Stack : Craft.PendingSalvage)
 		{
@@ -2554,9 +2556,11 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				Salvage.TotalStorage = SafeProduct(Salvage.UnitStorage, Stack.Quantity);
 				Salvage.UnitSellValue = FMath::Max(0, Item->SellValue);
 				Salvage.TotalSellValue = SafeProduct(Salvage.UnitSellValue, Stack.Quantity);
-				Salvage.bCanRetainAtBase = View.bSalvageDispositionAvailable
+				Salvage.bCanRetainAtBase = CommandSequenceValidation.bAccepted
+					&& View.bSalvageDispositionAvailable
 					&& CanApplyStorageDelta(CraftBaseView, Salvage.TotalStorage);
-				Salvage.bCanSell = View.bSalvageDispositionAvailable && Salvage.UnitSellValue > 0;
+				Salvage.bCanSell = CommandSequenceValidation.bAccepted
+					&& View.bSalvageDispositionAvailable && Salvage.UnitSellValue > 0;
 			}
 			else
 			{

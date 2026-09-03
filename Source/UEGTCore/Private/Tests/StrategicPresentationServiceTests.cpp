@@ -903,6 +903,63 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidSequenceSnapshot.bCanAdvanceTime
 		&& InvalidSequenceSnapshot.Diagnostics.Contains(
 			TEXT("Campaign command sequence cannot accept another command.")));
+	const FStrategicCraftView* InvalidSequenceSalvageCraft =
+		InvalidSequenceSnapshot.Craft.FindByPredicate(
+			[&Craft](const FStrategicCraftView& CraftView)
+			{
+				return CraftView.CraftId == Craft.CraftId;
+			});
+	TestTrue(TEXT("Dashboard disables salvage disposition controls for an invalid command sequence"),
+		InvalidSequenceSalvageCraft != nullptr
+		&& InvalidSequenceSalvageCraft->bSalvageDispositionAvailable
+		&& InvalidSequenceSalvageCraft->PendingSalvage.Num() == 1
+		&& !InvalidSequenceSalvageCraft->PendingSalvage[0].bCanRetainAtBase
+		&& !InvalidSequenceSalvageCraft->PendingSalvage[0].bCanSell);
+	FCampaignState InvalidSequenceTurnaroundCampaign = Campaign;
+	InvalidSequenceTurnaroundCampaign.Craft[0].PendingSalvage.Reset();
+	FInventoryStack* InvalidSequenceAmmunition =
+		InvalidSequenceTurnaroundCampaign.Bases[0].Inventory.FindByPredicate(
+			[&CraftAmmunition](const FInventoryStack& Stack)
+			{
+				return Stack.ItemId == CraftAmmunition.Identity.RuleId;
+			});
+	if (InvalidSequenceAmmunition != nullptr)
+	{
+		InvalidSequenceAmmunition->Quantity = 20;
+	}
+	InvalidSequenceTurnaroundCampaign.CommandSequence = -1;
+	const FStrategicDashboardSnapshot InvalidSequenceTurnaroundSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidSequenceTurnaroundCampaign, Rules, Config);
+	const FStrategicCraftView* InvalidSequenceTurnaroundCraft =
+		InvalidSequenceTurnaroundSnapshot.Craft.FindByPredicate(
+			[&Craft](const FStrategicCraftView& CraftView)
+			{
+				return CraftView.CraftId == Craft.CraftId;
+			});
+	TestTrue(TEXT("Dashboard disables rearm controls for an invalid command sequence"),
+		InvalidSequenceTurnaroundCraft != nullptr
+		&& InvalidSequenceTurnaroundCraft->TotalAmmunitionMissing == 8
+		&& InvalidSequenceTurnaroundCraft->TotalAmmunitionLoadable == 8
+		&& !InvalidSequenceTurnaroundCraft->bCanRearmFully
+		&& !InvalidSequenceTurnaroundCraft->bCanLoadAvailableAmmunition);
+	FCampaignState InvalidSequenceServiceCampaign = InvalidSequenceTurnaroundCampaign;
+	InvalidSequenceServiceCampaign.Craft[0].Status = ECraftStatus::Servicing;
+	InvalidSequenceServiceCampaign.Craft[0].CurrentHull = CraftRule.MaxHull - 10;
+	InvalidSequenceServiceCampaign.Craft[0].RemainingRepairSeconds = 3600;
+	const FStrategicDashboardSnapshot InvalidSequenceServiceSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidSequenceServiceCampaign, Rules, Config);
+	const FStrategicCraftView* InvalidSequenceServiceCraft =
+		InvalidSequenceServiceSnapshot.Craft.FindByPredicate(
+			[&Craft](const FStrategicCraftView& CraftView)
+			{
+				return CraftView.CraftId == Craft.CraftId;
+			});
+	TestTrue(TEXT("Dashboard disables service cancellation for an invalid command sequence"),
+		InvalidSequenceServiceCraft != nullptr
+		&& InvalidSequenceServiceCraft->RemainingServiceSeconds == 3600
+		&& !InvalidSequenceServiceCraft->bCanCancelService);
 	FStrategicSimulationConfig InvalidTimeAdvanceConfig = Config;
 	InvalidTimeAdvanceConfig.RecoveryHoursPerHealth = 0;
 	const FStrategicDashboardSnapshot InvalidTimeAdvanceConfigSnapshot =
