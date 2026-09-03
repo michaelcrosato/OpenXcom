@@ -1843,11 +1843,11 @@ bool FStrategicManufacturingSafetyTest::RunTest(const FString& Parameters)
 		FCampaignState EscortedCombinedCapacityState = CombinedCapacityState;
 		FMutualAidConvoyState& EscortedCombinedCapacityConvoy =
 			EscortedCombinedCapacityState.MutualAidConvoys[0];
-		EscortedCombinedCapacityConvoy.TotalTransitSeconds = 6000;
-		EscortedCombinedCapacityConvoy.RemainingTransitSeconds = 3001;
+		EscortedCombinedCapacityConvoy.TotalTransitSeconds = 8;
+		EscortedCombinedCapacityConvoy.RemainingTransitSeconds = 5;
 		EscortedCombinedCapacityConvoy.bInterdictionResolved = false;
 		EscortedCombinedCapacityConvoy.bSignalEscort = true;
-		EscortedCombinedCapacityConvoy.ForecastInterdictionDelaySeconds = 3000;
+		EscortedCombinedCapacityConvoy.ForecastInterdictionDelaySeconds = 4;
 		EscortedCombinedCapacityConvoy.InterdictionDelaySeconds = 0;
 		const int64 EscortedCombinedCapacitySequence =
 			EscortedCombinedCapacityState.CommandSequence;
