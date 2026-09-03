@@ -164,9 +164,28 @@ namespace TacticalNavigationPrivate
 	int32 RoundRatio(const int64 Numerator, const int32 Denominator)
 	{
 		check(Denominator > 0);
-		return Numerator >= 0
-			? static_cast<int32>((Numerator + Denominator / 2) / Denominator)
-			: -static_cast<int32>((-Numerator + Denominator / 2) / Denominator);
+
+		const bool bNegative = Numerator < 0;
+		const uint64 Magnitude = bNegative
+			? static_cast<uint64>(-(Numerator + 1)) + 1ULL
+			: static_cast<uint64>(Numerator);
+		const uint64 UnsignedDenominator = static_cast<uint64>(Denominator);
+		const uint64 Quotient = Magnitude / UnsignedDenominator;
+		const uint64 Remainder = Magnitude % UnsignedDenominator;
+		const uint64 RoundedMagnitude = Quotient
+			+ (Remainder >= (UnsignedDenominator + 1ULL) / 2ULL ? 1ULL : 0ULL);
+		const uint64 MaximumMagnitude = bNegative
+			? static_cast<uint64>(MAX_int32) + 1ULL
+			: static_cast<uint64>(MAX_int32);
+		const uint64 ClampedMagnitude = FMath::Min(RoundedMagnitude, MaximumMagnitude);
+
+		if (bNegative)
+		{
+			return ClampedMagnitude == static_cast<uint64>(MAX_int32) + 1ULL
+				? MIN_int32
+				: -static_cast<int32>(ClampedMagnitude);
+		}
+		return static_cast<int32>(ClampedMagnitude);
 	}
 
 	template <typename AllocatorType>

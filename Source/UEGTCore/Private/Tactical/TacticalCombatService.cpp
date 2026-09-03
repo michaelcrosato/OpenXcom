@@ -778,9 +778,27 @@ int32 FTacticalCombatService::ComputeBlastTransmissionPercent(
 		{
 			auto RoundRatio = [StepCount](const int64 Numerator)
 			{
-				return Numerator >= 0
-					? static_cast<int32>((Numerator + StepCount / 2) / StepCount)
-					: -static_cast<int32>((-Numerator + StepCount / 2) / StepCount);
+				const bool bNegative = Numerator < 0;
+				const uint64 Magnitude = bNegative
+					? static_cast<uint64>(-(Numerator + 1)) + 1ULL
+					: static_cast<uint64>(Numerator);
+				const uint64 UnsignedStepCount = static_cast<uint64>(StepCount);
+				const uint64 Quotient = Magnitude / UnsignedStepCount;
+				const uint64 Remainder = Magnitude % UnsignedStepCount;
+				const uint64 RoundedMagnitude = Quotient
+					+ (Remainder >= (UnsignedStepCount + 1ULL) / 2ULL ? 1ULL : 0ULL);
+				const uint64 MaximumMagnitude = bNegative
+					? static_cast<uint64>(MAX_int32) + 1ULL
+					: static_cast<uint64>(MAX_int32);
+				const uint64 ClampedMagnitude = FMath::Min(RoundedMagnitude, MaximumMagnitude);
+
+				if (bNegative)
+				{
+					return ClampedMagnitude == static_cast<uint64>(MAX_int32) + 1ULL
+						? MIN_int32
+						: -static_cast<int32>(ClampedMagnitude);
+				}
+				return static_cast<int32>(ClampedMagnitude);
 			};
 			const int32 X = ImpactX + RoundRatio(static_cast<int64>(DeltaX) * Step);
 			const int32 Y = ImpactY + RoundRatio(static_cast<int64>(DeltaY) * Step);
