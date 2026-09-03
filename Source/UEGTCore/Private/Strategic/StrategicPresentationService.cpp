@@ -850,6 +850,28 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	if (RandomStateValidation.bAccepted)
+	{
+		const int64 MaximumTimeAdvanceSeconds =
+			FStrategicClock::GetAdvanceForRate(EStrategicTimeRate::OneDay).GetTicks()
+			/ ETimespan::TicksPerSecond;
+		const FStrategicCommandResult RandomCapacityValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceRandomCapacity(
+				Campaign, Rules, Config, MaximumTimeAdvanceSeconds);
+		if (!RandomCapacityValidation.bAccepted)
+		{
+			Snapshot.bCanAdvanceTime = false;
+			if (!RandomCapacityValidation.Diagnostics.IsEmpty())
+			{
+				const FString& Diagnostic = RandomCapacityValidation.Diagnostics[0].Message;
+				if (!Snapshot.Diagnostics.ContainsByPredicate(
+					[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+				{
+					Snapshot.Diagnostics.Add(Diagnostic);
+				}
+			}
+		}
+	}
 	Snapshot.AdversaryResolvedMissions = Adaptation.ResolvedMissions;
 	Snapshot.ResolvedMissionsUntilNextEscalation = Adaptation.ResolvedMissionsUntilNextEscalation;
 	Snapshot.bAtMaximumAdversaryEscalation = Adaptation.bAtMaximumEscalation;

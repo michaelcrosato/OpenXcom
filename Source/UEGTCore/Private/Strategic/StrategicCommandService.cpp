@@ -5952,6 +5952,62 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateStrategicRandomCapacity(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		const int64 RequestedSeconds,
+		FStrategicCommandResult& Result)
+	{
+		int64 PotentialArrivals = 0;
+		for (const FRecruitmentOrderState& Order : State.RecruitmentOrders)
+		{
+			if (Order.RemainingTransitSeconds <= RequestedSeconds)
+			{
+				++PotentialArrivals;
+			}
+		}
+		int64 MaximumArrivalDraws = 0;
+		if (!TryMultiplyNonNegative(PotentialArrivals, 5, MaximumArrivalDraws)
+			|| WouldExhaustDeterministicRandomStream(State.SimulationRandom, MaximumArrivalDraws))
+		{
+			AddError(Result, TEXT("random_draw_overflow"),
+				TEXT("Personnel arrivals would exceed the deterministic random-stream draw range."));
+			return false;
+		}
+
+		int64 HiddenContactCount = 0;
+		for (const FStrategicContactState& Contact : State.StrategicContacts)
+		{
+			HiddenContactCount += Contact.Status == EStrategicContactStatus::Hidden ? 1 : 0;
+		}
+		const int64 MaximumSensorPasses = RequestedSeconds / 3600LL + 1;
+		const int64 MaximumAdditionalMissions = Rules.AdversaryMissions.IsEmpty()
+			? 0
+			: FMath::Max<int64>(0, static_cast<int64>(Config.MaxActiveAdversaryMissions) - State.AdversaryMissions.Num());
+		int64 MaximumHiddenContacts = 0;
+		if (!TryAdd(HiddenContactCount, MaximumAdditionalMissions, MaximumHiddenContacts))
+		{
+			AddError(Result, TEXT("random_draw_overflow"),
+				TEXT("Adversary contact count exceeds the deterministic random-stream range."));
+			return false;
+		}
+		int64 MaximumSensorDraws = 0;
+		const int64 MaximumMissionSelectionDraws = Rules.AdversaryMissions.IsEmpty()
+			? 0 : MaximumSensorPasses + 1;
+		int64 MaximumTimeAdvanceDraws = 0;
+		if (!TryMultiplyNonNegative(MaximumHiddenContacts, MaximumSensorPasses, MaximumSensorDraws)
+			|| !TryAdd(MaximumArrivalDraws, MaximumSensorDraws, MaximumTimeAdvanceDraws)
+			|| !TryAdd(MaximumTimeAdvanceDraws, MaximumMissionSelectionDraws, MaximumTimeAdvanceDraws)
+			|| WouldExhaustDeterministicRandomStream(State.SimulationRandom, MaximumTimeAdvanceDraws))
+		{
+			AddError(Result, TEXT("random_draw_overflow"),
+				TEXT("Contact detection or adversary scheduling would exceed the deterministic random-stream draw range."));
+			return false;
+		}
+		return true;
+	}
+
 	bool WouldViolateStaffingCommitmentAfterRelease(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -7581,6 +7637,29 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicRandomState(
 	if (!State.SimulationRandom.IsValid())
 	{
 		AddError(Result, TEXT("invalid_random_state"), TEXT("Deterministic random state is invalid."));
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceRandomCapacity(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules,
+	const FStrategicSimulationConfig& Config,
+	const int64 RequestedSeconds)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (RequestedSeconds <= 0)
+	{
+		AddError(Result, TEXT("invalid_time_advance"),
+			TEXT("Random-capacity validation requires a positive strategic time slice."));
+		return Result;
+	}
+	if (!ValidateStrategicRandomCapacity(State, Rules, Config, RequestedSeconds, Result))
+	{
 		return Result;
 	}
 	Result.bAccepted = true;
@@ -11636,45 +11715,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	{
 		return Result;
 	}
-	int64 PotentialArrivals = 0;
-	for (const FRecruitmentOrderState& Order : State.RecruitmentOrders)
+	if (!ValidateStrategicRandomCapacity(State, Rules, Config, RequestedSeconds, Result))
 	{
-		if (Order.RemainingTransitSeconds <= RequestedSeconds)
-		{
-			++PotentialArrivals;
-		}
-	}
-	int64 MaximumArrivalDraws = 0;
-	if (!TryMultiplyNonNegative(PotentialArrivals, 5, MaximumArrivalDraws)
-		|| WouldExhaustDeterministicRandomStream(State.SimulationRandom, MaximumArrivalDraws))
-	{
-		AddError(Result, TEXT("random_draw_overflow"), TEXT("Personnel arrivals would exceed the deterministic random-stream draw range."));
-		return Result;
-	}
-	int64 HiddenContactCount = 0;
-	for (const FStrategicContactState& Contact : State.StrategicContacts)
-	{
-		HiddenContactCount += Contact.Status == EStrategicContactStatus::Hidden ? 1 : 0;
-	}
-	const int64 MaximumSensorPasses = RequestedSeconds / 3600LL + 1;
-	const int64 MaximumAdditionalMissions = Rules.AdversaryMissions.IsEmpty()
-		? 0
-		: FMath::Max<int64>(0, static_cast<int64>(Config.MaxActiveAdversaryMissions) - State.AdversaryMissions.Num());
-	int64 MaximumHiddenContacts = 0;
-	if (!TryAdd(HiddenContactCount, MaximumAdditionalMissions, MaximumHiddenContacts))
-	{
-		AddError(Result, TEXT("random_draw_overflow"), TEXT("Adversary contact count exceeds the deterministic random-stream range."));
-		return Result;
-	}
-	int64 MaximumSensorDraws = 0;
-	const int64 MaximumMissionSelectionDraws = Rules.AdversaryMissions.IsEmpty() ? 0 : MaximumSensorPasses + 1;
-	int64 MaximumTimeAdvanceDraws = 0;
-	if (!TryMultiplyNonNegative(MaximumHiddenContacts, MaximumSensorPasses, MaximumSensorDraws)
-		|| !TryAdd(MaximumArrivalDraws, MaximumSensorDraws, MaximumTimeAdvanceDraws)
-		|| !TryAdd(MaximumTimeAdvanceDraws, MaximumMissionSelectionDraws, MaximumTimeAdvanceDraws)
-		|| WouldExhaustDeterministicRandomStream(State.SimulationRandom, MaximumTimeAdvanceDraws))
-	{
-		AddError(Result, TEXT("random_draw_overflow"), TEXT("Contact detection or adversary scheduling would exceed the deterministic random-stream draw range."));
 		return Result;
 	}
 

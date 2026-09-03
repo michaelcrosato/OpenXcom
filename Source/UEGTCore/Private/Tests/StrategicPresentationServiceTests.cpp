@@ -1026,6 +1026,16 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidRandomSnapshot.bCanAdvanceTime
 		&& InvalidRandomSnapshot.Diagnostics.Contains(
 			TEXT("Deterministic random state is invalid.")));
+	InvalidFinancialCampaign.SimulationRandom.Initialize(0);
+	InvalidFinancialCampaign.SimulationRandom.DrawCount = MAX_int64 - 1;
+	const FStrategicDashboardSnapshot InvalidRandomCapacitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidFinancialCampaign, InvalidFinancialRules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement when the strategic random stream lacks capacity"),
+		InvalidRandomCapacitySnapshot.bSucceeded
+		&& !InvalidRandomCapacitySnapshot.bCanAdvanceTime
+		&& InvalidRandomCapacitySnapshot.Diagnostics.Contains(
+			TEXT("Contact detection or adversary scheduling would exceed the deterministic random-stream draw range.")));
 	FCampaignState InvalidResearchProgressCampaign = InvalidFinancialCampaign;
 	InvalidResearchProgressCampaign.SimulationRandom.Initialize(0);
 	InvalidResearchProgressCampaign.MonthlyFunding = 100;
