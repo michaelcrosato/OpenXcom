@@ -4073,6 +4073,11 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules);
 
+	/** Read-only validation of persisted strategic contact state. */
+	static FStrategicCommandResult ValidateStrategicContactState(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules);
+
 	/** Read-only validation of persisted adversary cadence, regional, and outcome state. */
 	static FStrategicCommandResult ValidateStrategicAdversaryState(
 		const FCampaignState& State,

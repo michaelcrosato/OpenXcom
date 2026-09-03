@@ -948,6 +948,22 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidTimestampSnapshot.bCanAdvanceTime
 		&& InvalidTimestampSnapshot.Diagnostics.Contains(
 			TEXT("Campaign time is not usable.")));
+	FCampaignState InvalidContactReadinessCampaign = Campaign;
+	InvalidContactReadinessCampaign.Craft.Reset();
+	InvalidContactReadinessCampaign.Personnel.Reset();
+	InvalidContactReadinessCampaign.Memorial.Reset();
+	const FStrategicDashboardSnapshot InvalidContactReadinessSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidContactReadinessCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid strategic contact state"),
+		InvalidContactReadinessSnapshot.bSucceeded
+		&& !InvalidContactReadinessSnapshot.bCanAdvanceTime
+		&& InvalidContactReadinessSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("Strategic contact"))
+					&& Diagnostic.Contains(TEXT("invalid persisted"));
+			}));
 	const FStrategicCraftView* InvalidSequenceSalvageCraft =
 		InvalidSequenceSnapshot.Craft.FindByPredicate(
 			[&Craft](const FStrategicCraftView& CraftView)

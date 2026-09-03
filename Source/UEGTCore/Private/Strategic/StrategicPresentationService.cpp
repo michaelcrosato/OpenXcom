@@ -1187,6 +1187,21 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	const FStrategicCommandResult StrategicContactStateValidation =
+		FStrategicCommandService::ValidateStrategicContactState(Campaign, Rules);
+	if (!StrategicContactStateValidation.bAccepted)
+	{
+		Snapshot.bCanAdvanceTime = false;
+		if (!StrategicContactStateValidation.Diagnostics.IsEmpty())
+		{
+			const FString& Diagnostic = StrategicContactStateValidation.Diagnostics[0].Message;
+			if (!Snapshot.Diagnostics.ContainsByPredicate(
+				[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+			{
+				Snapshot.Diagnostics.Add(Diagnostic);
+			}
+		}
+	}
 	const FStrategicCommandResult MutualAidConvoyStateValidation =
 		FStrategicCommandService::ValidateStrategicMutualAidConvoyState(Campaign, Rules);
 	if (!MutualAidConvoyStateValidation.bAccepted)
