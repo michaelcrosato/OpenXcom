@@ -7456,6 +7456,34 @@ bool FStrategicFacilityDurabilityAndRepairTest::RunTest(const FString& Parameter
 		InvalidDamageRejected.HasDiagnostic(TEXT("invalid_facility_damage")));
 	TestEqual(TEXT("Rejected damage is transactional"), State.CommandSequence, SequenceBeforeInvalidDamage);
 
+	FCampaignState InvalidDamageRepairState = State;
+	FBaseFacilityState* InvalidDamageRepairFacility =
+		InvalidDamageRepairState.Bases[0].Facilities.FindByPredicate(
+			[&FacilityInstanceId](const FBaseFacilityState& Facility)
+			{
+				return Facility.InstanceId == FacilityInstanceId;
+			});
+	TestNotNull(TEXT("Malformed damage fixture resolves its facility"), InvalidDamageRepairFacility);
+	if (InvalidDamageRepairFacility != nullptr)
+	{
+		InvalidDamageRepairFacility->RemainingRepairSeconds = 3600;
+		const int64 InvalidDamageRepairSequence = InvalidDamageRepairState.CommandSequence;
+		FApplyFacilityDamageCommand InvalidRepairDamage;
+		InvalidRepairDamage.ExpectedSequence = InvalidDamageRepairSequence;
+		InvalidRepairDamage.BaseId = TestBaseId;
+		InvalidRepairDamage.FacilityInstanceId = FacilityInstanceId;
+		InvalidRepairDamage.Damage = 1;
+		const FStrategicCommandResult InvalidDamageRepairResult = FStrategicCommandService::Execute(
+			InvalidDamageRepairState, Rules, InvalidRepairDamage);
+		TestTrue(TEXT("Facility damage rejects malformed persisted repair state atomically"),
+			!InvalidDamageRepairResult.bAccepted
+			&& InvalidDamageRepairResult.HasDiagnostic(TEXT("invalid_facility_state"))
+			&& InvalidDamageRepairState.CommandSequence == InvalidDamageRepairSequence
+			&& InvalidDamageRepairFacility->Damage == 0
+			&& InvalidDamageRepairFacility->ReservedRepairDamage == 0
+			&& InvalidDamageRepairFacility->RemainingRepairSeconds == 3600);
+	}
+
 	FApplyFacilityDamageCommand Damage;
 	Damage.ExpectedSequence = State.CommandSequence;
 	Damage.BaseId = TestBaseId;

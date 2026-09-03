@@ -14057,6 +14057,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	const int32 AppliedDamage = FMath::Min(Command.Damage, Rule->MaxIntegrity - Facility->Damage);
 	Facility->Damage += AppliedDamage;
+	if (!ValidateFacilityState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	const bool bDisabled = Facility->Damage == Rule->MaxIntegrity;
 	++Transaction.CommandSequence;
 	FStrategicEvent& Damaged = AddEvent(Result, EStrategicEventType::FacilityDamaged,
