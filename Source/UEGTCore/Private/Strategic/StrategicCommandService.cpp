@@ -14839,6 +14839,14 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		}
 		Transaction.Personnel.RemoveAll(
 			[&DeadPersonnelId](const FPersonnelState& Entry) { return Entry.PersonnelId == DeadPersonnelId; });
+		if (!ValidatePersonnelState(Transaction, Rules, Result)
+			|| !ValidateCraftState(Transaction, Rules, Result)
+			|| !ValidateStrategicContacts(Transaction, Rules, Result)
+			|| !ValidateTacticalOperations(Transaction, Result)
+			|| !ValidateTacticalBattles(Transaction, Rules, Result))
+		{
+			return Result;
+		}
 		SortStateCollections(Transaction);
 		++Transaction.CommandSequence;
 		FStrategicEvent& Event = AddEvent(Result, EStrategicEventType::PersonnelDied, Transaction.CommandSequence, Transaction.StrategicTime.Utc);
@@ -14922,6 +14930,14 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		{
 			Contact.Status = EStrategicContactStatus::Detected;
 		}
+	}
+	if (!ValidatePersonnelState(Transaction, Rules, Result)
+		|| !ValidateCraftState(Transaction, Rules, Result)
+		|| !ValidateStrategicContacts(Transaction, Rules, Result)
+		|| !ValidateTacticalOperations(Transaction, Result)
+		|| !ValidateTacticalBattles(Transaction, Rules, Result))
+	{
+		return Result;
 	}
 	const FGuid InjuredBaseId = Person->BaseId;
 	const FGuid InjuredPersonnelId = Person->PersonnelId;

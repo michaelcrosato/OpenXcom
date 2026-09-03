@@ -8099,6 +8099,60 @@ bool FStrategicPersonnelCareTest::RunTest(const FString& Parameters)
 		&& InvalidDamageEquipmentState.Memorial.IsEmpty()
 		&& InvalidDamageEquipmentState.Bases[0].Inventory.IsEmpty());
 
+	FCampaignState InvalidFatalDamageCraftState = MakeStateWithBase();
+	AddTestFlightDeck(InvalidFatalDamageCraftState);
+	const FGuid InvalidFatalDamagePersonnelId(0xAA3, 0xAA4, 0xAA5, 0xAA6);
+	const FGuid InvalidFatalDamageCraftId(0xAA7, 0xAA8, 0xAA9, 0xAB0);
+	FPersonnelState& InvalidFatalDamagePerson = AddTestPersonnel(
+		InvalidFatalDamageCraftState, InvalidFatalDamagePersonnelId);
+	FCraftState& InvalidFatalDamageCraft = AddTestCraft(
+		InvalidFatalDamageCraftState, InvalidFatalDamageCraftId);
+	InvalidFatalDamageCraft.Cargo.Add({ TEXT("item.service-rifle"), 1 });
+	const int64 InvalidFatalDamageSequence = InvalidFatalDamageCraftState.CommandSequence;
+	FApplyPersonnelDamageCommand InvalidFatalDamage;
+	InvalidFatalDamage.ExpectedSequence = InvalidFatalDamageSequence;
+	InvalidFatalDamage.PersonnelId = InvalidFatalDamagePersonnelId;
+	InvalidFatalDamage.Damage = InvalidFatalDamagePerson.CurrentHealth;
+	InvalidFatalDamage.CauseId = TEXT("cause.field-loss");
+	const FStrategicCommandResult InvalidFatalDamageResult = FStrategicCommandService::Execute(
+		InvalidFatalDamageCraftState, Rules, Config, InvalidFatalDamage);
+	TestTrue(TEXT("Fatal personnel damage rejects malformed craft state atomically"),
+		!InvalidFatalDamageResult.bAccepted
+		&& InvalidFatalDamageResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidFatalDamageCraftState.CommandSequence == InvalidFatalDamageSequence
+		&& InvalidFatalDamageCraftState.Personnel.Num() == 1
+		&& InvalidFatalDamageCraftState.Memorial.IsEmpty()
+		&& InvalidFatalDamageCraftState.Craft.Num() == 1
+		&& InvalidFatalDamageCraft.Cargo.Num() == 1
+		&& InvalidFatalDamagePerson.Status == EPersonnelStatus::Available);
+
+	FCampaignState InvalidNonfatalDamageCraftState = MakeStateWithBase();
+	AddTestFlightDeck(InvalidNonfatalDamageCraftState);
+	const FGuid InvalidNonfatalDamagePersonnelId(0xAB1, 0xAB2, 0xAB3, 0xAB4);
+	const FGuid InvalidNonfatalDamageCraftId(0xAB5, 0xAB6, 0xAB7, 0xAB8);
+	FPersonnelState& InvalidNonfatalDamagePerson = AddTestPersonnel(
+		InvalidNonfatalDamageCraftState, InvalidNonfatalDamagePersonnelId);
+	FCraftState& InvalidNonfatalDamageCraft = AddTestCraft(
+		InvalidNonfatalDamageCraftState, InvalidNonfatalDamageCraftId);
+	InvalidNonfatalDamageCraft.CurrentFuel = 501;
+	const int64 InvalidNonfatalDamageSequence = InvalidNonfatalDamageCraftState.CommandSequence;
+	FApplyPersonnelDamageCommand InvalidNonfatalDamage;
+	InvalidNonfatalDamage.ExpectedSequence = InvalidNonfatalDamageSequence;
+	InvalidNonfatalDamage.PersonnelId = InvalidNonfatalDamagePersonnelId;
+	InvalidNonfatalDamage.Damage = 1;
+	InvalidNonfatalDamage.CauseId = TEXT("cause.training-accident");
+	const FStrategicCommandResult InvalidNonfatalDamageResult = FStrategicCommandService::Execute(
+		InvalidNonfatalDamageCraftState, Rules, Config, InvalidNonfatalDamage);
+	TestTrue(TEXT("Nonfatal personnel damage rejects malformed craft state atomically"),
+		!InvalidNonfatalDamageResult.bAccepted
+		&& InvalidNonfatalDamageResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidNonfatalDamageCraftState.CommandSequence == InvalidNonfatalDamageSequence
+		&& InvalidNonfatalDamageCraftState.Personnel.Num() == 1
+		&& InvalidNonfatalDamagePerson.Status == EPersonnelStatus::Available
+		&& InvalidNonfatalDamagePerson.CurrentHealth == InvalidNonfatalDamagePerson.MaxHealth
+		&& InvalidNonfatalDamageCraftState.Craft.Num() == 1
+		&& InvalidNonfatalDamageCraft.CurrentFuel == 501);
+
 	FApplyPersonnelDamageCommand Damage;
 	Damage.ExpectedSequence = State.CommandSequence;
 	Damage.PersonnelId = PersonnelId;
