@@ -2656,6 +2656,11 @@ struct UEGTCORE_API FStrategicDashboardSnapshot
 class UEGTCORE_API FStrategicPresentationService final
 {
 public:
+	/** Calculates rounded base-defense damage while keeping malformed inputs within the view range. */
+	static int32 CalculateExpectedBaseDefenseDamage(
+		int32 Accuracy,
+		int32 Damage);
+
 	static FStrategicDashboardSnapshot BuildDashboard(
 		const FCampaignState& Campaign,
 		const FResolvedRuleSet& Rules,

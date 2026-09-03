@@ -601,6 +601,19 @@ namespace StrategicPresentationPrivate
 	}
 }
 
+int32 FStrategicPresentationService::CalculateExpectedBaseDefenseDamage(
+	const int32 Accuracy,
+	const int32 Damage)
+{
+	if (Accuracy <= 0 || Damage <= 0)
+	{
+		return 0;
+	}
+
+	const int64 ExpectedDamage = (static_cast<int64>(Accuracy) * Damage + 50) / 100;
+	return static_cast<int32>(FMath::Clamp<int64>(ExpectedDamage, 0, MAX_int32));
+}
+
 FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 	const FCampaignState& Campaign,
 	const FResolvedRuleSet& Rules,
@@ -3241,8 +3254,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		}
 		if (Pair.Value.BaseDefenseAccuracy > 0 && Pair.Value.BaseDefenseDamage > 0)
 		{
-			const int32 ExpectedDamage = static_cast<int32>(
-				(static_cast<int64>(Pair.Value.BaseDefenseAccuracy) * Pair.Value.BaseDefenseDamage + 50) / 100);
+			const int32 ExpectedDamage = CalculateExpectedBaseDefenseDamage(
+				Pair.Value.BaseDefenseAccuracy, Pair.Value.BaseDefenseDamage);
 			Option.Detail += FString::Printf(TEXT(" • battery %d%% / %d dmg / ~%d expected"),
 				Pair.Value.BaseDefenseAccuracy, Pair.Value.BaseDefenseDamage, ExpectedDamage);
 		}

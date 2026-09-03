@@ -3842,11 +3842,13 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 					}
 					if (Facility->MaximumBaseDefenseDamage > 0)
 					{
-						const int32 CurrentExpectedDamage = static_cast<int32>(
-							(static_cast<int64>(Facility->BaseDefenseAccuracy) * Facility->BaseDefenseDamage + 50) / 100);
-						const int32 MaximumExpectedDamage = static_cast<int32>(
-							(static_cast<int64>(Facility->MaximumBaseDefenseAccuracy)
-								* Facility->MaximumBaseDefenseDamage + 50) / 100);
+						const int32 CurrentExpectedDamage =
+							FStrategicPresentationService::CalculateExpectedBaseDefenseDamage(
+								Facility->BaseDefenseAccuracy, Facility->BaseDefenseDamage);
+						const int32 MaximumExpectedDamage =
+							FStrategicPresentationService::CalculateExpectedBaseDefenseDamage(
+								Facility->MaximumBaseDefenseAccuracy,
+								Facility->MaximumBaseDefenseDamage);
 						EffectParts.Add(LocalizedFormat(
 							TEXT("strategic.facility-contribution-battery-format"),
 							TEXT("battery {0}/{1}% accuracy, {2}/{3} damage, ~{4}/~{5} expected"),

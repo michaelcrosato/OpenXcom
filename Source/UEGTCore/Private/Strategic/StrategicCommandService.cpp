@@ -6989,7 +6989,7 @@ FBaseInfrastructureEvaluation FStrategicCommandService::EvaluateBaseInfrastructu
 		const int32 Damage)
 	{
 		if (Rule == nullptr || Rule->BaseDefenseAccuracy < 0 || Rule->BaseDefenseAccuracy > 100
-			|| Rule->BaseDefenseDamage < 0
+			|| Rule->BaseDefenseDamage < 0 || Rule->BaseDefenseDamage > 100000
 			|| ((Rule->BaseDefenseAccuracy == 0) != (Rule->BaseDefenseDamage == 0))
 			|| (Rule->BaseDefenseSupplyItemId.IsNone()
 				? Rule->BaseDefenseSupplyPerShot != 0
@@ -7004,15 +7004,23 @@ FBaseInfrastructureEvaluation FStrategicCommandService::EvaluateBaseInfrastructu
 		const int32 DefenseDamage = Rule->ScaleEffectByIntegrity(Rule->BaseDefenseDamage, Damage);
 		if (Accuracy > 0 && DefenseDamage > 0)
 		{
-			++Evaluation.DefenseBatteryCount;
-			MaximumDefenseDamage += DefenseDamage;
-			ExpectedDefenseDamageHundredths += static_cast<int64>(Accuracy) * DefenseDamage;
-			if (MaximumDefenseDamage > MAX_int32)
+			int64 ExpectedContributionHundredths = 0;
+			if (!TryMultiplyNonNegative(
+					static_cast<int64>(Accuracy), static_cast<int64>(DefenseDamage),
+					ExpectedContributionHundredths)
+				|| !TryAdd(MaximumDefenseDamage, DefenseDamage, MaximumDefenseDamage)
+				|| !TryAdd(
+					ExpectedDefenseDamageHundredths,
+					ExpectedContributionHundredths,
+					ExpectedDefenseDamageHundredths)
+				|| MaximumDefenseDamage > MAX_int32
+				|| ExpectedDefenseDamageHundredths > MAX_int32 * 100LL)
 			{
 				AddError(Validation, TEXT("base_defense_overflow"), FString::Printf(
 					TEXT("Base '%s' defense damage exceeds the supported range."), *Base->Name));
 				return false;
 			}
+			++Evaluation.DefenseBatteryCount;
 		}
 		return true;
 	};

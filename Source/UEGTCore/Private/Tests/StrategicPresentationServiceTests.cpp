@@ -7,6 +7,45 @@
 #include "Misc/AutomationTest.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicExpectedBaseDefenseDamageArithmeticTest,
+	"UEGT.Core.Strategic.Presentation.ExpectedBaseDefenseDamageArithmetic",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicExpectedBaseDefenseDamageArithmeticTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Expected base-defense damage rounds ordinary accuracy and damage"),
+		FStrategicPresentationService::CalculateExpectedBaseDefenseDamage(75, 90), 68);
+	TestEqual(TEXT("Expected base-defense damage disables non-positive inputs"),
+		FStrategicPresentationService::CalculateExpectedBaseDefenseDamage(0, 90), 0);
+	TestEqual(TEXT("Expected base-defense damage disables negative inputs"),
+		FStrategicPresentationService::CalculateExpectedBaseDefenseDamage(-1, MAX_int32), 0);
+	TestEqual(TEXT("Expected base-defense damage clamps a malformed wide product before narrowing"),
+		FStrategicPresentationService::CalculateExpectedBaseDefenseDamage(MAX_int32, MAX_int32),
+		MAX_int32);
+
+	FResolvedRuleSet MalformedRules;
+	FFacilityRule MalformedBattery;
+	MalformedBattery.Identity.RuleId = TEXT("facility.malformed-battery");
+	MalformedBattery.MaxIntegrity = 100;
+	MalformedBattery.BaseDefenseAccuracy = 100;
+	MalformedBattery.BaseDefenseDamage = MAX_int32;
+	MalformedRules.Facilities.Add(MalformedBattery.Identity.RuleId, MalformedBattery);
+	FCampaignState MalformedCampaign;
+	FStrategicBaseState& MalformedBase = MalformedCampaign.Bases.AddDefaulted_GetRef();
+	MalformedBase.BaseId = FGuid(1, 2, 3, 4);
+	MalformedBase.Name = TEXT("Malformed Station");
+	MalformedBase.Facilities.Add({ FGuid(5, 6, 7, 8), MalformedBattery.Identity.RuleId, 0, 0 });
+	const FBaseInfrastructureEvaluation MalformedEvaluation =
+		FStrategicCommandService::EvaluateBaseInfrastructure(
+			MalformedCampaign, MalformedRules, MalformedBase.BaseId);
+	TestTrue(TEXT("Base infrastructure rejects an out-of-range defense damage rule before aggregation"),
+		!MalformedEvaluation.bValid
+		&& !MalformedEvaluation.Diagnostics.IsEmpty()
+		&& MalformedEvaluation.Diagnostics[0].Code == FName(TEXT("invalid_base_defense_rule")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPersonnelServiceHistoryProjectionTest,
 	"UEGT.Core.Strategic.Presentation.PersonnelServiceHistory",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
