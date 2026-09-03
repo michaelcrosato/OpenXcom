@@ -5469,6 +5469,41 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateProjectStaffingForCategory(
+		const FCampaignState& State,
+		const FGuid& BaseId,
+		const EPersonnelRoleCategory Category,
+		FStrategicCommandResult& Result)
+	{
+		if (Category == EPersonnelRoleCategory::Scientist)
+		{
+			for (const FResearchProjectState& Project : State.ResearchProjects)
+			{
+				if (Project.BaseId == BaseId && Project.AssignedScientists < 0)
+				{
+					AddError(Result, TEXT("invalid_research_project"), FString::Printf(
+						TEXT("Research project '%s' has an invalid negative scientist assignment."),
+						*Project.ResearchId.ToString()));
+					return false;
+				}
+			}
+		}
+		else if (Category == EPersonnelRoleCategory::Engineer)
+		{
+			for (const FManufacturingProjectState& Project : State.ManufacturingProjects)
+			{
+				if (Project.BaseId == BaseId && Project.AssignedEngineers < 0)
+				{
+					AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
+						TEXT("Manufacturing project '%s' has an invalid negative engineer assignment."),
+						*Project.ProjectId.ToString()));
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
 	bool WouldViolateStaffingCommitmentAfterRelease(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -8851,6 +8886,12 @@ FSignalWatchStaffEvaluation FStrategicCommandService::EvaluateSignalWatchStaff(
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
+	if (!ValidateProjectStaffingForCategory(
+			State, Base->BaseId, EPersonnelRoleCategory::Scientist, Validation))
+	{
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
 	if (Base->SignalWatchScientists < 0)
 	{
 		AddError(Validation, TEXT("invalid_staff_assignment"),
@@ -8964,6 +9005,12 @@ FWorksCadreStaffEvaluation FStrategicCommandService::EvaluateWorksCadreStaff(
 	{
 		AddError(Validation, TEXT("unknown_base"),
 			TEXT("Works Cadre staffing requires an established base."));
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
+	if (!ValidateProjectStaffingForCategory(
+			State, Base->BaseId, EPersonnelRoleCategory::Engineer, Validation))
+	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
@@ -10578,6 +10625,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	if (Base == nullptr)
 	{
 		AddError(Result, TEXT("unknown_base"), TEXT("Research project references a missing base."));
+		return Result;
+	}
+	if (!ValidateProjectStaffingForCategory(
+			Transaction, Base->BaseId, EPersonnelRoleCategory::Scientist, Result))
+	{
 		return Result;
 	}
 
@@ -12604,6 +12656,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Manufacturing project references a missing base."));
 		return Result;
 	}
+	if (!ValidateProjectStaffingForCategory(
+			Transaction, Base->BaseId, EPersonnelRoleCategory::Engineer, Result))
+	{
+		return Result;
+	}
 
 	FBasePersonnelCapacityProfile PersonnelCapacity;
 	if (!ComputeBasePersonnelCapacities(*Base, Rules, PersonnelCapacity, Result))
@@ -13324,6 +13381,13 @@ FFacilityDismantleEvaluation FStrategicCommandService::EvaluateFacilityDismantle
 
 	FBasePersonnelCapacityProfile CurrentPersonnelCapacity;
 	if (!ComputeBasePersonnelCapacities(*Base, Rules, CurrentPersonnelCapacity, Validation))
+	{
+		return Reject();
+	}
+	if (!ValidateProjectStaffingForCategory(
+			State, Base->BaseId, EPersonnelRoleCategory::Scientist, Validation)
+		|| !ValidateProjectStaffingForCategory(
+			State, Base->BaseId, EPersonnelRoleCategory::Engineer, Validation))
 	{
 		return Reject();
 	}
@@ -14350,6 +14414,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	if (SourceBase->BaseId == DestinationBase->BaseId)
 	{
 		AddError(Result, TEXT("personnel_already_at_base"), TEXT("Personnel member is already stationed at the selected base."));
+		return Result;
+	}
+	if (!ValidateProjectStaffingForCategory(
+			State, SourceBase->BaseId, Role->Category, Result))
+	{
 		return Result;
 	}
 	if (WouldViolateStaffingCommitmentAfterRelease(State, Rules, SourceBase->BaseId, Role->Category))

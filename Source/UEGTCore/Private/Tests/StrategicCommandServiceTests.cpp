@@ -12775,6 +12775,158 @@ bool FStrategicFacilityPersonnelCapacityTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicMalformedProjectStaffingTest,
+	"UEGT.Core.StrategicCommands.MalformedProjectStaffingIsRejected",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	FResolvedRuleSet Rules = MakeRules();
+	FFacilityRule CapacityAnnex;
+	CapacityAnnex.Identity.RuleId = TEXT("facility.capacity-annex");
+	CapacityAnnex.DisplayName = TEXT("Capacity Annex");
+	CapacityAnnex.BuildCost = 700;
+	CapacityAnnex.BuildHours = 12;
+	CapacityAnnex.ScientistCapacity = 1;
+	CapacityAnnex.EngineerCapacity = 1;
+	CapacityAnnex.GridWidth = 1;
+	CapacityAnnex.GridHeight = 1;
+	Rules.Facilities.Add(CapacityAnnex.Identity.RuleId, CapacityAnnex);
+
+	FCampaignState ResearchState = MakeStateWithBase();
+	FResearchProjectState& InvalidResearch = ResearchState.ResearchProjects.AddDefaulted_GetRef();
+	InvalidResearch.ResearchId = TEXT("research.signal-analysis");
+	InvalidResearch.BaseId = TestBaseId;
+	InvalidResearch.AssignedScientists = MIN_int32;
+
+	FSetSignalWatchStaffCommand Watch;
+	Watch.ExpectedSequence = ResearchState.CommandSequence;
+	Watch.BaseId = TestBaseId;
+	Watch.AssignedScientists = 1;
+	const FSignalWatchStaffEvaluation WatchEvaluation =
+		FStrategicCommandService::EvaluateSignalWatchStaff(ResearchState, Rules, Watch);
+	const FStrategicCommandResult WatchResult =
+		FStrategicCommandService::Execute(ResearchState, Rules, Watch);
+	TestFalse(TEXT("Signal Watch rejects a base with negative research staffing"),
+		WatchEvaluation.bAllowed);
+	TestFalse(TEXT("Signal Watch execution rejects a base with negative research staffing"),
+		WatchResult.bAccepted);
+	TestTrue(TEXT("Signal Watch reports the malformed research project"),
+		WatchEvaluation.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_research_project"));
+			})
+		&& WatchResult.HasDiagnostic(TEXT("invalid_research_project")));
+
+	FSetResearchStaffCommand ResearchStaff;
+	ResearchStaff.ExpectedSequence = ResearchState.CommandSequence;
+	ResearchStaff.ResearchId = InvalidResearch.ResearchId;
+	ResearchStaff.AssignedScientists = 0;
+	const FStrategicCommandResult ResearchStaffResult =
+		FStrategicCommandService::Execute(ResearchState, Rules, ResearchStaff);
+	TestFalse(TEXT("Direct research staffing cannot mask another negative project assignment"),
+		ResearchStaffResult.bAccepted);
+	TestEqual(TEXT("Rejected research staffing leaves the malformed assignment untouched"),
+		InvalidResearch.AssignedScientists, MIN_int32);
+	TestTrue(TEXT("Direct research staffing reports the malformed research project"),
+		ResearchStaffResult.HasDiagnostic(TEXT("invalid_research_project")));
+
+	const FGuid DestinationBaseId(0x7a110001, 0x7a110002, 0x7a110003, 0x7a110004);
+	FStrategicBaseState& DestinationBase = ResearchState.Bases.AddDefaulted_GetRef();
+	DestinationBase.BaseId = DestinationBaseId;
+	DestinationBase.Name = TEXT("Southwatch");
+	const FGuid ScientistId(0x7a120001, 0x7a120002, 0x7a120003, 0x7a120004);
+	FPersonnelState& Scientist = AddTestPersonnel(ResearchState, ScientistId, TEXT("Invalid Assignment Probe"));
+	Scientist.RoleId = TEXT("role.scientist");
+	FTransferPersonnelCommand Transfer;
+	Transfer.ExpectedSequence = ResearchState.CommandSequence;
+	Transfer.PersonnelId = ScientistId;
+	Transfer.DestinationBaseId = DestinationBaseId;
+	const FStrategicCommandResult TransferResult = FStrategicCommandService::Execute(
+		ResearchState, Rules, MakeConfig(), Transfer);
+	TestFalse(TEXT("Personnel transfer rejects malformed source project staffing"),
+		TransferResult.bAccepted);
+	TestTrue(TEXT("Rejected personnel transfer leaves the scientist at the source base"),
+		Scientist.BaseId == TestBaseId);
+	TestTrue(TEXT("Personnel transfer reports the malformed research project"),
+		TransferResult.HasDiagnostic(TEXT("invalid_research_project")));
+
+	FCampaignState ManufacturingState = MakeStateWithBase();
+	const FGuid ManufacturingId(0x7a130001, 0x7a130002, 0x7a130003, 0x7a130004);
+	FManufacturingProjectState& InvalidManufacturing =
+		ManufacturingState.ManufacturingProjects.AddDefaulted_GetRef();
+	InvalidManufacturing.ProjectId = ManufacturingId;
+	InvalidManufacturing.ItemId = TEXT("item.service-rifle");
+	InvalidManufacturing.BaseId = TestBaseId;
+	InvalidManufacturing.AssignedEngineers = MIN_int32;
+	InvalidManufacturing.UnitsRemaining = 1;
+
+	FSetWorksCadreStaffCommand Works;
+	Works.ExpectedSequence = ManufacturingState.CommandSequence;
+	Works.BaseId = TestBaseId;
+	Works.AssignedEngineers = 1;
+	const FWorksCadreStaffEvaluation WorksEvaluation =
+		FStrategicCommandService::EvaluateWorksCadreStaff(ManufacturingState, Rules, Works);
+	const FStrategicCommandResult WorksResult =
+		FStrategicCommandService::Execute(ManufacturingState, Rules, Works);
+	TestFalse(TEXT("Works Cadre rejects a base with negative manufacturing staffing"),
+		WorksEvaluation.bAllowed);
+	TestFalse(TEXT("Works Cadre execution rejects a base with negative manufacturing staffing"),
+		WorksResult.bAccepted);
+	TestTrue(TEXT("Works Cadre reports the malformed manufacturing project"),
+		WorksEvaluation.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_manufacturing_project"));
+			})
+		&& WorksResult.HasDiagnostic(TEXT("invalid_manufacturing_project")));
+
+	FSetManufacturingStaffCommand ManufacturingStaff;
+	ManufacturingStaff.ExpectedSequence = ManufacturingState.CommandSequence;
+	ManufacturingStaff.ProjectId = ManufacturingId;
+	ManufacturingStaff.AssignedEngineers = 0;
+	const FStrategicCommandResult ManufacturingStaffResult =
+		FStrategicCommandService::Execute(ManufacturingState, Rules, ManufacturingStaff);
+	TestFalse(TEXT("Direct manufacturing staffing cannot mask another negative project assignment"),
+		ManufacturingStaffResult.bAccepted);
+	TestEqual(TEXT("Rejected manufacturing staffing leaves the malformed assignment untouched"),
+		InvalidManufacturing.AssignedEngineers, MIN_int32);
+	TestTrue(TEXT("Direct manufacturing staffing reports the malformed manufacturing project"),
+		ManufacturingStaffResult.HasDiagnostic(TEXT("invalid_manufacturing_project")));
+
+	FCampaignState DismantleState = MakeStateWithBase();
+	const FGuid AnnexId(0x7a140001, 0x7a140002, 0x7a140003, 0x7a140004);
+	FBaseFacilityState& Annex = DismantleState.Bases[0].Facilities.AddDefaulted_GetRef();
+	Annex.InstanceId = AnnexId;
+	Annex.FacilityId = CapacityAnnex.Identity.RuleId;
+	Annex.GridX = 1;
+	Annex.GridY = 0;
+	FResearchProjectState& DismantleResearch = DismantleState.ResearchProjects.AddDefaulted_GetRef();
+	DismantleResearch.ResearchId = TEXT("research.signal-analysis");
+	DismantleResearch.BaseId = TestBaseId;
+	DismantleResearch.AssignedScientists = MIN_int32;
+	FDismantleFacilityCommand Dismantle;
+	Dismantle.ExpectedSequence = DismantleState.CommandSequence;
+	Dismantle.BaseId = TestBaseId;
+	Dismantle.FacilityInstanceId = AnnexId;
+	const FFacilityDismantleEvaluation DismantleEvaluation =
+		FStrategicCommandService::EvaluateFacilityDismantle(
+			DismantleState, Rules, MakeConfig(), Dismantle);
+	TestFalse(TEXT("Facility dismantling rejects negative project staffing before capacity arithmetic"),
+		DismantleEvaluation.bAllowed);
+	TestTrue(TEXT("Facility dismantling reports the malformed research project"),
+		DismantleEvaluation.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_research_project"));
+			}));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicBaseAssaultDefenseTest,
 	"UEGT.Core.StrategicCommands.BaseAssaultDefense",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
