@@ -7345,7 +7345,9 @@ void AUEGTTacticalPlayerController::AutoPrepareCraft(const FGuid CraftId)
 			{
 				Mounts += ItemId == WeaponState.WeaponItemId ? 1 : 0;
 			}
-			const int32 Maximum = Weapon != nullptr ? Weapon->MagazineCapacity * Mounts : 0;
+			const int64 Maximum = Weapon != nullptr
+				? static_cast<int64>(Weapon->MagazineCapacity) * Mounts
+				: 0;
 			const FInventoryStack* Ammunition = Base != nullptr && Weapon != nullptr
 				? Base->Inventory.FindByPredicate(
 					[Weapon](const FInventoryStack& Stack) { return Stack.ItemId == Weapon->AmmunitionItemId; })
