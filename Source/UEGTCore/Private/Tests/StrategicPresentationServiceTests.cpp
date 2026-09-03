@@ -1026,6 +1026,20 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 				return Diagnostic.Contains(TEXT("Mutual Aid Convoy"))
 					&& Diagnostic.Contains(TEXT("invalid identity"));
 			}));
+	FCampaignState InvalidSiteReadinessCampaign = Campaign;
+	InvalidSiteReadinessCampaign.StrategicSites[0].ThreatRating = 0;
+	const FStrategicDashboardSnapshot InvalidSiteReadinessSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidSiteReadinessCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid strategic site state"),
+		InvalidSiteReadinessSnapshot.bSucceeded
+		&& !InvalidSiteReadinessSnapshot.bCanAdvanceTime
+		&& InvalidSiteReadinessSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("Strategic site"))
+					&& Diagnostic.Contains(TEXT("invalid persisted"));
+			}));
 	FCampaignState MalformedFacilityCampaign = Campaign;
 	const FBaseFacilityState DuplicateFacility = MalformedFacilityCampaign.Bases[0].Facilities[0];
 	MalformedFacilityCampaign.Bases[0].Facilities.Add(DuplicateFacility);

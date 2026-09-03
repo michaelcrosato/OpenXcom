@@ -4068,6 +4068,11 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules);
 
+	/** Read-only validation of persisted strategic site state. */
+	static FStrategicCommandResult ValidateStrategicSiteState(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules);
+
 	/** Read-only validation of configuration required before strategic time advancement. */
 	static FStrategicCommandResult ValidateStrategicTimeAdvanceConfig(
 		const FCampaignState& State,

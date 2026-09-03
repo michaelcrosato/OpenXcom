@@ -1126,6 +1126,21 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	const FStrategicCommandResult StrategicSiteStateValidation =
+		FStrategicCommandService::ValidateStrategicSiteState(Campaign, Rules);
+	if (!StrategicSiteStateValidation.bAccepted)
+	{
+		Snapshot.bCanAdvanceTime = false;
+		if (!StrategicSiteStateValidation.Diagnostics.IsEmpty())
+		{
+			const FString& Diagnostic = StrategicSiteStateValidation.Diagnostics[0].Message;
+			if (!Snapshot.Diagnostics.ContainsByPredicate(
+				[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+			{
+				Snapshot.Diagnostics.Add(Diagnostic);
+			}
+		}
+	}
 	TSet<const FStrategicBaseState*> BasesWithValidInfrastructure;
 	for (const FStrategicBaseState& Base : Campaign.Bases)
 	{

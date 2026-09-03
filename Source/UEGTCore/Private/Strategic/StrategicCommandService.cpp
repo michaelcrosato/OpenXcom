@@ -7424,6 +7424,21 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicMutualAidConv
 	return Result;
 }
 
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicSiteState(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (!ValidateStrategicSites(State, Rules, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
 FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceConfig(
 	const FCampaignState& State,
 	const FStrategicSimulationConfig& Config)
