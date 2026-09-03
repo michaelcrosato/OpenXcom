@@ -14134,7 +14134,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	const FFacilityRule* Rule = Rules.Facilities.Find(Facility->FacilityId);
-	if (Rule == nullptr || Rule->RepairCostPerIntegrity < 0
+	if (Rule == nullptr || Rule->MaxIntegrity <= 0 || Rule->RepairCostPerIntegrity < 0
+		|| Facility->Damage < 0 || Facility->Damage > Rule->MaxIntegrity
 		|| Facility->ReservedRepairDamage <= 0 || Facility->RemainingRepairSeconds <= 0
 		|| Facility->ReservedRepairDamage > Facility->Damage)
 	{

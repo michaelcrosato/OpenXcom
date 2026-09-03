@@ -7486,6 +7486,43 @@ bool FStrategicFacilityDurabilityAndRepairTest::RunTest(const FString& Parameter
 		&& RepairCancelled.Events.Num() == 1
 		&& RepairCancelled.Events[0].Amount == 1000);
 
+	FCampaignState InvalidRepairCancellationState = State;
+	FBaseFacilityState* InvalidRepairFacility =
+		InvalidRepairCancellationState.Bases[0].Facilities.FindByPredicate(
+			[&FacilityInstanceId](const FBaseFacilityState& Facility)
+			{
+				return Facility.InstanceId == FacilityInstanceId;
+			});
+	TestNotNull(TEXT("Malformed repair cancellation fixture resolves its facility"), InvalidRepairFacility);
+	if (InvalidRepairFacility != nullptr)
+	{
+		const int32 InvalidRepairDamage = FabricationRule->MaxIntegrity + 1;
+		InvalidRepairCancellationState.Funds = 100;
+		InvalidRepairFacility->Damage = InvalidRepairDamage;
+		InvalidRepairFacility->ReservedRepairDamage = InvalidRepairDamage;
+		InvalidRepairFacility->RemainingRepairSeconds = 1;
+		const int64 InvalidRepairFunds = InvalidRepairCancellationState.Funds;
+		const int64 InvalidRepairSequence = InvalidRepairCancellationState.CommandSequence;
+		FCancelFacilityRepairCommand InvalidRepairCancel = CancelRepair;
+		InvalidRepairCancel.ExpectedSequence = InvalidRepairSequence;
+		const FStrategicCommandResult InvalidRepairCancellation =
+			FStrategicCommandService::Execute(
+				InvalidRepairCancellationState, Rules, InvalidRepairCancel);
+		TestTrue(TEXT("Repair cancellation rejects damage beyond the facility rule before refunding it"),
+			!InvalidRepairCancellation.bAccepted
+			&& InvalidRepairCancellation.HasDiagnostic(TEXT("facility_repair_not_active"))
+			&& InvalidRepairCancellationState.Funds == InvalidRepairFunds
+			&& InvalidRepairCancellationState.CommandSequence == InvalidRepairSequence
+			&& InvalidRepairCancellationState.Bases[0].Facilities.ContainsByPredicate(
+				[&FacilityInstanceId, InvalidRepairDamage](const FBaseFacilityState& Facility)
+				{
+					return Facility.InstanceId == FacilityInstanceId
+						&& Facility.Damage == InvalidRepairDamage
+						&& Facility.ReservedRepairDamage == InvalidRepairDamage
+						&& Facility.RemainingRepairSeconds == 1;
+				}));
+	}
+
 	Repair.ExpectedSequence = State.CommandSequence;
 	TestTrue(TEXT("Cancelled facility repair can be restarted"),
 		FStrategicCommandService::Execute(State, Rules, Repair).bAccepted);
