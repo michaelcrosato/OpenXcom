@@ -619,7 +619,9 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 	Snapshot.VisibleCellCount = Visibility.VisibleCellIndices.Num();
 	TSet<int32> KnownCellIndexSet;
 	TSet<int32> CurrentVisibleCellIndexSet;
-	KnownCellIndexSet.Reserve(Battle.PlayerDiscoveredCellIndices.Num() + Visibility.VisibleCellIndices.Num());
+	const int64 KnownCellIndexCapacity = static_cast<int64>(Battle.PlayerDiscoveredCellIndices.Num())
+		+ static_cast<int64>(Visibility.VisibleCellIndices.Num());
+	KnownCellIndexSet.Reserve(static_cast<int32>(FMath::Min<int64>(KnownCellIndexCapacity, MAX_int32)));
 	CurrentVisibleCellIndexSet.Reserve(Visibility.VisibleCellIndices.Num());
 	int32 PreviousDiscoveredCellIndex = INDEX_NONE;
 	for (const int32 CellIndex : Battle.PlayerDiscoveredCellIndices)
@@ -694,11 +696,11 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 		}
 		if (bPlayer && Unit.CurrentHealth > 0 && !Unit.bExtracted)
 		{
-			++Snapshot.LivingPlayerUnitCount;
+			Snapshot.LivingPlayerUnitCount = SaturatingNonNegativeAdd(Snapshot.LivingPlayerUnitCount, 1);
 		}
 		if (bVisibleHostile)
 		{
-			++Snapshot.VisibleAdversaryUnitCount;
+			Snapshot.VisibleAdversaryUnitCount = SaturatingNonNegativeAdd(Snapshot.VisibleAdversaryUnitCount, 1);
 		}
 		Snapshot.Units.Add(MakeUnitView(Unit, Battle, Campaign, Rules, Query.SelectedUnitId));
 		if (Unit.UnitId == Query.SelectedUnitId)
@@ -736,7 +738,7 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 			continue;
 		}
 		Snapshot.Units.Add(MakeLastKnownUnitView(Memory));
-		++Snapshot.LastKnownAdversaryUnitCount;
+		Snapshot.LastKnownAdversaryUnitCount = SaturatingNonNegativeAdd(Snapshot.LastKnownAdversaryUnitCount, 1);
 	}
 	Snapshot.Units.Sort(
 		[](const FTacticalHudUnitView& Left, const FTacticalHudUnitView& Right)
