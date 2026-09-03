@@ -19472,8 +19472,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 				Progression.ExperienceGained = ExperienceAward;
 				Progression.PreviousRank = Agent->Rank;
 				Agent->Experience += ExperienceAward;
+				const int64 ExperienceRank = 1LL
+					+ static_cast<int64>(Agent->Experience) / Config.PersonnelExperiencePerRank;
 				Agent->Rank = FMath::Max(Agent->Rank,
-					FMath::Min(Config.MaxPersonnelRank, 1 + Agent->Experience / Config.PersonnelExperiencePerRank));
+					static_cast<int32>(FMath::Clamp<int64>(
+						ExperienceRank, 1, Config.MaxPersonnelRank)));
 				Progression.TotalExperience = Agent->Experience;
 				Progression.NewRank = Agent->Rank;
 				Agent->PendingDoctrineChoices += Progression.NewRank - Progression.PreviousRank;
@@ -19907,9 +19910,12 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			Progression.ExperienceGained = ExperienceAward;
 			Progression.PreviousRank = Agent->Rank;
 			Agent->Experience += ExperienceAward;
+			const int64 ExperienceRank = 1LL
+				+ static_cast<int64>(Agent->Experience) / Config.PersonnelExperiencePerRank;
 			Agent->Rank = FMath::Max(
 				Agent->Rank,
-				FMath::Min(Config.MaxPersonnelRank, 1 + Agent->Experience / Config.PersonnelExperiencePerRank));
+				static_cast<int32>(FMath::Clamp<int64>(
+					ExperienceRank, 1, Config.MaxPersonnelRank)));
 			Progression.TotalExperience = Agent->Experience;
 			Progression.NewRank = Agent->Rank;
 			Agent->PendingDoctrineChoices += Progression.NewRank - Progression.PreviousRank;

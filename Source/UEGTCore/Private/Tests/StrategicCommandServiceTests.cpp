@@ -23312,6 +23312,26 @@ bool FStrategicPersonnelProgressionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Mission progression and commendations consume no campaign random draws"),
 		Successful.SimulationRandom.DrawCount, DrawsBeforeResolution);
 
+	FCampaignState MaxExperienceCampaign = GeneratedState;
+	MarkBattleResolved(MaxExperienceCampaign, true);
+	FPersonnelState* MaxExperienceAgent = MaxExperienceCampaign.Personnel.FindByPredicate(
+		[AgentId](const FPersonnelState& Person) { return Person.PersonnelId == AgentId; });
+	check(MaxExperienceAgent != nullptr);
+	MaxExperienceAgent->Experience = MAX_int32 - 700;
+	FStrategicSimulationConfig MaxExperienceConfig = Config;
+	MaxExperienceConfig.PersonnelExperiencePerRank = 1;
+	FResolveTacticalOperationCommand MaxExperienceResolve = Resolve;
+	MaxExperienceResolve.ExpectedSequence = MaxExperienceCampaign.CommandSequence;
+	const FStrategicCommandResult MaxExperienceResult = FStrategicCommandService::Execute(
+		MaxExperienceCampaign, Rules, MaxExperienceConfig, MaxExperienceResolve);
+	MaxExperienceAgent = MaxExperienceCampaign.Personnel.FindByPredicate(
+		[AgentId](const FPersonnelState& Person) { return Person.PersonnelId == AgentId; });
+	TestTrue(TEXT("Experience promotion widens the rank projection at the int32 experience boundary"),
+		MaxExperienceResult.bAccepted && MaxExperienceAgent != nullptr
+		&& MaxExperienceAgent->Experience == MAX_int32
+		&& MaxExperienceAgent->Rank == MaxExperienceConfig.MaxPersonnelRank
+		&& MaxExperienceAgent->PendingDoctrineChoices == MaxExperienceConfig.MaxPersonnelRank - 1);
+
 	Resolve.ExpectedSequence = Failed.CommandSequence;
 	Resolve.bObjectiveCompleted = false;
 	const FStrategicCommandResult FailedResult = FStrategicCommandService::Execute(Failed, Rules, Config, Resolve);
