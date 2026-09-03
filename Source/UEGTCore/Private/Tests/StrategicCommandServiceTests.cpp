@@ -978,6 +978,22 @@ bool FStrategicResearchWorkflowTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Staff above base capacity is rejected"), CapacityRejected.bAccepted);
 	TestTrue(TEXT("Capacity violation is diagnosed"), CapacityRejected.HasDiagnostic(TEXT("scientist_capacity_exceeded")));
 
+	FCampaignState MalformedResearchStaffState = State;
+	MalformedResearchStaffState.ResearchProjects[0].AccumulatedWorkSeconds = MIN_int64;
+	const int64 MalformedResearchStaffSequence = MalformedResearchStaffState.CommandSequence;
+	FSetResearchStaffCommand MalformedResearchStaff = OverCapacity;
+	MalformedResearchStaff.ExpectedSequence = MalformedResearchStaffSequence;
+	MalformedResearchStaff.AssignedScientists = 1;
+	const FStrategicCommandResult MalformedResearchStaffResult = FStrategicCommandService::Execute(
+		MalformedResearchStaffState, Rules, MalformedResearchStaff);
+	TestTrue(TEXT("Research staffing rejects malformed persisted progress atomically"),
+		!MalformedResearchStaffResult.bAccepted
+		&& MalformedResearchStaffResult.HasDiagnostic(TEXT("invalid_research_project"))
+		&& MalformedResearchStaffState.CommandSequence == MalformedResearchStaffSequence
+		&& MalformedResearchStaffState.ResearchProjects.Num() == 1
+		&& MalformedResearchStaffState.ResearchProjects[0].AssignedScientists == 0
+		&& MalformedResearchStaffState.ResearchProjects[0].AccumulatedWorkSeconds == MIN_int64);
+
 	FSetResearchStaffCommand Staff;
 	Staff.ExpectedSequence = State.CommandSequence;
 	Staff.ResearchId = Start.ResearchId;

@@ -10715,6 +10715,15 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Research project references a missing base."));
 		return Result;
 	}
+	const FResearchRule* Research = Rules.Research.Find(Project->ResearchId);
+	if (Research == nullptr || Project->AssignedScientists < 0
+		|| Project->AccumulatedWorkSeconds < 0)
+	{
+		AddError(Result, TEXT("invalid_research_project"), FString::Printf(
+			TEXT("Research project '%s' has invalid persisted state."),
+			*Project->ResearchId.ToString()));
+		return Result;
+	}
 	if (!ValidateProjectStaffingForCategory(
 			Transaction, Base->BaseId, EPersonnelRoleCategory::Scientist, Result))
 	{
