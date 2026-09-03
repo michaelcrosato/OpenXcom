@@ -1121,6 +1121,87 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidManufacturingOutputSnapshot.bCanAdvanceTime
 		&& InvalidManufacturingOutputSnapshot.Diagnostics.Contains(
 			TEXT("Strategic simulation exceeded a persisted numeric range.")));
+	FResolvedRuleSet CombinedCapacityRules = Rules;
+	CombinedCapacityRules.AdversaryMissions.Reset();
+	FStrategicSimulationConfig CombinedCapacityConfig = Config;
+	CombinedCapacityConfig.ManufacturingFacilityId = Fabrication.Identity.RuleId;
+	CombinedCapacityConfig.MutualAidConvoyTransitHours = 72;
+	FCampaignState CombinedCapacityCampaign = InvalidFinancialCampaign;
+	CombinedCapacityCampaign.Funds = 100000;
+	const FGuid CombinedCapacityDestinationId(929, 930, 931, 932);
+	FStrategicBaseState& CombinedCapacityDestination =
+		CombinedCapacityCampaign.Bases.AddDefaulted_GetRef();
+	CombinedCapacityDestination.BaseId = CombinedCapacityDestinationId;
+	CombinedCapacityDestination.Name = TEXT("Combined Capacity Depot");
+	CombinedCapacityDestination.RegionId = Mission.TargetRegionId;
+	CombinedCapacityDestination.LongitudeMilliDegrees = -72000;
+	CombinedCapacityDestination.LatitudeMilliDegrees = -45000;
+	CombinedCapacityDestination.ScientistCapacity = 10;
+	CombinedCapacityDestination.EngineerCapacity = 10;
+	CombinedCapacityDestination.Facilities.Add({
+		FGuid(933, 934, 935, 936), Operations.Identity.RuleId, 0, 0 });
+	CombinedCapacityCampaign.SimulationRandom.Initialize(0);
+	CombinedCapacityCampaign.MonthlyFunding = 100;
+	FDispatchMutualAidConvoyCommand CombinedCapacityDispatch;
+	CombinedCapacityDispatch.ExpectedSequence = CombinedCapacityCampaign.CommandSequence;
+	CombinedCapacityDispatch.SourceBaseId = BaseId;
+	CombinedCapacityDispatch.DestinationBaseId = CombinedCapacityDestinationId;
+	CombinedCapacityDispatch.ItemId = Manufactured.Identity.RuleId;
+	CombinedCapacityDispatch.Quantity = 1;
+	const FStrategicCommandResult CombinedCapacityDispatched =
+		FStrategicCommandService::Execute(
+			CombinedCapacityCampaign, CombinedCapacityRules, CombinedCapacityConfig,
+			CombinedCapacityDispatch);
+	TestTrue(TEXT("Presentation combined-capacity fixture dispatches the inbound item"),
+		CombinedCapacityDispatched.bAccepted
+		&& CombinedCapacityCampaign.MutualAidConvoys.Num() == 1);
+	if (!CombinedCapacityDispatched.bAccepted
+		|| CombinedCapacityCampaign.MutualAidConvoys.Num() != 1)
+	{
+		return false;
+	}
+	FStrategicBaseState* CombinedCapacityDestinationAfterDispatch =
+		CombinedCapacityCampaign.Bases.FindByPredicate(
+			[CombinedCapacityDestinationId](const FStrategicBaseState& BaseState)
+			{
+				return BaseState.BaseId == CombinedCapacityDestinationId;
+			});
+	if (CombinedCapacityDestinationAfterDispatch == nullptr)
+	{
+		return false;
+	}
+	FBaseFacilityState& CombinedCapacityFabrication =
+		CombinedCapacityDestinationAfterDispatch->Facilities.AddDefaulted_GetRef();
+	CombinedCapacityFabrication.InstanceId = FGuid(937, 938, 939, 940);
+	CombinedCapacityFabrication.FacilityId = Fabrication.Identity.RuleId;
+	CombinedCapacityFabrication.GridX = 2;
+	CombinedCapacityFabrication.GridY = 0;
+	FInventoryStack& CombinedCapacityDestinationStack =
+		CombinedCapacityDestinationAfterDispatch->Inventory.AddDefaulted_GetRef();
+	CombinedCapacityDestinationStack.ItemId = Manufactured.Identity.RuleId;
+	CombinedCapacityDestinationStack.Quantity = MAX_int32 - 1;
+	FManufacturingProjectState& CombinedCapacityProject =
+		CombinedCapacityCampaign.ManufacturingProjects.AddDefaulted_GetRef();
+	CombinedCapacityProject.ProjectId = FGuid(941, 942, 943, 944);
+	CombinedCapacityProject.ItemId = Manufactured.Identity.RuleId;
+	CombinedCapacityProject.BaseId = CombinedCapacityDestinationId;
+	CombinedCapacityProject.AssignedEngineers = 1;
+	CombinedCapacityProject.UnitsRemaining = 1;
+	CombinedCapacityProject.AccumulatedWorkSeconds =
+		static_cast<int64>(Manufactured.ManufactureHours) * 3600 - 5;
+	FMutualAidConvoyState& CombinedCapacityConvoy =
+		CombinedCapacityCampaign.MutualAidConvoys[0];
+	CombinedCapacityConvoy.RemainingTransitSeconds = 5;
+	CombinedCapacityConvoy.bInterdictionResolved = true;
+	CombinedCapacityConvoy.InterdictionDelaySeconds = 0;
+	const FStrategicDashboardSnapshot CombinedCapacitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			CombinedCapacityCampaign, CombinedCapacityRules, CombinedCapacityConfig);
+	TestTrue(TEXT("Dashboard disables time advancement for combined production and convoy inventory overflow"),
+		CombinedCapacitySnapshot.bSucceeded
+		&& !CombinedCapacitySnapshot.bCanAdvanceTime
+		&& CombinedCapacitySnapshot.Diagnostics.Contains(
+			TEXT("Strategic simulation exceeded a persisted numeric range.")));
 	FResolvedRuleSet InvalidCraftRules = Rules;
 	FPersonnelRoleRule PresentationPilot;
 	PresentationPilot.Identity.RuleId = TEXT("role.presentation-pilot");

@@ -5959,6 +5959,19 @@ namespace StrategicCommandServicePrivate
 		const int64 RequestedSeconds,
 		FStrategicCommandResult& Result)
 	{
+		TMap<FGuid, TMap<FName, int64>> PotentialInventoryAdditions;
+		const auto AddPotentialInventory =
+			[&PotentialInventoryAdditions](
+				const FGuid& BaseId, const FName ItemId, const int64 Quantity)
+		{
+			if (Quantity <= 0)
+			{
+				return true;
+			}
+			int64& Total = PotentialInventoryAdditions.FindOrAdd(BaseId).FindOrAdd(ItemId);
+			return TryAdd(Total, Quantity, Total);
+		};
+
 		for (const FManufacturingProjectState& Project : State.ManufacturingProjects)
 		{
 			const FItemRule* Item = Rules.Items.Find(Project.ItemId);
@@ -6000,17 +6013,80 @@ namespace StrategicCommandServicePrivate
 			{
 				continue;
 			}
-
-			const FInventoryStack* Stack = ManufacturingBase->Inventory.FindByPredicate(
-				[&Project](const FInventoryStack& Entry)
-				{
-					return Entry.ItemId == Project.ItemId;
-				});
-			if (Stack != nullptr && Stack->Quantity == MAX_int32)
+			const int64 UnitsToProduce = FMath::Min<int64>(
+				Project.UnitsRemaining, ProjectedProgress / RequiredWork);
+			if (!AddPotentialInventory(
+				Project.BaseId, Project.ItemId, UnitsToProduce))
 			{
 				AddError(Result, TEXT("simulation_overflow"),
 					TEXT("Strategic simulation exceeded a persisted numeric range."));
 				return false;
+			}
+		}
+
+		const FMutualAidRelayQueueSnapshot RelayQueue =
+			FMutualAidRelayQueue::Evaluate(State, Rules);
+		for (const FMutualAidRelayQueueView& Queue : RelayQueue.Convoys)
+		{
+			if (!Queue.bInTransit
+				|| Queue.EstimatedWaitSeconds != 0)
+			{
+				continue;
+			}
+			const FMutualAidConvoyState* Convoy = State.MutualAidConvoys.FindByPredicate(
+				[&Queue](const FMutualAidConvoyState& Entry)
+				{
+					return Entry.ConvoyId == Queue.ConvoyId;
+				});
+			if (Convoy == nullptr || Convoy->RemainingTransitSeconds > RequestedSeconds
+				|| !Convoy->bInterdictionResolved)
+			{
+				continue;
+			}
+
+			FGuid ReceivingBaseId = Convoy->DestinationBaseId;
+			int32 DeliveryQuantity = Convoy->Quantity;
+			if (Convoy->RelayWaypointBaseId.IsValid())
+			{
+				ReceivingBaseId = Convoy->RelayWaypointBaseId;
+				DeliveryQuantity = Convoy->BalancedHandoffQuantity;
+			}
+			if (!AddPotentialInventory(
+				ReceivingBaseId, Convoy->ItemId, DeliveryQuantity))
+			{
+				AddError(Result, TEXT("simulation_overflow"),
+					TEXT("Strategic simulation exceeded a persisted numeric range."));
+				return false;
+			}
+		}
+
+		for (const TPair<FGuid, TMap<FName, int64>>& BaseAdditions :
+			PotentialInventoryAdditions)
+		{
+			const FStrategicBaseState* Base = FindBase(State, BaseAdditions.Key);
+			if (Base == nullptr)
+			{
+				AddError(Result, TEXT("simulation_overflow"),
+					TEXT("Strategic simulation exceeded a persisted numeric range."));
+				return false;
+			}
+			for (const TPair<FName, int64>& ItemAddition : BaseAdditions.Value)
+			{
+				const FInventoryStack* Stack = Base->Inventory.FindByPredicate(
+					[&ItemAddition](const FInventoryStack& Entry)
+					{
+						return Entry.ItemId == ItemAddition.Key;
+					});
+				const int64 ExistingQuantity = Stack != nullptr
+					? static_cast<int64>(Stack->Quantity) : 0;
+				int64 ProjectedQuantity = 0;
+				if (!TryAdd(ExistingQuantity, ItemAddition.Value, ProjectedQuantity)
+					|| ProjectedQuantity > MAX_int32)
+				{
+					AddError(Result, TEXT("simulation_overflow"),
+						TEXT("Strategic simulation exceeded a persisted numeric range."));
+					return false;
+				}
 			}
 		}
 		return true;

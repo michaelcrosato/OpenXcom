@@ -1733,6 +1733,113 @@ bool FStrategicManufacturingSafetyTest::RunTest(const FString& Parameters)
 		&& OutputCapacityRejected.HasDiagnostic(TEXT("simulation_overflow"))
 		&& OutputCapacityState.ManufacturingProjects.Num() == 1
 		&& OutputCapacityState.Bases[0].Inventory.Last().Quantity == MAX_int32);
+
+	FResolvedRuleSet CombinedCapacityRules = Rules;
+	CombinedCapacityRules.AdversaryMissions.Reset();
+	FStrategicSimulationConfig CombinedCapacityConfig = Config;
+	CombinedCapacityConfig.MutualAidConvoyTransitHours = 72;
+	FCampaignState CombinedCapacityState = MakeStateWithBase();
+	CombinedCapacityState.Funds = 50000;
+	const FGuid CombinedCapacityDestinationId(0x83, 0x84, 0x85, 0x86);
+	FEstablishBaseCommand EstablishCombinedCapacityDestination;
+	EstablishCombinedCapacityDestination.ExpectedSequence = CombinedCapacityState.CommandSequence;
+	EstablishCombinedCapacityDestination.BaseId = CombinedCapacityDestinationId;
+	EstablishCombinedCapacityDestination.Name = TEXT("Combined Capacity Depot");
+	EstablishCombinedCapacityDestination.RegionId = TEXT("region.patagonia");
+	EstablishCombinedCapacityDestination.LongitudeMilliDegrees = -72000;
+	EstablishCombinedCapacityDestination.LatitudeMilliDegrees = -45000;
+	EstablishCombinedCapacityDestination.StartingFacilities.Add(TEXT("facility.operations-hub"));
+	TestTrue(TEXT("Combined-capacity fixture establishes a receiving base"),
+		FStrategicCommandService::Execute(
+			CombinedCapacityState, CombinedCapacityRules, CombinedCapacityConfig,
+			EstablishCombinedCapacityDestination).bAccepted);
+	FStrategicBaseState* CombinedCapacityDestination = CombinedCapacityState.Bases.FindByPredicate(
+		[CombinedCapacityDestinationId](const FStrategicBaseState& Base)
+		{
+			return Base.BaseId == CombinedCapacityDestinationId;
+		});
+	TestNotNull(TEXT("Combined-capacity fixture resolves the receiving base"), CombinedCapacityDestination);
+	if (CombinedCapacityDestination != nullptr)
+	{
+		FInventoryStack& CombinedCapacitySourceStock =
+			CombinedCapacityState.Bases.FindByPredicate(
+				[](const FStrategicBaseState& Base)
+				{
+					return Base.BaseId == TestBaseId;
+				})
+			->Inventory.AddDefaulted_GetRef();
+		CombinedCapacitySourceStock.ItemId = TEXT("item.service-rifle");
+		CombinedCapacitySourceStock.Quantity = 4;
+		FDispatchMutualAidConvoyCommand CombinedCapacityDispatch;
+		CombinedCapacityDispatch.ExpectedSequence = CombinedCapacityState.CommandSequence;
+		CombinedCapacityDispatch.SourceBaseId = TestBaseId;
+		CombinedCapacityDispatch.DestinationBaseId = CombinedCapacityDestinationId;
+		CombinedCapacityDispatch.ItemId = TEXT("item.service-rifle");
+		CombinedCapacityDispatch.Quantity = 1;
+		const FStrategicCommandResult CombinedCapacityDispatched =
+			FStrategicCommandService::Execute(
+				CombinedCapacityState, CombinedCapacityRules, CombinedCapacityConfig,
+				CombinedCapacityDispatch);
+		TestTrue(TEXT("Combined-capacity fixture dispatches the inbound item"),
+			CombinedCapacityDispatched.bAccepted
+			&& CombinedCapacityState.MutualAidConvoys.Num() == 1);
+		if (!CombinedCapacityDispatched.bAccepted || CombinedCapacityState.MutualAidConvoys.Num() != 1)
+		{
+			return false;
+		}
+		CombinedCapacityDestination = CombinedCapacityState.Bases.FindByPredicate(
+			[CombinedCapacityDestinationId](const FStrategicBaseState& Base)
+			{
+				return Base.BaseId == CombinedCapacityDestinationId;
+			});
+		if (CombinedCapacityDestination == nullptr)
+		{
+			return false;
+		}
+		FBaseFacilityState& CombinedCapacityFabrication =
+			CombinedCapacityDestination->Facilities.AddDefaulted_GetRef();
+		CombinedCapacityFabrication.InstanceId = FGuid(0x87, 0x88, 0x89, 0x8A);
+		CombinedCapacityFabrication.FacilityId = TEXT("facility.fabrication-bay");
+		CombinedCapacityFabrication.GridX = 1;
+		CombinedCapacityFabrication.GridY = 0;
+		FInventoryStack& CombinedCapacityDestinationStack =
+			CombinedCapacityDestination->Inventory.AddDefaulted_GetRef();
+		CombinedCapacityDestinationStack.ItemId = TEXT("item.service-rifle");
+		CombinedCapacityDestinationStack.Quantity = MAX_int32 - 1;
+		FManufacturingProjectState& CombinedCapacityProject =
+			CombinedCapacityState.ManufacturingProjects.AddDefaulted_GetRef();
+		CombinedCapacityProject.ProjectId = FGuid(0x8B, 0x8C, 0x8D, 0x8E);
+		CombinedCapacityProject.ItemId = TEXT("item.service-rifle");
+		CombinedCapacityProject.BaseId = CombinedCapacityDestinationId;
+		CombinedCapacityProject.AssignedEngineers = 1;
+		CombinedCapacityProject.UnitsRemaining = 1;
+		CombinedCapacityProject.AccumulatedWorkSeconds = 3595;
+		FMutualAidConvoyState& CombinedCapacityConvoy =
+			CombinedCapacityState.MutualAidConvoys[0];
+		CombinedCapacityConvoy.RemainingTransitSeconds = 5;
+		CombinedCapacityConvoy.bInterdictionResolved = true;
+		CombinedCapacityConvoy.InterdictionDelaySeconds = 0;
+		const int64 CombinedCapacitySequence = CombinedCapacityState.CommandSequence;
+		FAdvanceStrategicTimeCommand CombinedCapacityAdvance;
+		CombinedCapacityAdvance.ExpectedSequence = CombinedCapacitySequence;
+		CombinedCapacityAdvance.Rate = EStrategicTimeRate::OneDay;
+		const FStrategicCommandResult CombinedCapacityValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceProductionCapacity(
+				CombinedCapacityState, CombinedCapacityRules, CombinedCapacityConfig, 86400);
+		const FStrategicCommandResult CombinedCapacityRejected =
+			FStrategicCommandService::Execute(
+				CombinedCapacityState, CombinedCapacityRules, CombinedCapacityConfig,
+				CombinedCapacityAdvance);
+		TestTrue(TEXT("Manufacturing capacity validation includes same-slice inbound convoy cargo"),
+			!CombinedCapacityValidation.bAccepted
+			&& CombinedCapacityValidation.HasDiagnostic(TEXT("simulation_overflow")));
+		TestTrue(TEXT("Time advancement rejects combined production and convoy inventory overflow atomically"),
+			!CombinedCapacityRejected.bAccepted
+			&& CombinedCapacityRejected.HasDiagnostic(TEXT("simulation_overflow"))
+			&& CombinedCapacityState.CommandSequence == CombinedCapacitySequence
+			&& CombinedCapacityDestinationStack.Quantity == MAX_int32 - 1
+			&& CombinedCapacityState.MutualAidConvoys.Num() == 1);
+	}
 	Command.ItemId = TEXT("item.signal-probe");
 	const FStrategicCommandResult MissingResearch = FStrategicCommandService::Execute(State, Rules, Config, Command);
 	TestFalse(TEXT("Manufacturing respects research requirements"), MissingResearch.bAccepted);
