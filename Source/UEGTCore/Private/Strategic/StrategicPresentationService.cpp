@@ -1111,6 +1111,21 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	const FStrategicCommandResult MutualAidConvoyStateValidation =
+		FStrategicCommandService::ValidateStrategicMutualAidConvoyState(Campaign, Rules);
+	if (!MutualAidConvoyStateValidation.bAccepted)
+	{
+		Snapshot.bCanAdvanceTime = false;
+		if (!MutualAidConvoyStateValidation.Diagnostics.IsEmpty())
+		{
+			const FString& Diagnostic = MutualAidConvoyStateValidation.Diagnostics[0].Message;
+			if (!Snapshot.Diagnostics.ContainsByPredicate(
+				[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+			{
+				Snapshot.Diagnostics.Add(Diagnostic);
+			}
+		}
+	}
 	TSet<const FStrategicBaseState*> BasesWithValidInfrastructure;
 	for (const FStrategicBaseState& Base : Campaign.Bases)
 	{

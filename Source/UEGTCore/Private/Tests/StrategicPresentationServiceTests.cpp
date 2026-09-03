@@ -990,6 +990,42 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 				return Diagnostic.Contains(TEXT("Craft"))
 					&& Diagnostic.Contains(TEXT("invalid persisted"));
 			}));
+	FCampaignState InvalidConvoyReadinessCampaign = Campaign;
+	InvalidConvoyReadinessCampaign.Craft[0].AssignedPilotId.Invalidate();
+	InvalidConvoyReadinessCampaign.Craft[0].AssignedAgentIds.Reset();
+	const FGuid ConvoyDestinationBaseId(201, 202, 203, 204);
+	FStrategicBaseState& ConvoyDestinationBase =
+		InvalidConvoyReadinessCampaign.Bases.AddDefaulted_GetRef();
+	ConvoyDestinationBase.BaseId = ConvoyDestinationBaseId;
+	ConvoyDestinationBase.Name = TEXT("Convoy Destination");
+	ConvoyDestinationBase.RegionId = Mission.TargetRegionId;
+	ConvoyDestinationBase.Facilities.Add(
+		{ FGuid(211, 212, 213, 214), Operations.Identity.RuleId, 0, 0 });
+	const FGuid InvalidConvoyId(205, 206, 207, 208);
+	FMutualAidConvoyState& InvalidConvoy =
+		InvalidConvoyReadinessCampaign.MutualAidConvoys.AddDefaulted_GetRef();
+	InvalidConvoy.ConvoyId = InvalidConvoyId;
+	InvalidConvoy.SourceBaseId = BaseId;
+	InvalidConvoy.DestinationBaseId = ConvoyDestinationBaseId;
+	InvalidConvoy.ItemId = Manufactured.Identity.RuleId;
+	InvalidConvoy.Quantity = 1;
+	InvalidConvoy.DispatchSequence = 1;
+	InvalidConvoy.TotalTransitSeconds = 3600;
+	InvalidConvoy.RemainingTransitSeconds = 3600;
+	InvalidConvoy.RoutePressure = 10;
+	InvalidConvoy.ForecastInterdictionDelaySeconds = 1801;
+	const FStrategicDashboardSnapshot InvalidConvoyReadinessSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidConvoyReadinessCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid Mutual Aid Convoy state"),
+		InvalidConvoyReadinessSnapshot.bSucceeded
+		&& !InvalidConvoyReadinessSnapshot.bCanAdvanceTime
+		&& InvalidConvoyReadinessSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("Mutual Aid Convoy"))
+					&& Diagnostic.Contains(TEXT("invalid identity"));
+			}));
 	FCampaignState MalformedFacilityCampaign = Campaign;
 	const FBaseFacilityState DuplicateFacility = MalformedFacilityCampaign.Bases[0].Facilities[0];
 	MalformedFacilityCampaign.Bases[0].Facilities.Add(DuplicateFacility);
