@@ -8028,6 +8028,27 @@ bool FStrategicPersonnelReturnPathTest::RunTest(const FString& Parameters)
 		&& ExtremeDamage.Personnel[0].MaxHealth == 55
 		&& ExtremeDamage.Personnel[0].CurrentHealth == MIN_int32);
 
+	FCampaignState InvalidTraining = MakeStateWithBase();
+	const FGuid InvalidTrainingPersonnelId(0x71510021, 0x71510022, 0x71510023, 0x71510024);
+	FPersonnelState& InvalidTrainingPerson = AddTestPersonnel(
+		InvalidTraining, InvalidTrainingPersonnelId, TEXT("Invalid Training Probe"));
+	InvalidTrainingPerson.Accuracy = MIN_int32;
+	const int64 InvalidTrainingSequence = InvalidTraining.CommandSequence;
+	FBeginPersonnelTrainingCommand InvalidTrainingCommand;
+	InvalidTrainingCommand.ExpectedSequence = InvalidTraining.CommandSequence;
+	InvalidTrainingCommand.PersonnelId = InvalidTrainingPersonnelId;
+	InvalidTrainingCommand.Focus = EPersonnelTrainingFocus::Accuracy;
+	const FStrategicCommandResult InvalidTrainingResult = FStrategicCommandService::Execute(
+		InvalidTraining, Config, InvalidTrainingCommand);
+	TestTrue(TEXT("Personnel training rejects an invalid selected attribute before starting a timer"),
+		!InvalidTrainingResult.bAccepted
+		&& InvalidTrainingResult.HasDiagnostic(TEXT("invalid_personnel_state"))
+		&& InvalidTraining.CommandSequence == InvalidTrainingSequence
+		&& InvalidTraining.Personnel.Num() == 1
+		&& InvalidTraining.Personnel[0].Status == EPersonnelStatus::Available
+		&& InvalidTraining.Personnel[0].RemainingTrainingSeconds == 0
+		&& InvalidTraining.Personnel[0].Accuracy == MIN_int32);
+
 	const FPersonnelRecoveryPlanView Projection =
 		FPersonnelRecoveryPlan::Evaluate(Pending, Config, PersonnelId);
 	TestTrue(TEXT("Return Path projection exposes all options in stable order"),

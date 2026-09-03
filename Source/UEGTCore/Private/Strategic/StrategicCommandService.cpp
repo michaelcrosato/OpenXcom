@@ -15072,7 +15072,13 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		: Command.Focus == EPersonnelTrainingFocus::Resolve ? Person->Resolve
 		: Command.Focus == EPersonnelTrainingFocus::Mobility ? Person->Mobility
 		: Person->Strength;
-	if (Attribute >= 100)
+	if (Attribute <= 0 || Attribute > 100)
+	{
+		AddError(Result, TEXT("invalid_personnel_state"),
+			TEXT("Selected personnel attribute is outside the supported range."));
+		return Result;
+	}
+	if (Attribute == 100)
 	{
 		AddError(Result, TEXT("attribute_at_maximum"), TEXT("Selected personnel attribute is already at its maximum."));
 		return Result;
