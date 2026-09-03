@@ -396,6 +396,16 @@ bool FUEGTGameplayPreferencePolicyTest::RunTest(const FString& Parameters)
 		AUEGTTacticalPlayerController::CalculateManufacturingDeltaFunds(MIN_int64, 2), MIN_int64);
 	TestEqual(TEXT("Manufacturing delta funds handle the minimum int32 delta magnitude"),
 		AUEGTTacticalPlayerController::CalculateManufacturingDeltaFunds(MAX_int64, MIN_int32), MAX_int64);
+	TestEqual(TEXT("Signal Watch channel totals preserve normal staffing projections"),
+		AUEGTTacticalPlayerController::CalculateSignalWatchTotalChannels(4, 3), 7);
+	TestEqual(TEXT("Signal Watch channel totals clamp addition overflow"),
+		AUEGTTacticalPlayerController::CalculateSignalWatchTotalChannels(MAX_int32, MAX_int32), MAX_int32);
+	TestEqual(TEXT("Signal Watch channel totals reject negative snapshot values"),
+		AUEGTTacticalPlayerController::CalculateSignalWatchTotalChannels(MIN_int32, MAX_int32), 0);
+	TestEqual(TEXT("Works Cadre front-load preserves normal policy arithmetic"),
+		AUEGTTacticalPlayerController::CalculateWorksCadreFrontloadPercent(3, 15), 45);
+	TestEqual(TEXT("Works Cadre front-load clamps multiplication overflow"),
+		AUEGTTacticalPlayerController::CalculateWorksCadreFrontloadPercent(MAX_int32, MAX_int32), MAX_int32);
 	return true;
 }
 

@@ -316,6 +316,36 @@ int64 AUEGTTacticalPlayerController::CalculateManufacturingDeltaFunds(
 		UnitCost, DeltaMagnitude);
 }
 
+int32 AUEGTTacticalPlayerController::CalculateSignalWatchTotalChannels(
+	const int32 FacilityRelayChannelCount,
+	const int32 AssignedScientists)
+{
+	const int64 FacilityChannels = FMath::Max<int64>(0, FacilityRelayChannelCount);
+	const int64 Scientists = FMath::Max<int64>(0, AssignedScientists);
+	const int64 EffectiveScientists = FMath::Min(FacilityChannels, Scientists);
+	return static_cast<int32>(FMath::Clamp<int64>(
+		FacilityChannels + EffectiveScientists,
+		0,
+		MAX_int32));
+}
+
+int32 AUEGTTacticalPlayerController::CalculateWorksCadreFrontloadPercent(
+	const int32 AssignedEngineers,
+	const int32 PercentPerEngineer)
+{
+	if (AssignedEngineers <= 0 || PercentPerEngineer == 0)
+	{
+		return 0;
+	}
+	const int64 Frontload = UEGTTacticalControllerPrivate::SaturatingProductForUnits(
+		PercentPerEngineer,
+		AssignedEngineers);
+	return static_cast<int32>(FMath::Clamp<int64>(
+		Frontload,
+		MIN_int32,
+		MAX_int32));
+}
+
 bool FUEGTEndTurnConfirmationState::ShouldDefer(
 	const bool bConfirmationRequired,
 	const int64 CurrentSequence)
@@ -6757,9 +6787,8 @@ void AUEGTTacticalPlayerController::AdjustStrategicSignalWatch(
 	Command.ExpectedSequence = CurrentStrategicSnapshot.ExpectedCommandSequence;
 	Command.BaseId = BaseId;
 	Command.AssignedScientists = static_cast<int32>(Requested);
-	const int32 EffectiveWatchScientists = FMath::Min(
-		Command.AssignedScientists, Base->FacilityRelayChannelCount);
-	const int32 TotalChannels = Base->FacilityRelayChannelCount + EffectiveWatchScientists;
+	const int32 TotalChannels = CalculateSignalWatchTotalChannels(
+		Base->FacilityRelayChannelCount, Command.AssignedScientists);
 	PresentStrategicCommandResult(
 		Instance->SetSignalWatchStaff(Command),
 		UEGTTacticalControllerPrivate::LocalizedFormat(
@@ -6801,10 +6830,12 @@ void AUEGTTacticalPlayerController::AdjustStrategicWorksCadre(
 	const FWorksCadreCharterPolicy CharterPolicy =
 		FStrategicCommandService::GetWorksCadreCharterPolicy(
 			Base->WorksCadreCharter);
-	const int32 ConstructionFrontloadPercent = Command.AssignedEngineers
-		* CharterPolicy.ConstructionFrontloadPercentPerEngineer;
-	const int32 RepairFrontloadPercent = Command.AssignedEngineers
-		* CharterPolicy.RepairFrontloadPercentPerEngineer;
+	const int32 ConstructionFrontloadPercent = CalculateWorksCadreFrontloadPercent(
+		Command.AssignedEngineers,
+		CharterPolicy.ConstructionFrontloadPercentPerEngineer);
+	const int32 RepairFrontloadPercent = CalculateWorksCadreFrontloadPercent(
+		Command.AssignedEngineers,
+		CharterPolicy.RepairFrontloadPercentPerEngineer);
 	PresentStrategicCommandResult(
 		Instance->SetWorksCadreStaff(Command),
 		UEGTTacticalControllerPrivate::LocalizedFormat(

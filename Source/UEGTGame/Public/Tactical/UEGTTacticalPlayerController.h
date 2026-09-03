@@ -288,6 +288,12 @@ public:
 	static int64 CalculateManufacturingDeltaFunds(
 		int64 UnitCost,
 		int32 DeltaUnits);
+	static int32 CalculateSignalWatchTotalChannels(
+		int32 FacilityRelayChannelCount,
+		int32 AssignedScientists);
+	static int32 CalculateWorksCadreFrontloadPercent(
+		int32 AssignedEngineers,
+		int32 PercentPerEngineer);
 
 protected:
 	virtual void BeginPlay() override;
