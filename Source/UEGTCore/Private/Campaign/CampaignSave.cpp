@@ -319,16 +319,20 @@ namespace CampaignSavePrivate
 	{
 		for (FPersonnelState& Person : State.Personnel)
 		{
-			if (Person.PendingDoctrineChoices != 0
+			if (Person.Rank <= 0 || Person.Rank > 100
+				|| Person.PendingDoctrineChoices != 0
 				|| !Person.DoctrineSelections.IsEmpty() || !Person.Commendations.IsEmpty())
 			{
 				return false;
 			}
-			Person.PendingDoctrineChoices = FMath::Max(0, Person.Rank - 1);
+			// The rank bounds above make this subtraction both valid and compatible
+			// with the current personnel progression schema.
+			Person.PendingDoctrineChoices = Person.Rank - 1;
 		}
 		for (const FMemorialRecord& Record : State.Memorial)
 		{
-			if (!Record.DoctrineSelections.IsEmpty() || !Record.Commendations.IsEmpty())
+			if (Record.Rank <= 0 || Record.Rank > 100
+				|| !Record.DoctrineSelections.IsEmpty() || !Record.Commendations.IsEmpty())
 			{
 				return false;
 			}

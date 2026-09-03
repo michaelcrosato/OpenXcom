@@ -147,6 +147,67 @@ bool FCampaignSaveInt64BoundsTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FCampaignSaveLegacyPersonnelBoundsTest,
+	"UEGT.Core.CampaignSave.LegacyPersonnelBounds",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCampaignSaveLegacyPersonnelBoundsTest::RunTest(const FString& Parameters)
+{
+	using namespace CampaignSaveTests;
+
+	FCampaignState State = MakeState();
+	FPersonnelState& Person = State.Personnel.AddDefaulted_GetRef();
+	Person.PersonnelId = FGuid(0x12121212, 0x23232323, 0x34343434, 0x45454545);
+	Person.DisplayName = TEXT("Legacy Boundary Agent");
+	Person.RoleId = TEXT("role.field-agent");
+	Person.BaseId = State.Bases[0].BaseId;
+	Person.Status = EPersonnelStatus::Available;
+	Person.Rank = 1;
+	Person.MaxHealth = 50;
+	Person.CurrentHealth = 50;
+	Person.Accuracy = 50;
+	Person.Resolve = 50;
+	Person.Mobility = 50;
+	Person.Strength = 50;
+	Person.TrainingFocus = EPersonnelTrainingFocus::Accuracy;
+
+	const FCampaignSaveWriteResult Write = FCampaignSaveCodec::Serialize(
+		FCampaignSaveCodec::CreateNew(
+			State, MakeContentPackages(), TEXT("0.5.0-test"), TestWallClock,
+			FGuid(0x56565656, 0x67676767, 0x78787878, 0x89898989)));
+	TestTrue(TEXT("Legacy personnel boundary fixture serializes"), Write.bSucceeded);
+
+	auto ReadLegacyRank = [&Write](const int32 Rank)
+	{
+		FCampaignSaveEnvelope Legacy = Write.Envelope;
+		// Version 23 contains personnel records but still uses rank-based doctrine migration.
+		Legacy.Header.FormatVersion = 23;
+		Legacy.State.Personnel[0].Rank = Rank;
+		Legacy.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(Legacy);
+		FString LegacyJson = Write.Json.Replace(
+			*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
+			TEXT("\"formatVersion\":23"));
+		LegacyJson = LegacyJson.Replace(
+			TEXT("\"rank\":1"),
+			*FString::Printf(TEXT("\"rank\":%d"), Rank));
+		LegacyJson = LegacyJson.Replace(
+			*Write.Envelope.Header.SaveChecksum, *Legacy.Header.SaveChecksum);
+		return FCampaignSaveCodec::Deserialize(LegacyJson);
+	};
+
+	const FCampaignSaveReadResult NegativeRank = ReadLegacyRank(MIN_int32);
+	TestTrue(TEXT("Legacy rank underflow is rejected by personnel validation"),
+		!NegativeRank.bSucceeded
+		&& NegativeRank.HasDiagnostic(TEXT("invalid_personnel_state")));
+	const FCampaignSaveReadResult OversizedRank = ReadLegacyRank(MAX_int32);
+	TestTrue(TEXT("Legacy rank above the current progression range is rejected by personnel validation"),
+		!OversizedRank.bSucceeded
+		&& OversizedRank.HasDiagnostic(TEXT("invalid_personnel_state")));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCampaignSaveBaseAssaultRoundTripTest,
 	"UEGT.Core.CampaignSave.BaseAssaultRoundTrip",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
