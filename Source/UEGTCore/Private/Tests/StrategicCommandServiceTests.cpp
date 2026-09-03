@@ -13855,6 +13855,8 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 		&& ResearchState.ResearchProjects.Num() == 1
 		&& ResearchState.ResearchProjects[0].AssignedScientists == MIN_int32);
 
+	InvalidResearch.AssignedScientists = 0;
+	InvalidResearch.AccumulatedWorkSeconds = -1;
 	const FGuid DestinationBaseId(0x7a110001, 0x7a110002, 0x7a110003, 0x7a110004);
 	FStrategicBaseState& DestinationBase = ResearchState.Bases.AddDefaulted_GetRef();
 	DestinationBase.BaseId = DestinationBaseId;
@@ -13868,11 +13870,11 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 	Transfer.DestinationBaseId = DestinationBaseId;
 	const FStrategicCommandResult TransferResult = FStrategicCommandService::Execute(
 		ResearchState, Rules, MakeConfig(), Transfer);
-	TestFalse(TEXT("Personnel transfer rejects malformed source project staffing"),
+	TestFalse(TEXT("Personnel transfer rejects malformed source project progress"),
 		TransferResult.bAccepted);
 	TestTrue(TEXT("Rejected personnel transfer leaves the scientist at the source base"),
 		Scientist.BaseId == TestBaseId);
-	TestTrue(TEXT("Personnel transfer reports the malformed research project"),
+	TestTrue(TEXT("Personnel transfer reports the malformed research project progress"),
 		TransferResult.HasDiagnostic(TEXT("invalid_research_project")));
 
 	FDismissPersonnelCommand Dismiss;
@@ -13880,7 +13882,7 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 	Dismiss.PersonnelId = ScientistId;
 	const FStrategicCommandResult DismissResult =
 		FStrategicCommandService::Execute(ResearchState, Rules, Dismiss);
-	TestFalse(TEXT("Personnel dismissal rejects malformed source project staffing"),
+	TestFalse(TEXT("Personnel dismissal rejects malformed source project progress"),
 		DismissResult.bAccepted);
 	TestTrue(TEXT("Rejected personnel dismissal leaves the scientist in the roster"),
 		ResearchState.Personnel.ContainsByPredicate(
@@ -13888,7 +13890,7 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 			{
 				return Person.PersonnelId == ScientistId;
 			}));
-	TestTrue(TEXT("Personnel dismissal reports the malformed research project"),
+	TestTrue(TEXT("Personnel dismissal reports the malformed research project progress"),
 		DismissResult.HasDiagnostic(TEXT("invalid_research_project")));
 
 	FCampaignState ManufacturingState = MakeStateWithBase();
@@ -13985,6 +13987,25 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 			{
 				return Diagnostic.Code == FName(TEXT("invalid_research_project"));
 			}));
+	DismantleResearch.AssignedScientists = 0;
+	DismantleResearch.AccumulatedWorkSeconds = -1;
+	const FFacilityDismantleEvaluation InvalidProgressDismantleEvaluation =
+		FStrategicCommandService::EvaluateFacilityDismantle(
+			DismantleState, Rules, MakeConfig(), Dismantle);
+	const FStrategicCommandResult InvalidProgressDismantleResult =
+		FStrategicCommandService::Execute(
+			DismantleState, Rules, MakeConfig(), Dismantle);
+	TestTrue(TEXT("Facility dismantling rejects malformed project progress before capacity arithmetic"),
+		!InvalidProgressDismantleEvaluation.bAllowed
+		&& !InvalidProgressDismantleResult.bAccepted
+		&& InvalidProgressDismantleEvaluation.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_research_project"));
+			})
+		&& InvalidProgressDismantleResult.HasDiagnostic(TEXT("invalid_research_project"))
+		&& DismantleState.CommandSequence == Dismantle.ExpectedSequence
+		&& DismantleState.Bases[0].Facilities.Num() == 2);
 	return true;
 }
 

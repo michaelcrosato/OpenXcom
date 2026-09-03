@@ -13661,6 +13661,11 @@ FFacilityDismantleEvaluation FStrategicCommandService::EvaluateFacilityDismantle
 			TEXT("Cancel or complete this facility's active repair before dismantling it."));
 		return Reject();
 	}
+	if (!ValidateResearchProjects(State, Rules, Validation)
+		|| !ValidateManufacturingProjects(State, Rules, Validation))
+	{
+		return Reject();
+	}
 
 	const bool bRetainsManufacturingFacility = Base->Facilities.ContainsByPredicate(
 		[Installed, &Config](const FBaseFacilityState& Other)
@@ -14734,6 +14739,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("personnel_already_at_base"), TEXT("Personnel member is already stationed at the selected base."));
 		return Result;
 	}
+	if (!ValidateResearchProjects(State, Rules, Result)
+		|| !ValidateManufacturingProjects(State, Rules, Result))
+	{
+		return Result;
+	}
 	if (!ValidateProjectStaffingForCategory(
 			State, SourceBase->BaseId, Role->Category, Result))
 	{
@@ -14852,6 +14862,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	if (IsAgentAssignedToCraft(State, Person->PersonnelId))
 	{
 		AddError(Result, TEXT("personnel_assigned_to_craft"), TEXT("Personnel assigned to a craft must be removed from its roster before dismissal."));
+		return Result;
+	}
+	if (!ValidateResearchProjects(State, Rules, Result)
+		|| !ValidateManufacturingProjects(State, Rules, Result))
+	{
 		return Result;
 	}
 	if (!ValidateProjectStaffingForCategory(
