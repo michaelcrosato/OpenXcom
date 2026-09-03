@@ -20,6 +20,15 @@ namespace PersonnelStewardshipPrivate
 			});
 	}
 
+	int32 ResolveBonusToMaximum(const int32 Resolve, const int32 ConfiguredBonus)
+	{
+		const int64 RemainingResolve = 100LL - static_cast<int64>(Resolve);
+		return static_cast<int32>(FMath::Clamp<int64>(
+			FMath::Min<int64>(ConfiguredBonus, RemainingResolve),
+			0,
+			100));
+	}
+
 	FPersonnelStewardshipOptionView MakeOption(
 		const EPersonnelStewardshipFocus Focus,
 		const int64 DurationSeconds,
@@ -164,7 +173,7 @@ FPersonnelStewardshipView FPersonnelStewardship::Evaluate(
 		View.RemainingSeconds = ActiveSteward->RemainingStewardshipSeconds;
 		View.ToursCompleted = ActiveSteward->StewardshipToursCompleted;
 		View.ResolveBonusOnCompletion = ActiveSteward->StewardshipToursCompleted < Config.StewardshipResolveAwardTourCap
-			? FMath::Min(Config.StewardshipResolveBonus, 100 - ActiveSteward->Resolve)
+			? ResolveBonusToMaximum(ActiveSteward->Resolve, Config.StewardshipResolveBonus)
 			: 0;
 		View.UnavailableReasonCode = TEXT("personnel_stewardship_active");
 		View.UnavailableReason = TEXT("This base already has an active Stewardship Rotation.");
@@ -173,7 +182,7 @@ FPersonnelStewardshipView FPersonnelStewardship::Evaluate(
 
 	View.ToursCompleted = Person->StewardshipToursCompleted;
 	View.ResolveBonusOnCompletion = Person->StewardshipToursCompleted < Config.StewardshipResolveAwardTourCap
-		? FMath::Min(Config.StewardshipResolveBonus, 100 - Person->Resolve)
+		? ResolveBonusToMaximum(Person->Resolve, Config.StewardshipResolveBonus)
 		: 0;
 	if (!IsConfigValid(Config))
 	{

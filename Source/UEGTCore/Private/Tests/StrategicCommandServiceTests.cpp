@@ -8275,6 +8275,17 @@ bool FStrategicPersonnelStewardshipTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Fourth tour retains history without another Resolve reward"),
 		FourthTour.bAccepted && Completion.Personnel[0].StewardshipToursCompleted == 4
 		&& Completion.Personnel[0].Resolve == 71);
+
+	FCampaignState ExtremeResolve = MakeStateWithBase();
+	FPersonnelState& ExtremeResolvePerson = AddTestPersonnel(
+		ExtremeResolve, FGuid(0x5e7a0041, 0x5e7a0042, 0x5e7a0043, 0x5e7a0044), TEXT("Low Resolve Probe"));
+	ExtremeResolvePerson.Missions = 12;
+	ExtremeResolvePerson.Resolve = MIN_int32;
+	const FPersonnelStewardshipView ExtremeResolveProjection = FPersonnelStewardship::Evaluate(
+		ExtremeResolve, Rules, Config, ExtremeResolvePerson.PersonnelId);
+	TestTrue(TEXT("Stewardship reward projection clamps malformed low Resolve without overflowing"),
+		ExtremeResolveProjection.ResolveBonusOnCompletion == Config.StewardshipResolveBonus);
+
 	TestTrue(TEXT("Stewardship evaluation and commands consume no random draws"),
 		Recovery.SimulationRandom.DrawCount == InitialDrawCount
 		&& Training.SimulationRandom.DrawCount == InitialDrawCount
