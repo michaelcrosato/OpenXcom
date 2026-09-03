@@ -15776,6 +15776,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			AddedWeaponIds.Add(ItemId);
 		}
 	}
+	if (!ValidateCraftState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	const FGuid BaseId = Craft->BaseId;
 	const FName CraftRuleId = Craft->CraftRuleId;
 	const int32 EquippedCount = Craft->EquipmentItems.Num();
@@ -15925,6 +15929,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		{
 			AddError(Result, TEXT("insufficient_ammunition"), TEXT("No compatible ammunition is available at this craft's base."));
 		}
+		return Result;
+	}
+	if (!ValidateCraftState(Transaction, Rules, Result))
+	{
 		return Result;
 	}
 	SortStateCollections(Transaction);

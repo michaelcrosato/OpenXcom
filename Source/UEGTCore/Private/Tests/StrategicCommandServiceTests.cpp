@@ -9051,6 +9051,23 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Grounded craft can equip stored craft items"), Equipped.bAccepted);
 	TestTrue(TEXT("Craft equipment leaves base inventory"), State.Bases[0].Inventory.IsEmpty());
 
+	FCampaignState InvalidEquipmentMutationState = State;
+	InvalidEquipmentMutationState.Craft[0].CurrentHull = 0;
+	const int64 InvalidEquipmentMutationSequence = InvalidEquipmentMutationState.CommandSequence;
+	FSetCraftEquipmentCommand ClearInvalidEquipment;
+	ClearInvalidEquipment.ExpectedSequence = InvalidEquipmentMutationSequence;
+	ClearInvalidEquipment.CraftId = CraftId;
+	const FStrategicCommandResult InvalidEquipmentMutationResult = FStrategicCommandService::Execute(
+		InvalidEquipmentMutationState, Rules, ClearInvalidEquipment);
+	TestTrue(TEXT("Craft equipment rejects malformed persisted hull before refunding a loadout"),
+		!InvalidEquipmentMutationResult.bAccepted
+		&& InvalidEquipmentMutationResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidEquipmentMutationState.CommandSequence == InvalidEquipmentMutationSequence
+		&& InvalidEquipmentMutationState.Craft.Num() == 1
+		&& InvalidEquipmentMutationState.Craft[0].EquipmentItems.Num() == 1
+		&& InvalidEquipmentMutationState.Craft[0].CurrentHull == 0
+		&& InvalidEquipmentMutationState.Bases[0].Inventory.IsEmpty());
+
 	FCampaignState InvalidHullLaunchState = MakeStateWithBase();
 	const FGuid InvalidHullPilotId(0x699, 0x69A, 0x69B, 0x69C);
 	const FGuid InvalidHullCraftId(0x69D, 0x69E, 0x69F, 0x6A0);
@@ -9830,6 +9847,25 @@ bool FStrategicCraftRearmTest::RunTest(const FString& Parameters)
 	FRearmCraftCommand Rearm;
 	Rearm.ExpectedSequence = State.CommandSequence;
 	Rearm.CraftId = CraftId;
+	FCampaignState InvalidRearmState = State;
+	InvalidRearmState.Craft[0].CurrentFuel = 501;
+	const int64 InvalidRearmSequence = InvalidRearmState.CommandSequence;
+	FRearmCraftCommand InvalidRearm = Rearm;
+	InvalidRearm.ExpectedSequence = InvalidRearmSequence;
+	InvalidRearm.Policy = ECraftRearmPolicy::LoadAvailable;
+	const FStrategicCommandResult InvalidRearmResult = FStrategicCommandService::Execute(
+		InvalidRearmState, Rules, InvalidRearm);
+	TestTrue(TEXT("Craft rearming rejects malformed persisted fuel before consuming ammunition"),
+		!InvalidRearmResult.bAccepted
+		&& InvalidRearmResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidRearmState.CommandSequence == InvalidRearmSequence
+		&& InvalidRearmState.Craft.Num() == 1
+		&& InvalidRearmState.Craft[0].WeaponStates.Num() == 1
+		&& InvalidRearmState.Craft[0].WeaponStates[0].Ammunition == 0
+		&& InvalidRearmState.Craft[0].CurrentFuel == 501
+		&& InvalidRearmState.Bases[0].Inventory.Num() == 1
+		&& InvalidRearmState.Bases[0].Inventory[0].Quantity == 5);
+
 	Rearm.Policy = static_cast<ECraftRearmPolicy>(255);
 	const FStrategicCommandResult InvalidPolicy = FStrategicCommandService::Execute(State, Rules, Rearm);
 	TestFalse(TEXT("Unknown rearm policy is rejected"), InvalidPolicy.bAccepted);
