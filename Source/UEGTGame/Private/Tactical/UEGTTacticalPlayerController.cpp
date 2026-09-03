@@ -7314,7 +7314,7 @@ void AUEGTTacticalPlayerController::AutoPrepareCraft(const FGuid CraftId)
 	{
 		const FStrategicBaseState* Base = State.Bases.FindByPredicate(
 			[Craft](const FStrategicBaseState& Entry) { return Entry.BaseId == Craft->BaseId; });
-		TMap<FName, int32> Available;
+		TMap<FName, int64> Available;
 		if (Base != nullptr)
 		{
 			for (const FInventoryStack& Stack : Base->Inventory)
@@ -7327,7 +7327,7 @@ void AUEGTTacticalPlayerController::AutoPrepareCraft(const FGuid CraftId)
 			++Available.FindOrAdd(ItemId);
 		}
 		TArray<FName> Candidates;
-		for (const TPair<FName, int32>& Pair : Available)
+		for (const TPair<FName, int64>& Pair : Available)
 		{
 			const FItemRule* Item = Rules.Items.Find(Pair.Key);
 			const bool bUnlocked = Item != nullptr && !Item->RequiredResearch.ContainsByPredicate(
@@ -7355,7 +7355,7 @@ void AUEGTTacticalPlayerController::AutoPrepareCraft(const FGuid CraftId)
 		TArray<FName> Loadout;
 		for (const FName ItemId : Candidates)
 		{
-			for (int32 Count = 0; Count < Available.FindRef(ItemId) && Loadout.Num() < CraftRule->EquipmentSlots; ++Count)
+			for (int64 Count = 0; Count < Available.FindRef(ItemId) && Loadout.Num() < CraftRule->EquipmentSlots; ++Count)
 			{
 				Loadout.Add(ItemId);
 			}
@@ -7714,7 +7714,7 @@ void AUEGTTacticalPlayerController::AutoEquipFieldTeam()
 		}
 		const FStrategicBaseState* Base = State.Bases.FindByPredicate(
 			[Person](const FStrategicBaseState& Entry) { return Entry.BaseId == Person->BaseId; });
-		TMap<FName, int32> Available;
+		TMap<FName, int64> Available;
 		if (Base != nullptr)
 		{
 			for (const FInventoryStack& Stack : Base->Inventory)
@@ -7732,7 +7732,7 @@ void AUEGTTacticalPlayerController::AutoEquipFieldTeam()
 				[&State](const FName Requirement) { return !State.CompletedResearch.Contains(Requirement); });
 		};
 		TArray<FName> WeaponIds;
-		for (const TPair<FName, int32>& Pair : Available)
+		for (const TPair<FName, int64>& Pair : Available)
 		{
 			const FItemRule* Item = Rules.Items.Find(Pair.Key);
 			if (Pair.Value > 0 && Item != nullptr && Item->IsTacticalWeapon() && IsUnlocked(*Item))
@@ -7752,7 +7752,8 @@ void AUEGTTacticalPlayerController::AutoEquipFieldTeam()
 		const FItemRule& Weapon = Rules.Items.FindChecked(WeaponId);
 		if (!Weapon.TacticalAmmunitionItemId.IsNone())
 		{
-			const int32 Magazines = FMath::Min(4, Available.FindRef(Weapon.TacticalAmmunitionItemId));
+			const int32 Magazines = static_cast<int32>(FMath::Min<int64>(
+				4, FMath::Max<int64>(0, Available.FindRef(Weapon.TacticalAmmunitionItemId))));
 			for (int32 Index = 0; Index < Magazines; ++Index)
 			{
 				Loadout.Add(Weapon.TacticalAmmunitionItemId);
@@ -7762,7 +7763,7 @@ void AUEGTTacticalPlayerController::AutoEquipFieldTeam()
 			FName(TEXT("armor")), FName(TEXT("device")), FName(TEXT("medical")), FName(TEXT("sensor")) })
 		{
 			TArray<FName> CategoryItems;
-			for (const TPair<FName, int32>& Pair : Available)
+			for (const TPair<FName, int64>& Pair : Available)
 			{
 				const FItemRule* Item = Rules.Items.Find(Pair.Key);
 				if (Pair.Value > 0 && Item != nullptr && Item->Category == Category && IsUnlocked(*Item))
