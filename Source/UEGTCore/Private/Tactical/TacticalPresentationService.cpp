@@ -1265,28 +1265,42 @@ FTacticalHudSnapshot FTacticalPresentationService::BuildHudSnapshot(
 			}
 			else
 			{
-				bool bCapacityAvailable = true;
-				if (SelectedObjective->Type == ETacticalObjectiveType::Recover
-					&& SelectedObjective->CompletedInteractions + 1 == SelectedObjective->RequiredInteractions)
+				const bool bObjectiveProgressValid = SelectedObjective->RequiredInteractions > 0
+					&& SelectedObjective->CompletedInteractions >= 0
+					&& SelectedObjective->CompletedInteractions <= SelectedObjective->RequiredInteractions
+					&& SelectedObjective->AdversaryInteractions >= 0
+					&& SelectedObjective->AdversaryInteractions <= SelectedObjective->RequiredInteractions;
+				if (!bObjectiveProgressValid)
 				{
-					const FItemRule* Reward = Rules.Items.Find(Mission->ObjectiveRewardItemId);
-					const FCraftRule* CraftRule = Craft != nullptr ? Rules.Craft.Find(Craft->CraftRuleId) : nullptr;
-					const int64 RewardMass = Reward != nullptr
-						? static_cast<int64>(Mission->ObjectiveRewardQuantity) * Reward->Mass
-						: MAX_int64;
-					bCapacityAvailable = Reward != nullptr && Craft != nullptr && CraftRule != nullptr
-						&& RewardMass >= 0 && Snapshot.CargoMass <= MAX_int64 - RewardMass
-						&& CanAddInventoryStack(Craft->Cargo, Mission->ObjectiveRewardItemId, Mission->ObjectiveRewardQuantity)
-						&& CanAddInventoryStack(Craft->PendingSalvage, Mission->ObjectiveRewardItemId, Mission->ObjectiveRewardQuantity)
-						&& Snapshot.CargoMass + RewardMass <= CraftRule->CargoCapacity;
-				}
-				if (!bCapacityAvailable)
-				{
-					SetUnavailable(ObjectiveAction, TEXT("tactical_recovery_capacity_exceeded"), TEXT("The transport lacks manifest capacity for the recovery reward."));
+					SetUnavailable(ObjectiveAction, TEXT("invalid_tactical_objective"),
+						TEXT("The selected tactical objective has invalid interaction progress."));
 				}
 				else
 				{
-					SetAvailable(ObjectiveAction);
+					bool bCapacityAvailable = true;
+					if (SelectedObjective->Type == ETacticalObjectiveType::Recover
+						&& static_cast<int64>(SelectedObjective->CompletedInteractions) + 1
+							== static_cast<int64>(SelectedObjective->RequiredInteractions))
+					{
+						const FItemRule* Reward = Rules.Items.Find(Mission->ObjectiveRewardItemId);
+						const FCraftRule* CraftRule = Craft != nullptr ? Rules.Craft.Find(Craft->CraftRuleId) : nullptr;
+						const int64 RewardMass = Reward != nullptr
+							? static_cast<int64>(Mission->ObjectiveRewardQuantity) * Reward->Mass
+							: MAX_int64;
+						bCapacityAvailable = Reward != nullptr && Craft != nullptr && CraftRule != nullptr
+							&& RewardMass >= 0 && Snapshot.CargoMass <= MAX_int64 - RewardMass
+							&& CanAddInventoryStack(Craft->Cargo, Mission->ObjectiveRewardItemId, Mission->ObjectiveRewardQuantity)
+							&& CanAddInventoryStack(Craft->PendingSalvage, Mission->ObjectiveRewardItemId, Mission->ObjectiveRewardQuantity)
+							&& Snapshot.CargoMass + RewardMass <= CraftRule->CargoCapacity;
+					}
+					if (!bCapacityAvailable)
+					{
+						SetUnavailable(ObjectiveAction, TEXT("tactical_recovery_capacity_exceeded"), TEXT("The transport lacks manifest capacity for the recovery reward."));
+					}
+					else
+					{
+						SetAvailable(ObjectiveAction);
+					}
 				}
 			}
 		}

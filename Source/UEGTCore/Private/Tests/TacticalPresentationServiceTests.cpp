@@ -559,6 +559,18 @@ bool FTacticalHudPresentationFogActionsTest::RunTest(const FString& Parameters)
 		FullSalvageRecovery != nullptr && !FullSalvageRecovery->bAvailable
 		&& FullSalvageRecovery->UnavailableReasonCode == FName(TEXT("tactical_recovery_capacity_exceeded")));
 
+	FCampaignState InvalidObjectiveProgressCampaign = FullSalvageTableCampaign;
+	InvalidObjectiveProgressCampaign.TacticalBattles[0].Objectives[0].RequiredInteractions = MIN_int32;
+	InvalidObjectiveProgressCampaign.TacticalBattles[0].Objectives[0].CompletedInteractions = MAX_int32;
+	const FTacticalHudSnapshot InvalidObjectiveProgress = FTacticalPresentationService::BuildHudSnapshot(
+		InvalidObjectiveProgressCampaign.TacticalBattles[0], InvalidObjectiveProgressCampaign, RecoveryRules, Query);
+	const FTacticalHudActionAvailability* InvalidObjectiveAction = InvalidObjectiveProgress.FindAction(
+		ETacticalHudActionType::InteractObjective);
+	TestTrue(TEXT("HUD rejects invalid objective progress instead of wrapping recovery completion arithmetic"),
+		InvalidObjectiveProgress.bSucceeded && InvalidObjectiveAction != nullptr
+		&& !InvalidObjectiveAction->bAvailable
+		&& InvalidObjectiveAction->UnavailableReasonCode == FName(TEXT("invalid_tactical_objective")));
+
 	FCampaignState BaseDefenseCampaign = Fixture.Campaign;
 	const FGuid BaseId(1801, 1802, 1803, 1804);
 	const FGuid AssaultId(1901, 1902, 1903, 1904);

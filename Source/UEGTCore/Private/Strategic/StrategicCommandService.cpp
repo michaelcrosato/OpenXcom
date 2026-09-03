@@ -18412,7 +18412,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	const bool bWouldCompleteRecovery = ExistingUnit->Team == ETacticalTeam::Player
 		&& ExistingObjective->Type == ETacticalObjectiveType::Recover
-		&& ExistingObjective->CompletedInteractions + 1 == ExistingObjective->RequiredInteractions;
+		&& static_cast<int64>(ExistingObjective->CompletedInteractions) + 1
+			== static_cast<int64>(ExistingObjective->RequiredInteractions);
 	if (bWouldCompleteRecovery)
 	{
 		const FTacticalOperationState* Operation = FindTacticalOperation(State, ExistingBattle->OperationId);
