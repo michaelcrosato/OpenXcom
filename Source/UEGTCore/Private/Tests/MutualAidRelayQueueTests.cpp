@@ -40,6 +40,7 @@ bool FMutualAidRelayQueueEvaluationTest::RunTest(const FString& Parameters)
 	FBaseFacilityState& Array = Source.Facilities.AddDefaulted_GetRef();
 	Array.InstanceId = FGuid(11, 2, 3, 4);
 	Array.FacilityId = LongRangeArray.Identity.RuleId;
+	Array.GridX = 1;
 
 	const FGuid DestinationBaseId(5, 6, 7, 8);
 	const auto AddConvoy = [&](const FGuid ConvoyId, const int64 DispatchSequence,

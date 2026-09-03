@@ -83,6 +83,7 @@ bool FCraftServiceQueueEvaluationTest::RunTest(const FString& Parameters)
 	FBaseFacilityState& SecondDeck = Base.Facilities.AddDefaulted_GetRef();
 	SecondDeck.InstanceId = FGuid(3, 1, 1, 1);
 	SecondDeck.FacilityId = FlightDeck.Identity.RuleId;
+	SecondDeck.GridX = 1;
 	const FCraftServiceQueueSnapshot TwoLanes = FCraftServiceQueue::Evaluate(Campaign, Rules);
 	const FCraftServiceQueueView* TwoLaneWinner = TwoLanes.FindCraft(TieWinnerId);
 	const FCraftServiceQueueView* TwoLaneLoser = TwoLanes.FindCraft(TieLoserId);
