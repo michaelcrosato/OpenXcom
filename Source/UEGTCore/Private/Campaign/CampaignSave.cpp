@@ -398,7 +398,7 @@ namespace CampaignSavePrivate
 			State.MutualAidConvoys[Index].DispatchSequence = FirstSequence + Index;
 		}
 		State.CommandSequence = FMath::Max(
-			State.CommandSequence, FirstSequence + ConvoyCount - 1);
+			State.CommandSequence, FirstSequence + (ConvoyCount - 1));
 	}
 
 	void MigrateSignalWatchStaffing(FCampaignState& State)

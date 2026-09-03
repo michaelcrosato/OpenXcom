@@ -1200,6 +1200,28 @@ bool FCampaignSaveMutualAidRoutingMigrationTest::RunTest(const FString& Paramete
 		&& MigratedV37.Envelope.State.MutualAidConvoys[0].DispatchSequence > 0
 		&& MigratedV37.Envelope.State.MutualAidConvoys[0].DispatchSequence
 			<= MigratedV37.Envelope.State.CommandSequence);
+
+	FCampaignSaveEnvelope LegacyV37TerminalSequenceEnvelope = Write.Envelope;
+	LegacyV37TerminalSequenceEnvelope.Header.FormatVersion = 37;
+	LegacyV37TerminalSequenceEnvelope.State.CommandSequence = MAX_int64;
+	LegacyV37TerminalSequenceEnvelope.Header.SaveChecksum =
+		FCampaignSaveCodec::ComputeEnvelopeChecksum(LegacyV37TerminalSequenceEnvelope);
+	FString LegacyV37TerminalSequenceJson = Write.Json.Replace(
+		*FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
+		TEXT("\"formatVersion\":37"));
+	LegacyV37TerminalSequenceJson = LegacyV37TerminalSequenceJson.Replace(
+		*Write.Envelope.Header.SaveChecksum,
+		*LegacyV37TerminalSequenceEnvelope.Header.SaveChecksum);
+	LegacyV37TerminalSequenceJson = LegacyV37TerminalSequenceJson.Replace(
+		*FString::Printf(TEXT("\"commandSequence\":\"%lld\""), Write.Envelope.State.CommandSequence),
+		TEXT("\"commandSequence\":\"9223372036854775807\""));
+	LegacyV37TerminalSequenceJson.ReplaceInline(
+		TEXT(",\"dispatchSequence\":\"9007199254740990\""), TEXT(""));
+	const FCampaignSaveReadResult MigratedV37TerminalSequence =
+		FCampaignSaveCodec::Deserialize(LegacyV37TerminalSequenceJson, MakeContentPackages());
+	TestTrue(TEXT("A v37 terminal command sequence is rejected after safe convoy-order migration"),
+		!MigratedV37TerminalSequence.bSucceeded
+		&& MigratedV37TerminalSequence.HasDiagnostic(TEXT("invalid_command_sequence")));
 	return true;
 }
 
