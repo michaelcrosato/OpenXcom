@@ -876,6 +876,18 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	const FStrategicDashboardSnapshot MalformedFacilitySnapshot =
 		FStrategicPresentationService::BuildDashboard(
 			MalformedFacilityCampaign, Rules, Config);
+	const FStrategicActionOptionView* MalformedCraftOption =
+		MalformedFacilitySnapshot.ActionOptions.FindByPredicate(
+			[](const FStrategicActionOptionView& Option)
+			{
+				return Option.Type == EStrategicActionOptionType::Craft;
+			});
+	const FStrategicActionOptionView* MalformedFacilityOption =
+		MalformedFacilitySnapshot.ActionOptions.FindByPredicate(
+			[](const FStrategicActionOptionView& Option)
+			{
+				return Option.Type == EStrategicActionOptionType::Facility;
+			});
 	TestTrue(TEXT("Dashboard with invalid facility layout does not expose derived relay telemetry"),
 		MalformedFacilitySnapshot.bSucceeded
 		&& !MalformedFacilitySnapshot.Diagnostics.IsEmpty()
@@ -888,6 +900,33 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& MalformedFacilitySnapshot.Bases[0].RelayQueueWaitingConvoyCount == 0
 		&& MalformedFacilitySnapshot.Bases[0].RelayQueuePressurePercent == 0
 		&& MalformedFacilitySnapshot.Bases[0].RelayQueueTailArrivalSeconds == 0);
+	TestTrue(TEXT("Dashboard disables facility-dependent primary-base actions after layout validation fails"),
+		MalformedCraftOption != nullptr && !MalformedCraftOption->bAvailable
+		&& MalformedCraftOption->UnavailableReasonCode
+			== FName(TEXT("craft_capacity_full"))
+		&& MalformedFacilityOption != nullptr
+		&& MalformedFacilityOption->ValidFacilityPlacements.IsEmpty());
+	FCampaignState MalformedServiceCampaign = Campaign;
+	const FBaseFacilityState DuplicateFlightDeck =
+		MalformedServiceCampaign.Bases[0].Facilities[1];
+	MalformedServiceCampaign.Bases[0].Facilities.Add(DuplicateFlightDeck);
+	MalformedServiceCampaign.Craft[0].Status = ECraftStatus::Servicing;
+	MalformedServiceCampaign.Craft[0].CurrentHull = CraftRule.MaxHull - 10;
+	MalformedServiceCampaign.Craft[0].RemainingRepairSeconds = 3600;
+	const FStrategicDashboardSnapshot MalformedServiceSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			MalformedServiceCampaign, Rules, Config);
+	const FStrategicCraftView* MalformedServiceCraft =
+		MalformedServiceSnapshot.Craft.FindByPredicate(
+			[&Craft](const FStrategicCraftView& CraftView)
+			{
+				return CraftView.CraftId == Craft.CraftId;
+			});
+	TestTrue(TEXT("Dashboard does not expose craft-service queue telemetry for an invalid facility layout"),
+		MalformedServiceSnapshot.bSucceeded
+		&& !MalformedServiceSnapshot.Diagnostics.IsEmpty()
+		&& MalformedServiceCraft != nullptr
+		&& !MalformedServiceCraft->ServiceQueue.bValid);
 	FResolvedRuleSet ExtremeCoordinateRules = Rules;
 	ExtremeCoordinateRules.Regions.Remove(RegionRule.Identity.RuleId);
 	for (TPair<FName, FAdversaryMissionRule>& Pair : ExtremeCoordinateRules.AdversaryMissions)

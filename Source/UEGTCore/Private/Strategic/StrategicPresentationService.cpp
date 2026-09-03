@@ -1037,6 +1037,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 
 	const FMutualAidRelayQueueSnapshot MutualAidRelayQueue =
 		FMutualAidRelayQueue::Evaluate(Campaign, Rules);
+	TSet<const FStrategicBaseState*> BasesWithValidInfrastructure;
 	for (const FStrategicBaseState& Base : Campaign.Bases)
 	{
 		FStrategicBaseView& View = Snapshot.Bases.AddDefaulted_GetRef();
@@ -1050,6 +1051,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			FStrategicCommandService::EvaluateBaseInfrastructure(Campaign, Rules, Base.BaseId);
 		if (Infrastructure.bValid)
 		{
+			BasesWithValidInfrastructure.Add(&Base);
 			View.BaseScientistCapacity = Infrastructure.BaseScientistCapacity;
 			View.FacilityScientistCapacity = Infrastructure.FacilityScientistCapacity;
 			View.ScientistCapacity = Infrastructure.ScientistCapacity;
@@ -2221,12 +2223,16 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.bHasPilot = Craft.AssignedPilotId.IsValid();
 		View.AssignedPilotId = Craft.AssignedPilotId;
 		View.AssignedAgentIds = Craft.AssignedAgentIds;
+		const FStrategicBaseState* CraftBaseState = FindBase(Campaign, Craft.BaseId);
 		View.Mentorship = FPersonnelMentorship::Evaluate(Campaign, Craft.AssignedAgentIds);
 		View.LegacyRelay = FPersonnelLegacyRelay::Evaluate(Campaign, Rules, Craft.AssignedAgentIds);
 		View.SquadBonds = FPersonnelSquadBond::Evaluate(Campaign, Craft.AssignedAgentIds);
-		if (const FCraftServiceQueueView* ServiceQueue = CraftServiceQueue.FindCraft(Craft.CraftId))
+		if (CraftBaseState != nullptr && BasesWithValidInfrastructure.Contains(CraftBaseState))
 		{
-			View.ServiceQueue = *ServiceQueue;
+			if (const FCraftServiceQueueView* ServiceQueue = CraftServiceQueue.FindCraft(Craft.CraftId))
+			{
+				View.ServiceQueue = *ServiceQueue;
+			}
 		}
 		View.RemainingRouteSeconds = Craft.RemainingRouteSeconds;
 		View.RemainingRepairSeconds = FMath::Max<int64>(0, Craft.RemainingRepairSeconds);
@@ -2277,7 +2283,6 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		}
 		const FStrategicBaseView* CraftBaseView = Snapshot.Bases.FindByPredicate(
 			[&Craft](const FStrategicBaseView& BaseView) { return BaseView.BaseId == Craft.BaseId; });
-		const FStrategicBaseState* CraftBaseState = FindBase(Campaign, Craft.BaseId);
 		TMap<FName, int32> MountCounts;
 		for (const FName ItemId : Craft.EquipmentItems)
 		{
@@ -3191,9 +3196,12 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 
 	const FStrategicBaseState* PrimaryBase = FindBase(Campaign, Snapshot.PrimaryBaseId);
 	const bool bHasBase = PrimaryBase != nullptr;
+	const bool bPrimaryInfrastructureValid = bHasBase
+		&& BasesWithValidInfrastructure.Contains(PrimaryBase);
 	const FStrategicBaseView* PrimaryBaseView = Snapshot.Bases.FindByPredicate(
 		[&Snapshot](const FStrategicBaseView& BaseView) { return BaseView.BaseId == Snapshot.PrimaryBaseId; });
-	const TArray<FName> PrimaryFacilities = bHasBase ? OperationalFacilities(*PrimaryBase, Rules) : TArray<FName>();
+	const TArray<FName> PrimaryFacilities = bPrimaryInfrastructureValid
+		? OperationalFacilities(*PrimaryBase, Rules) : TArray<FName>();
 	for (const TPair<FName, FResearchRule>& Pair : Rules.Research)
 	{
 		FStrategicActionOptionView& Option = Snapshot.ActionOptions.AddDefaulted_GetRef();
@@ -3276,7 +3284,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		}
 		Option.bUnlocked = HasRequirements(Pair.Value.RequiredResearch, Campaign);
 		Option.bAffordable = Campaign.Funds >= Option.Cost;
-		if (bHasBase)
+		if (bHasBase && bPrimaryInfrastructureValid)
 		{
 			Option.ValidFacilityPlacements = FindFacilityPlacements(
 				*PrimaryBase, Campaign, Rules, Config, Pair.Value);
@@ -3342,7 +3350,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			Pair.Value.AcquisitionHours, Pair.Value.MaxHull, Pair.Value.AgentCapacity);
 		Option.bUnlocked = HasRequirements(Pair.Value.RequiredResearch, Campaign);
 		Option.bAffordable = Campaign.Funds >= Option.Cost;
-		const bool bHasBerth = bHasBase && CraftOccupied(Campaign, PrimaryBase->BaseId) < CraftCapacity(*PrimaryBase, Rules);
+		const bool bHasBerth = bHasBase && bPrimaryInfrastructureValid
+			&& CraftOccupied(Campaign, PrimaryBase->BaseId) < CraftCapacity(*PrimaryBase, Rules);
 		FinishOption(Option, Campaign, bHasBase, bHasBerth,
 			TEXT("craft_capacity_full"), TEXT("The primary base has no open craft berth."));
 	}
