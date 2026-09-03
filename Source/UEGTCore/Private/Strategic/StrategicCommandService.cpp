@@ -2056,7 +2056,9 @@ namespace StrategicCommandServicePrivate
 		FStrategicCommandResult& Result)
 	{
 		TArray<FFacilityFootprint> Footprints;
-		Footprints.Reserve(Base.Facilities.Num() + State.FacilityConstructionProjects.Num());
+		const int64 FootprintCapacity = static_cast<int64>(Base.Facilities.Num())
+			+ static_cast<int64>(State.FacilityConstructionProjects.Num());
+		Footprints.Reserve(static_cast<int32>(FMath::Min<int64>(FootprintCapacity, MAX_int32)));
 		int32 OperationsRoot = INDEX_NONE;
 		for (const FBaseFacilityState& Facility : Base.Facilities)
 		{

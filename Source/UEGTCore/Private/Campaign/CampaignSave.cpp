@@ -511,7 +511,8 @@ namespace CampaignSavePrivate
 
 		const FTCHARToUTF8 Utf8(*Input);
 		TArray<uint8> Message;
-		Message.Reserve(Utf8.Length() + 72);
+		const int64 MessageCapacity = static_cast<int64>(Utf8.Length()) + 72;
+		Message.Reserve(static_cast<int32>(FMath::Min<int64>(MessageCapacity, MAX_int32)));
 		Message.Append(reinterpret_cast<const uint8*>(Utf8.Get()), Utf8.Length());
 		const uint64 BitLength = static_cast<uint64>(Utf8.Length()) * 8ULL;
 		Message.Add(0x80U);
