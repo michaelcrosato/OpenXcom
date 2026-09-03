@@ -10799,6 +10799,22 @@ bool FStrategicAdversarySchedulingTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Active mission round-trips"), Read.Envelope.State.AdversaryMissions.Num(), 1);
 	TestEqual(TEXT("Apex mission-gap countdown round-trips"),
 		Read.Envelope.State.NextAdversaryMissionSeconds, int64(60480));
+
+	FCampaignState TerminalSerial = MakeStateWithBase();
+	TerminalSerial.NextAdversaryMissionSerial = MAX_int64 - 1;
+	TerminalSerial.NextAdversaryMissionSeconds = 5;
+	FAdvanceStrategicTimeCommand TerminalSerialAdvance;
+	TerminalSerialAdvance.ExpectedSequence = TerminalSerial.CommandSequence;
+	TerminalSerialAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+	const FStrategicCommandResult TerminalSerialResult = FStrategicCommandService::Execute(
+		TerminalSerial, Rules, MakeConfig(), TerminalSerialAdvance);
+	TestFalse(TEXT("The adversary scheduler cannot consume the final mission serial"), TerminalSerialResult.bAccepted);
+	TestTrue(TEXT("A terminal mission serial has a stable diagnostic"),
+		TerminalSerialResult.HasDiagnostic(TEXT("invalid_adversary_state")));
+	TestEqual(TEXT("Terminal mission serial rejection leaves the serial unchanged"),
+		TerminalSerial.NextAdversaryMissionSerial, MAX_int64 - 1);
+	TestTrue(TEXT("Terminal mission serial rejection creates no mission"),
+		TerminalSerial.AdversaryMissions.IsEmpty() && TerminalSerial.StrategicContacts.IsEmpty());
 	return true;
 }
 

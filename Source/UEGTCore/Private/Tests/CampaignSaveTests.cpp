@@ -1268,6 +1268,10 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	const FCampaignSaveValidationResult ExhaustedMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("Exhausted adversary mission serial fails validation"), ExhaustedMissionSerialValidation.bSucceeded);
 	TestTrue(TEXT("Exhausted adversary mission serial is diagnosed"), ExhaustedMissionSerialValidation.HasDiagnostic(TEXT("invalid_adversary_state")));
+	Invalid.State.NextAdversaryMissionSerial = MAX_int64 - 1;
+	const FCampaignSaveValidationResult LastMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
+	TestFalse(TEXT("A mission serial with no room for another launch fails validation"), LastMissionSerialValidation.bSucceeded);
+	TestTrue(TEXT("A last available mission serial is diagnosed"), LastMissionSerialValidation.HasDiagnostic(TEXT("invalid_adversary_state")));
 	Invalid.State.SimulationRandom.DrawCount = MAX_int64;
 	const FCampaignSaveValidationResult ExhaustedRandomValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("Exhausted random draw count fails validation"), ExhaustedRandomValidation.bSucceeded);
