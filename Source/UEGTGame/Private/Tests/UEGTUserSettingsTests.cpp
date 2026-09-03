@@ -388,6 +388,14 @@ bool FUEGTGameplayPreferencePolicyTest::RunTest(const FString& Parameters)
 	Snapshot.Units[2] = Ready;
 	TestFalse(TEXT("Handoff returns no id when every player agent is unavailable"),
 		AUEGTTacticalPlayerController::FindNextReadyPlayerUnit(Snapshot, Spent.UnitId).IsValid());
+	TestEqual(TEXT("Manufacturing delta funds preserve ordinary signed cost magnitude"),
+		AUEGTTacticalPlayerController::CalculateManufacturingDeltaFunds(125, -3), int64(375));
+	TestEqual(TEXT("Manufacturing delta funds saturate positive cost overflow"),
+		AUEGTTacticalPlayerController::CalculateManufacturingDeltaFunds(MAX_int64, 2), MAX_int64);
+	TestEqual(TEXT("Manufacturing delta funds saturate negative cost overflow"),
+		AUEGTTacticalPlayerController::CalculateManufacturingDeltaFunds(MIN_int64, 2), MIN_int64);
+	TestEqual(TEXT("Manufacturing delta funds handle the minimum int32 delta magnitude"),
+		AUEGTTacticalPlayerController::CalculateManufacturingDeltaFunds(MAX_int64, MIN_int32), MAX_int64);
 	return true;
 }
 

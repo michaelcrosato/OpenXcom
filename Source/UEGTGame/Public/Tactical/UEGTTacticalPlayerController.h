@@ -285,6 +285,9 @@ public:
 	static FGuid FindNextReadyPlayerUnit(
 		const FTacticalHudSnapshot& Snapshot,
 		const FGuid& CurrentUnitId);
+	static int64 CalculateManufacturingDeltaFunds(
+		int64 UnitCost,
+		int32 DeltaUnits);
 
 protected:
 	virtual void BeginPlay() override;

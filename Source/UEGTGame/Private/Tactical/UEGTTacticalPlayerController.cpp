@@ -53,7 +53,7 @@ namespace UEGTTacticalControllerPrivate
 		return Seconds <= 0 ? 0 : Seconds / 3600 + (Seconds % 3600 == 0 ? 0 : 1);
 	}
 
-	int64 SaturatingProductForUnits(const int64 PerUnitValue, const int32 Units)
+	int64 SaturatingProductForUnits(const int64 PerUnitValue, const int64 Units)
 	{
 		if (PerUnitValue == 0 || Units <= 0)
 		{
@@ -299,6 +299,21 @@ FGuid AUEGTTacticalPlayerController::FindNextReadyPlayerUnit(
 		}
 	}
 	return FGuid();
+}
+
+int64 AUEGTTacticalPlayerController::CalculateManufacturingDeltaFunds(
+	const int64 UnitCost,
+	const int32 DeltaUnits)
+{
+	if (DeltaUnits == 0)
+	{
+		return 0;
+	}
+	const int64 DeltaMagnitude = DeltaUnits > 0
+		? static_cast<int64>(DeltaUnits)
+		: -static_cast<int64>(DeltaUnits);
+	return UEGTTacticalControllerPrivate::SaturatingProductForUnits(
+		UnitCost, DeltaMagnitude);
 }
 
 bool FUEGTEndTurnConfirmationState::ShouldDefer(
@@ -6054,7 +6069,7 @@ void AUEGTTacticalPlayerController::AdjustStrategicManufacturingUnits(
 	}
 	const int64 NewUnits = static_cast<int64>(Project->UnitsRemaining) + static_cast<int64>(DeltaUnits);
 	const int64 Delta64 = DeltaUnits;
-	const int64 Funds = (Delta64 > 0 ? Delta64 : -Delta64) * Project->UnitCost;
+	const int64 Funds = CalculateManufacturingDeltaFunds(Project->UnitCost, DeltaUnits);
 	TArray<FString> ChangedMaterials;
 	for (const FStrategicMaterialRequirementView& Requirement : Project->MaterialRequirements)
 	{
