@@ -4048,6 +4048,11 @@ public:
 		const FResolvedRuleSet& Rules,
 		const FStrategicSimulationConfig& Config);
 
+	/** Read-only validation of persisted research and manufacturing projects. */
+	static FStrategicCommandResult ValidateStrategicProjectState(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules);
+
 	static FBaseInfrastructureEvaluation EvaluateBaseInfrastructure(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,

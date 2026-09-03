@@ -7337,6 +7337,22 @@ FStrategicCommandResult FStrategicCommandService::ValidateFacilityLayout(
 	return Result;
 }
 
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicProjectState(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (!ValidateResearchProjects(State, Rules, Result)
+		|| !ValidateManufacturingProjects(State, Rules, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
 FBaseInfrastructureEvaluation FStrategicCommandService::EvaluateBaseInfrastructure(
 	const FCampaignState& State,
 	const FResolvedRuleSet& Rules,

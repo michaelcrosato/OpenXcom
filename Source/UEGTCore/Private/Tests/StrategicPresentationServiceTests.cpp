@@ -893,6 +893,34 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	Config.ResilienceCharterCost = 250;
 	const FStrategicDashboardSnapshot Snapshot = FStrategicPresentationService::BuildDashboard(Campaign, Rules, Config);
 	TestTrue(TEXT("Valid strategic state produces a dashboard"), Snapshot.bSucceeded);
+	FCampaignState InvalidResearchReadinessCampaign = Campaign;
+	InvalidResearchReadinessCampaign.ResearchProjects[0].AssignedScientists = -5;
+	const FStrategicDashboardSnapshot InvalidResearchReadinessSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidResearchReadinessCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid research project state"),
+		InvalidResearchReadinessSnapshot.bSucceeded
+		&& !InvalidResearchReadinessSnapshot.bCanAdvanceTime
+		&& InvalidResearchReadinessSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("Research project"))
+					&& Diagnostic.Contains(TEXT("invalid persisted state"));
+			}));
+	FCampaignState InvalidManufacturingReadinessCampaign = Campaign;
+	InvalidManufacturingReadinessCampaign.ManufacturingProjects[0].UnitsRemaining = 0;
+	const FStrategicDashboardSnapshot InvalidManufacturingReadinessSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidManufacturingReadinessCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid manufacturing project state"),
+		InvalidManufacturingReadinessSnapshot.bSucceeded
+		&& !InvalidManufacturingReadinessSnapshot.bCanAdvanceTime
+		&& InvalidManufacturingReadinessSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("Manufacturing project"))
+					&& Diagnostic.Contains(TEXT("invalid persisted state"));
+			}));
 	FCampaignState MalformedFacilityCampaign = Campaign;
 	const FBaseFacilityState DuplicateFacility = MalformedFacilityCampaign.Bases[0].Facilities[0];
 	MalformedFacilityCampaign.Bases[0].Facilities.Add(DuplicateFacility);
