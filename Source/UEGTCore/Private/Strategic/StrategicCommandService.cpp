@@ -14105,6 +14105,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Transaction.Funds -= Evaluation.Cost;
 	Facility->ReservedRepairDamage = Evaluation.Damage;
 	Facility->RemainingRepairSeconds = Evaluation.DurationSeconds;
+	if (!ValidateFacilityState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	++Transaction.CommandSequence;
 	FStrategicEvent& Started = AddEvent(Result, EStrategicEventType::FacilityRepairStarted,
 		Transaction.CommandSequence, Transaction.StrategicTime.Utc);
@@ -14178,6 +14182,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Transaction.Funds = NewFunds;
 	Facility->ReservedRepairDamage = 0;
 	Facility->RemainingRepairSeconds = 0;
+	if (!ValidateFacilityState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	++Transaction.CommandSequence;
 	FStrategicEvent& Cancelled = AddEvent(Result, EStrategicEventType::FacilityRepairCancelled,
 		Transaction.CommandSequence, Transaction.StrategicTime.Utc);

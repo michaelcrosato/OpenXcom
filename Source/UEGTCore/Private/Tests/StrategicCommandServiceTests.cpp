@@ -7532,6 +7532,32 @@ bool FStrategicFacilityDurabilityAndRepairTest::RunTest(const FString& Parameter
 		&& UnrepairedFacility->RemainingRepairSeconds == 0);
 
 	State.Funds = 9000;
+	FCampaignState InvalidRepairStartState = State;
+	FBaseFacilityState& InvalidRepairStartSibling = InvalidRepairStartState.Bases[0].Facilities.AddDefaulted_GetRef();
+	InvalidRepairStartSibling.InstanceId = FGuid(0x843, 0x844, 0x845, 0x846);
+	InvalidRepairStartSibling.FacilityId = TEXT("facility.flight-deck");
+	InvalidRepairStartSibling.GridX = 2;
+	InvalidRepairStartSibling.GridY = 0;
+	InvalidRepairStartSibling.Damage = -1;
+	const int64 InvalidRepairStartSequence = InvalidRepairStartState.CommandSequence;
+	FStartFacilityRepairCommand InvalidRepairStart = Repair;
+	InvalidRepairStart.ExpectedSequence = InvalidRepairStartSequence;
+	const FStrategicCommandResult InvalidRepairStartResult = FStrategicCommandService::Execute(
+		InvalidRepairStartState, Rules, InvalidRepairStart);
+	TestTrue(TEXT("Facility repair start rejects malformed sibling facility atomically"),
+		!InvalidRepairStartResult.bAccepted
+		&& InvalidRepairStartResult.HasDiagnostic(TEXT("invalid_facility_state"))
+		&& InvalidRepairStartState.CommandSequence == InvalidRepairStartSequence
+		&& InvalidRepairStartState.Funds == 9000
+		&& InvalidRepairStartState.Bases[0].Facilities.ContainsByPredicate(
+			[&FacilityInstanceId](const FBaseFacilityState& Facility)
+			{
+				return Facility.InstanceId == FacilityInstanceId
+					&& Facility.ReservedRepairDamage == 0
+					&& Facility.RemainingRepairSeconds == 0;
+			})
+		&& InvalidRepairStartSibling.Damage == -1);
+
 	const FStrategicCommandResult RepairStarted = FStrategicCommandService::Execute(State, Rules, Repair);
 	TestTrue(TEXT("All-or-nothing facility repair starts atomically"), RepairStarted.bAccepted);
 	TestTrue(TEXT("Repair start emits a typed event"),
@@ -7543,6 +7569,35 @@ bool FStrategicFacilityDurabilityAndRepairTest::RunTest(const FString& Parameter
 		&& RepairingFacility->Damage == 2
 		&& RepairingFacility->ReservedRepairDamage == 2
 		&& RepairingFacility->RemainingRepairSeconds == 7200);
+
+	FCampaignState InvalidRepairCancelState = State;
+	FBaseFacilityState& InvalidRepairCancelSibling = InvalidRepairCancelState.Bases[0].Facilities.AddDefaulted_GetRef();
+	InvalidRepairCancelSibling.InstanceId = FGuid(0x847, 0x848, 0x849, 0x850);
+	InvalidRepairCancelSibling.FacilityId = TEXT("facility.flight-deck");
+	InvalidRepairCancelSibling.GridX = 2;
+	InvalidRepairCancelSibling.GridY = 0;
+	InvalidRepairCancelSibling.Damage = -1;
+	const int64 InvalidRepairCancelSequence = InvalidRepairCancelState.CommandSequence;
+	const int64 InvalidRepairCancelFunds = InvalidRepairCancelState.Funds;
+	FCancelFacilityRepairCommand InvalidRepairCancelSiblingCommand;
+	InvalidRepairCancelSiblingCommand.ExpectedSequence = InvalidRepairCancelSequence;
+	InvalidRepairCancelSiblingCommand.BaseId = TestBaseId;
+	InvalidRepairCancelSiblingCommand.FacilityInstanceId = FacilityInstanceId;
+	const FStrategicCommandResult InvalidRepairCancelResult = FStrategicCommandService::Execute(
+		InvalidRepairCancelState, Rules, InvalidRepairCancelSiblingCommand);
+	TestTrue(TEXT("Facility repair cancellation rejects malformed sibling facility atomically"),
+		!InvalidRepairCancelResult.bAccepted
+		&& InvalidRepairCancelResult.HasDiagnostic(TEXT("invalid_facility_state"))
+		&& InvalidRepairCancelState.CommandSequence == InvalidRepairCancelSequence
+		&& InvalidRepairCancelState.Funds == InvalidRepairCancelFunds
+		&& InvalidRepairCancelState.Bases[0].Facilities.ContainsByPredicate(
+			[&FacilityInstanceId](const FBaseFacilityState& Facility)
+			{
+				return Facility.InstanceId == FacilityInstanceId
+					&& Facility.ReservedRepairDamage == 2
+					&& Facility.RemainingRepairSeconds == 7200;
+			})
+		&& InvalidRepairCancelSibling.Damage == -1);
 
 	const FCampaignSaveEnvelope RepairEnvelope = FCampaignSaveCodec::CreateNew(
 		State, MakePackages(), TEXT("0.20.0-test"), FDateTime(2026, 8, 30, 18, 0, 0),
