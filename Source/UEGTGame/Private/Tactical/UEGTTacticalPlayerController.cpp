@@ -53,6 +53,19 @@ namespace UEGTTacticalControllerPrivate
 		return Seconds <= 0 ? 0 : Seconds / 3600 + (Seconds % 3600 == 0 ? 0 : 1);
 	}
 
+	int64 SaturatingProductForUnits(const int64 PerUnitValue, const int32 Units)
+	{
+		if (PerUnitValue == 0 || Units <= 0)
+		{
+			return 0;
+		}
+		if (PerUnitValue > 0)
+		{
+			return PerUnitValue > MAX_int64 / Units ? MAX_int64 : PerUnitValue * Units;
+		}
+		return PerUnitValue < MIN_int64 / Units ? MIN_int64 : PerUnitValue * Units;
+	}
+
 	FString LocalizedDiagnostic(const FName Code, const FString& EnglishFallback)
 	{
 		return FUEGTLocalizationService::DiagnosticText(Code, EnglishFallback);
@@ -158,16 +171,14 @@ namespace UEGTTacticalControllerPrivate
 					TEXT("Resolve the existing storage overflow ({0} units) before making this change."),
 					{ LexToString(Base->StorageOverflow) });
 			}
-			const int64 SafeUnits = FMath::Max(Units, 1);
-			const int64 BatchDelta = Option.StorageDeltaPerUnit > 0
-				&& Option.StorageDeltaPerUnit > MAX_int64 / SafeUnits
-				? MAX_int64
-				: Option.StorageDeltaPerUnit * SafeUnits;
+			const int32 SafeUnits = FMath::Max(Units, 1);
+			const int64 BatchDelta = SaturatingProductForUnits(Option.StorageDeltaPerUnit, SafeUnits);
 			const int64 Available = Base != nullptr ? FMath::Max<int64>(0, Base->StorageAvailable) : 0;
+			const int64 Required = BatchDelta > Available ? BatchDelta - Available : 0;
 			return LocalizedFormat(
 				TEXT("strategic.storage-free-required-format"),
 				TEXT("Free {0} storage units before making this change."),
-				{ LexToString(FMath::Max<int64>(1, BatchDelta - Available)) });
+				{ LexToString(FMath::Max<int64>(1, Required)) });
 		}
 		if (Option.UnavailableReasonCode == FName(TEXT("insufficient_funds")))
 		{
