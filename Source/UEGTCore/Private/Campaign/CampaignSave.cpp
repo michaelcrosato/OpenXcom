@@ -3750,23 +3750,43 @@ namespace CampaignSavePrivate
 			return false;
 		}
 		int32 Index = 0;
+		bool bNegative = false;
 		if (Value[0] == TEXT('-'))
 		{
 			if (Value.Len() == 1 || Value[1] == TEXT('0'))
 			{
 				return false;
 			}
+			bNegative = true;
 			Index = 1;
 		}
 		else if (Value.Len() > 1 && Value[0] == TEXT('0'))
 		{
 			return false;
 		}
+		const int32 DigitStart = Index;
 		for (; Index < Value.Len(); ++Index)
 		{
 			if (Value[Index] < TEXT('0') || Value[Index] > TEXT('9'))
 			{
 				return false;
+			}
+		}
+
+		const TCHAR* MaximumMagnitude = bNegative
+			? TEXT("9223372036854775808")
+			: TEXT("9223372036854775807");
+		const int32 DigitCount = Value.Len() - DigitStart;
+		const int32 MaximumDigitCount = FCString::Strlen(MaximumMagnitude);
+		if (DigitCount != MaximumDigitCount)
+		{
+			return DigitCount < MaximumDigitCount;
+		}
+		for (int32 Offset = 0; Offset < DigitCount; ++Offset)
+		{
+			if (Value[DigitStart + Offset] != MaximumMagnitude[Offset])
+			{
+				return Value[DigitStart + Offset] < MaximumMagnitude[Offset];
 			}
 		}
 		return true;

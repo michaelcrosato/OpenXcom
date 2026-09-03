@@ -111,6 +111,42 @@ bool FCampaignSaveRoundTripTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FCampaignSaveInt64BoundsTest,
+	"UEGT.Core.CampaignSave.Int64Bounds",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCampaignSaveInt64BoundsTest::RunTest(const FString& Parameters)
+{
+	using namespace CampaignSaveTests;
+
+	const FCampaignSaveWriteResult Write = MakeSerializedSave();
+	TestTrue(TEXT("Boundary fixture serializes"), Write.bSucceeded);
+	const FString PositiveOverflowJson = Write.Json.Replace(
+		TEXT("\"funds\":\"9007199254740993\""),
+		TEXT("\"funds\":\"9223372036854775808\""));
+	TestTrue(TEXT("Positive overflow fixture changes the funds field"),
+		PositiveOverflowJson.Contains(TEXT("\"funds\":\"9223372036854775808\"")));
+	const FCampaignSaveReadResult PositiveOverflow =
+		FCampaignSaveCodec::Deserialize(PositiveOverflowJson);
+	TestTrue(TEXT("Positive int64 overflow is rejected while parsing"),
+		!PositiveOverflow.bSucceeded
+		&& PositiveOverflow.HasDiagnostic(TEXT("invalid_field_value")));
+
+	const FString NegativeOverflowJson = Write.Json.Replace(
+		TEXT("\"funds\":\"9007199254740993\""),
+		TEXT("\"funds\":\"-9223372036854775809\""));
+	TestTrue(TEXT("Negative overflow fixture changes the funds field"),
+		NegativeOverflowJson.Contains(TEXT("\"funds\":\"-9223372036854775809\"")));
+	const FCampaignSaveReadResult NegativeOverflow =
+		FCampaignSaveCodec::Deserialize(NegativeOverflowJson);
+	TestTrue(TEXT("Negative int64 overflow is rejected while parsing"),
+		!NegativeOverflow.bSucceeded
+		&& NegativeOverflow.HasDiagnostic(TEXT("invalid_field_value")));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCampaignSaveBaseAssaultRoundTripTest,
 	"UEGT.Core.CampaignSave.BaseAssaultRoundTrip",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
