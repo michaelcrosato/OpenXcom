@@ -7156,6 +7156,26 @@ bool FStrategicFacilityConstructionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Construction cost is deducted"), State.Funds, int64(8500));
 	TestEqual(TEXT("One construction project is active"), State.FacilityConstructionProjects.Num(), 1);
 
+	FCampaignState MalformedPendingStartState = State;
+	MalformedPendingStartState.FacilityConstructionProjects[0].RemainingBuildSeconds = 0;
+	const int64 MalformedPendingStartSequence = MalformedPendingStartState.CommandSequence;
+	const int64 MalformedPendingStartFunds = MalformedPendingStartState.Funds;
+	FStartFacilityConstructionCommand StartWithMalformedPending = Build;
+	StartWithMalformedPending.ExpectedSequence = MalformedPendingStartSequence;
+	StartWithMalformedPending.ProjectId = FGuid(89, 90, 91, 92);
+	StartWithMalformedPending.FacilityInstanceId = FGuid(93, 94, 95, 96);
+	StartWithMalformedPending.GridX = 2;
+	const FStrategicCommandResult MalformedPendingStartResult =
+		FStrategicCommandService::Execute(
+			MalformedPendingStartState, Rules, Config, StartWithMalformedPending);
+	TestTrue(TEXT("Construction start rejects a malformed pending sibling atomically"),
+		!MalformedPendingStartResult.bAccepted
+		&& MalformedPendingStartResult.HasDiagnostic(TEXT("invalid_construction_project"))
+		&& MalformedPendingStartState.CommandSequence == MalformedPendingStartSequence
+		&& MalformedPendingStartState.Funds == MalformedPendingStartFunds
+		&& MalformedPendingStartState.FacilityConstructionProjects.Num() == 1
+		&& MalformedPendingStartState.FacilityConstructionProjects[0].RemainingBuildSeconds == 0);
+
 	FStartFacilityConstructionCommand Overlap = Build;
 	Overlap.ExpectedSequence = State.CommandSequence;
 	Overlap.ProjectId = FGuid(91, 92, 93, 94);

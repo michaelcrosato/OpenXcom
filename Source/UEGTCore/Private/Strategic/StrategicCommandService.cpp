@@ -4356,6 +4356,102 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateFacilityConstructionProjects(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		FStrategicCommandResult& Result)
+	{
+		TSet<FGuid> SeenProjectIds;
+		TSet<FGuid> SeenFacilityInstanceIds;
+		TSet<FString> SeenOrigins;
+		for (const FStrategicBaseState& Base : State.Bases)
+		{
+			for (const FBaseFacilityState& Facility : Base.Facilities)
+			{
+				SeenFacilityInstanceIds.Add(Facility.InstanceId);
+				SeenOrigins.Add(FString::Printf(
+					TEXT("%s|%d|%d"), *Base.BaseId.ToString(EGuidFormats::Digits),
+					Facility.GridX, Facility.GridY));
+			}
+		}
+
+		for (const FFacilityConstructionProjectState& Project : State.FacilityConstructionProjects)
+		{
+			const FFacilityRule* Facility = Rules.Facilities.Find(Project.FacilityId);
+			const FStrategicBaseState* Base = FindBase(State, Project.BaseId);
+			const int64 TotalBuildSeconds = Facility != nullptr
+				? static_cast<int64>(Facility->BuildHours) * 3600LL
+				: 0;
+			const FString Origin = FString::Printf(
+				TEXT("%s|%d|%d"), *Project.BaseId.ToString(EGuidFormats::Digits),
+				Project.GridX, Project.GridY);
+			bool bValid = HasValidBaseGridDimensions(Config)
+				&& Project.ProjectId.IsValid()
+				&& !SeenProjectIds.Contains(Project.ProjectId)
+				&& Project.FacilityInstanceId.IsValid()
+				&& !SeenFacilityInstanceIds.Contains(Project.FacilityInstanceId)
+				&& !SeenOrigins.Contains(Origin)
+				&& Base != nullptr
+				&& Facility != nullptr
+				&& Facility->BuildCost >= 0
+				&& Facility->BuildHours > 0
+				&& Facility->GridWidth > 0
+				&& Facility->GridHeight > 0
+				&& Project.GridX >= 0
+				&& Project.GridY >= 0
+				&& static_cast<int64>(Project.GridX) + Facility->GridWidth <= Config.BaseGridWidth
+				&& static_cast<int64>(Project.GridY) + Facility->GridHeight <= Config.BaseGridHeight
+				&& Project.RemainingBuildSeconds > 0
+				&& Project.RemainingBuildSeconds <= TotalBuildSeconds;
+			if (bValid && Base != nullptr && Facility != nullptr)
+			{
+				for (const FBaseFacilityState& Existing : Base->Facilities)
+				{
+					const FFacilityRule* ExistingRule = Rules.Facilities.Find(Existing.FacilityId);
+					if (ExistingRule == nullptr || ExistingRule->GridWidth <= 0 || ExistingRule->GridHeight <= 0
+						|| RectanglesOverlap(
+							Project.GridX, Project.GridY, Facility->GridWidth, Facility->GridHeight,
+							Existing.GridX, Existing.GridY, ExistingRule->GridWidth, ExistingRule->GridHeight))
+					{
+						bValid = false;
+						break;
+					}
+				}
+			}
+			if (bValid)
+			{
+				for (const FFacilityConstructionProjectState& Other : State.FacilityConstructionProjects)
+				{
+					if (&Other == &Project || Other.BaseId != Project.BaseId)
+					{
+						continue;
+					}
+					const FFacilityRule* OtherRule = Rules.Facilities.Find(Other.FacilityId);
+					if (OtherRule == nullptr || OtherRule->GridWidth <= 0 || OtherRule->GridHeight <= 0
+						|| RectanglesOverlap(
+							Project.GridX, Project.GridY, Facility->GridWidth, Facility->GridHeight,
+							Other.GridX, Other.GridY, OtherRule->GridWidth, OtherRule->GridHeight))
+					{
+						bValid = false;
+						break;
+					}
+				}
+			}
+			if (!bValid)
+			{
+				AddError(Result, TEXT("invalid_construction_project"), FString::Printf(
+					TEXT("Facility construction project '%s' has invalid persisted state."),
+					*Project.ProjectId.ToString()));
+				return false;
+			}
+			SeenProjectIds.Add(Project.ProjectId);
+			SeenFacilityInstanceIds.Add(Project.FacilityInstanceId);
+			SeenOrigins.Add(Origin);
+		}
+		return true;
+	}
+
 	bool ComputeMonthlyPersonnelSalaries(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -11051,27 +11147,9 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			return Result;
 		}
 	}
-	for (const FFacilityConstructionProjectState& Project : State.FacilityConstructionProjects)
+	if (!ValidateFacilityConstructionProjects(State, Rules, Config, Result))
 	{
-		const FFacilityRule* Facility = Rules.Facilities.Find(Project.FacilityId);
-		const int64 TotalBuildSeconds = Facility != nullptr
-			? static_cast<int64>(Facility->BuildHours) * 3600LL
-			: 0;
-		if (!Project.ProjectId.IsValid() || !Project.FacilityInstanceId.IsValid()
-			|| Facility == nullptr || Facility->BuildHours <= 0
-			|| Facility->GridWidth <= 0 || Facility->GridHeight <= 0
-			|| FindBase(State, Project.BaseId) == nullptr
-			|| Project.GridX < 0 || Project.GridY < 0
-			|| static_cast<int64>(Project.GridX) + Facility->GridWidth > Config.BaseGridWidth
-			|| static_cast<int64>(Project.GridY) + Facility->GridHeight > Config.BaseGridHeight
-			|| Project.RemainingBuildSeconds <= 0
-			|| Project.RemainingBuildSeconds > TotalBuildSeconds)
-		{
-			AddError(Result, TEXT("invalid_construction_project"), FString::Printf(
-				TEXT("Facility construction project '%s' has invalid persisted state."),
-				*Project.ProjectId.ToString()));
-			return Result;
-		}
+		return Result;
 	}
 	int64 PotentialArrivals = 0;
 	for (const FRecruitmentOrderState& Order : State.RecruitmentOrders)
@@ -14412,6 +14490,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Project.GridX = Command.GridX;
 	Project.GridY = Command.GridY;
 	Project.RemainingBuildSeconds = CommittedBuildSeconds;
+	if (!ValidateFacilityConstructionProjects(Transaction, Rules, Config, Result))
+	{
+		return Result;
+	}
 	SortStateCollections(Transaction);
 	++Transaction.CommandSequence;
 	FStrategicEvent& Event = AddEvent(Result, EStrategicEventType::FacilityConstructionStarted, Transaction.CommandSequence, Transaction.StrategicTime.Utc);
