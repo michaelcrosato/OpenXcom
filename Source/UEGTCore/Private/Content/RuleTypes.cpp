@@ -696,7 +696,8 @@ namespace RuleSetBuilderPrivate
 			else if (Pair.Value.bCreatesLandingSiteOnArrival)
 			{
 				const FContactRule& Contact = RuleSet.Contacts.FindChecked(Pair.Value.ContactRuleId);
-				if (Contact.ThreatRating > 10 - Pair.Value.LandingSiteThreatBonus)
+				if (static_cast<int64>(Contact.ThreatRating)
+					+ static_cast<int64>(Pair.Value.LandingSiteThreatBonus) > 10)
 				{
 					AddError(Result, TEXT("landing_site_threat_overflow"), Origin,
 						FString::Printf(TEXT("Adversary mission '%s' landing-site threat exceeds the supported maximum."), *Pair.Key.ToString()));

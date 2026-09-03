@@ -10960,6 +10960,96 @@ bool FStrategicAdversaryBranchingPlanTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicLandingSiteThreatBoundaryTest,
+	"UEGT.Core.StrategicCommands.LandingSiteThreatBoundaries",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicLandingSiteThreatBoundaryTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	const FResolvedRuleSet BoundaryRules = MakeLandingAdversaryRules();
+	FResolvedRuleSet ExtremeRules = BoundaryRules;
+	ExtremeRules.AdversaryMissions.FindChecked(TEXT("mission.glass-tide-survey")).LandingSiteThreatBonus = MAX_int32;
+	FCampaignState BoundaryState = MakeStateWithBase();
+	FCampaignState ExtremeState = BoundaryState;
+	BoundaryState.AdversaryEscalationLevel = 1;
+	ExtremeState.AdversaryEscalationLevel = 1;
+	BoundaryState.NextAdversaryMissionSeconds = 5;
+	ExtremeState.NextAdversaryMissionSeconds = 5;
+	BoundaryState.SimulationRandom.Initialize(0x4c414e44);
+	ExtremeState.SimulationRandom.Initialize(0x4c414e44);
+	FAdvanceStrategicTimeCommand Advance;
+	Advance.Rate = EStrategicTimeRate::FiveSeconds;
+	Advance.ExpectedSequence = BoundaryState.CommandSequence;
+	const FStrategicCommandResult BoundaryLaunch = FStrategicCommandService::Execute(
+		BoundaryState, BoundaryRules, MakeConfig(), Advance);
+	Advance.ExpectedSequence = ExtremeState.CommandSequence;
+	const FStrategicCommandResult ExtremeLaunch = FStrategicCommandService::Execute(
+		ExtremeState, ExtremeRules, MakeConfig(), Advance);
+	TestTrue(TEXT("Landing threat boundary fixtures launch matching contacts"),
+		BoundaryLaunch.bAccepted && ExtremeLaunch.bAccepted
+		&& BoundaryState.StrategicContacts.Num() == 1
+		&& ExtremeState.StrategicContacts.Num() == 1);
+	if (BoundaryState.StrategicContacts.Num() != 1 || ExtremeState.StrategicContacts.Num() != 1)
+	{
+		return false;
+	}
+	auto PrimeForArrival = [](FStrategicContactState& Contact)
+	{
+		Contact.Status = EStrategicContactStatus::Detected;
+		Contact.ElapsedRouteSeconds = FMath::Max<int64>(0, Contact.TotalRouteSeconds - 5);
+		int64 LongitudeDelta = static_cast<int64>(Contact.DestinationLongitudeMilliDegrees)
+			- Contact.OriginLongitudeMilliDegrees;
+		if (LongitudeDelta > 180000)
+		{
+			LongitudeDelta -= 360000;
+		}
+		else if (LongitudeDelta < -180000)
+		{
+			LongitudeDelta += 360000;
+		}
+		int64 Longitude = static_cast<int64>(Contact.OriginLongitudeMilliDegrees)
+			+ LongitudeDelta * Contact.ElapsedRouteSeconds / Contact.TotalRouteSeconds;
+		if (Longitude > 180000)
+		{
+			Longitude -= 360000;
+		}
+		else if (Longitude < -180000)
+		{
+			Longitude += 360000;
+		}
+		Contact.LongitudeMilliDegrees = static_cast<int32>(Longitude);
+		Contact.LatitudeMilliDegrees = static_cast<int32>(
+			static_cast<int64>(Contact.OriginLatitudeMilliDegrees)
+			+ (static_cast<int64>(Contact.DestinationLatitudeMilliDegrees)
+				- Contact.OriginLatitudeMilliDegrees)
+				* Contact.ElapsedRouteSeconds / Contact.TotalRouteSeconds);
+	};
+	PrimeForArrival(BoundaryState.StrategicContacts[0]);
+	PrimeForArrival(ExtremeState.StrategicContacts[0]);
+	Advance.ExpectedSequence = BoundaryState.CommandSequence;
+	const FStrategicCommandResult BoundaryArrival = FStrategicCommandService::Execute(
+		BoundaryState, BoundaryRules, MakeConfig(), Advance);
+	Advance.ExpectedSequence = ExtremeState.CommandSequence;
+	const FStrategicCommandResult ExtremeArrival = FStrategicCommandService::Execute(
+		ExtremeState, ExtremeRules, MakeConfig(), Advance);
+	const FStrategicEvent* ExtremeLanded = ExtremeArrival.Events.FindByPredicate(
+		[](const FStrategicEvent& Event)
+		{
+			return Event.Type == EStrategicEventType::StrategicContactLanded;
+		});
+	TestTrue(TEXT("Maximum landing threat bonus saturates without signed wraparound"),
+		BoundaryArrival.bAccepted && ExtremeArrival.bAccepted
+		&& BoundaryState.StrategicSites.Num() == 1
+		&& ExtremeState.StrategicSites.Num() == 1
+		&& BoundaryState.StrategicSites[0].ThreatRating == 4
+		&& ExtremeState.StrategicSites[0].ThreatRating == 10
+		&& ExtremeLanded != nullptr && ExtremeLanded->Quantity == 10);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FAuthoredCinderLatticeCampaignTest,
 	"UEGT.Core.StrategicCommands.AuthoredCinderLatticeSoakFogReplay",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

@@ -68,6 +68,17 @@ namespace StrategicCommandServicePrivate
 			Maximum));
 	}
 
+	int32 GetEffectiveLandingSiteThreatRating(
+		const int32 ContactThreatRating,
+		const int32 LandingSiteThreatBonus)
+	{
+		return static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(ContactThreatRating)
+				+ static_cast<int64>(LandingSiteThreatBonus),
+			1,
+			10));
+	}
+
 	struct FBaseSpecializationCandidate
 	{
 		FName SpecializationId;
@@ -11672,6 +11683,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 						&& AdversaryRule->bCreatesLandingSiteOnArrival && ArrivalContactRule != nullptr;
 					const int32 ArrivalLongitude = Contact.LongitudeMilliDegrees;
 					const int32 ArrivalLatitude = Contact.LatitudeMilliDegrees;
+					const int32 LandingSiteThreatRating = bCreatesLandingSite
+						? GetEffectiveLandingSiteThreatRating(
+							ArrivalContactRule->ThreatRating,
+							AdversaryRule->LandingSiteThreatBonus)
+						: 0;
 					if (bCreatesLandingSite)
 					{
 						FStrategicEvent& Landed = AddEvent(Result, EStrategicEventType::StrategicContactLanded, NextSequence, Slice.CurrentUtc);
@@ -11679,7 +11695,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 						Landed.MissionId = AdversaryMissionId;
 						Landed.RuleId = ContactRuleId;
 						Landed.RegionId = AdversaryRule->TargetRegionId;
-						Landed.Quantity = ArrivalContactRule->ThreatRating + AdversaryRule->LandingSiteThreatBonus;
+						Landed.Quantity = LandingSiteThreatRating;
 					}
 					else
 					{
@@ -11722,7 +11738,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 						Site.SourceContactRuleId = ContactRuleId;
 						Site.LongitudeMilliDegrees = ArrivalLongitude;
 						Site.LatitudeMilliDegrees = ArrivalLatitude;
-						Site.ThreatRating = ArrivalContactRule->ThreatRating + AdversaryRule->LandingSiteThreatBonus;
+						Site.ThreatRating = LandingSiteThreatRating;
 						Site.RemainingLifetimeSeconds = static_cast<int64>(AdversaryRule->LandingSiteLifetimeHours) * 3600LL;
 						FStrategicEvent& SiteCreated = AddEvent(Result, EStrategicEventType::StrategicSiteCreated, NextSequence, Slice.CurrentUtc);
 						SiteCreated.SiteId = Site.SiteId;

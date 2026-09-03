@@ -1007,6 +1007,32 @@ bool FRuleSetReferenceTest::RunTest(const FString& Parameters)
 	ExtremeBranch.PlanId = BranchingPlan.Identity.RuleId;
 	ExtremeBranch.PlanStage = MIN_int32;
 	Package.AdversaryMissions.Add(ExtremeBranch);
+	FContactRule ExtremeLandingContact;
+	ExtremeLandingContact.Identity.RuleId = TEXT("contact.extreme-landing");
+	ExtremeLandingContact.DisplayName = TEXT("Extreme Landing Contact");
+	ExtremeLandingContact.Signature = 1;
+	ExtremeLandingContact.CruiseSpeedKilometersPerHour = 1;
+	ExtremeLandingContact.MaxHull = 1;
+	ExtremeLandingContact.ThreatRating = MAX_int32;
+	ExtremeLandingContact.AttackAccuracy = 1;
+	ExtremeLandingContact.AttackDamage = 1;
+	ExtremeLandingContact.AttackIntervalSeconds = 1;
+	Package.Contacts.Add(ExtremeLandingContact);
+	FAdversaryMissionRule ExtremeLandingMission;
+	ExtremeLandingMission.Identity.RuleId = TEXT("mission.extreme-landing");
+	ExtremeLandingMission.DisplayName = TEXT("Extreme Landing Mission");
+	ExtremeLandingMission.ContactRuleId = ExtremeLandingContact.Identity.RuleId;
+	ExtremeLandingMission.TargetRegionId = TEXT("region.test");
+	ExtremeLandingMission.OriginLongitudeMilliDegrees = -1000;
+	ExtremeLandingMission.DestinationLongitudeMilliDegrees = 1000;
+	ExtremeLandingMission.IntervalHours = 1;
+	ExtremeLandingMission.MinimumEscalation = 1;
+	ExtremeLandingMission.SelectionWeight = 1;
+	ExtremeLandingMission.PressureOnEscape = 1;
+	ExtremeLandingMission.bCreatesLandingSiteOnArrival = true;
+	ExtremeLandingMission.LandingSiteLifetimeHours = 1;
+	ExtremeLandingMission.LandingSiteThreatBonus = MIN_int32;
+	Package.AdversaryMissions.Add(ExtremeLandingMission);
 
 	FTacticalMissionRule TacticalMission;
 	TacticalMission.Identity.RuleId = TEXT("tactical.unresolved-recovery");
@@ -1049,6 +1075,14 @@ bool FRuleSetReferenceTest::RunTest(const FString& Parameters)
 			&& Diagnostic.Message.Contains(TEXT("mission.plan-max-stage"));
 	}
 	TestTrue(TEXT("Extreme plan stages are compared without signed wraparound"), bExtremeStageBranchDiagnosed);
+	bool bExtremeLandingThreatOverflowDiagnosed = false;
+	for (const FContentDiagnostic& Diagnostic : Result.Diagnostics)
+	{
+		bExtremeLandingThreatOverflowDiagnosed |= Diagnostic.Code == FName(TEXT("landing_site_threat_overflow"))
+			&& Diagnostic.Message.Contains(TEXT("mission.extreme-landing"));
+	}
+	TestFalse(TEXT("Extreme landing threat validation does not wrap a minimum bonus into a false overflow"),
+		bExtremeLandingThreatOverflowDiagnosed);
 	TestTrue(TEXT("Unreachable plan mission is diagnosed"), Result.HasDiagnostic(TEXT("orphaned_adversary_plan_mission")));
 	TestTrue(TEXT("Missing tactical floor is diagnosed"), Result.HasDiagnostic(TEXT("invalid_tactical_floor_reference")));
 	TestTrue(TEXT("Missing tactical obstacle is diagnosed"), Result.HasDiagnostic(TEXT("invalid_tactical_obstacle_reference")));
