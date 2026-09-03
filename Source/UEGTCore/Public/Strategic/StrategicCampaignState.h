@@ -1149,7 +1149,26 @@ struct UEGTCORE_API FTacticalBattleState
 
 	int32 GetCellIndex(const int32 X, const int32 Y, const int32 Z) const
 	{
-		return (Z * Height + Y) * Width + X;
+		if (Width <= 0 || Height <= 0 || Levels <= 0
+			|| X < 0 || X >= Width || Y < 0 || Y >= Height || Z < 0 || Z >= Levels)
+		{
+			return INDEX_NONE;
+		}
+
+		const int64 Width64 = Width;
+		const int64 Height64 = Height;
+		const int64 Levels64 = Levels;
+		if (Width64 > MAX_int64 / Height64)
+		{
+			return INDEX_NONE;
+		}
+		const int64 PlaneSize = Width64 * Height64;
+		if (PlaneSize > MAX_int64 / Levels64 || PlaneSize * Levels64 > MAX_int32)
+		{
+			return INDEX_NONE;
+		}
+
+		return static_cast<int32>((static_cast<int64>(Z) * Height64 + Y) * Width64 + X);
 	}
 };
 

@@ -1269,6 +1269,17 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Exhausted random draw count fails validation"), ExhaustedRandomValidation.bSucceeded);
 	TestTrue(TEXT("Exhausted random draw count is diagnosed"), ExhaustedRandomValidation.HasDiagnostic(TEXT("invalid_random_state")));
 
+	FTacticalBattleState ExtremeBattle;
+	ExtremeBattle.Width = MAX_int32;
+	ExtremeBattle.Height = MAX_int32;
+	ExtremeBattle.Levels = 1;
+	TestEqual(TEXT("Extreme tactical dimensions cannot overflow a cell index"),
+		ExtremeBattle.GetCellIndex(MAX_int32 - 1, MAX_int32 - 1, 0), INDEX_NONE);
+	ExtremeBattle.Width = 8;
+	ExtremeBattle.Height = 12;
+	TestEqual(TEXT("Valid tactical dimensions preserve cell indexing"),
+		ExtremeBattle.GetCellIndex(3, 4, 0), 35);
+
 	const FCampaignSaveReadResult Malformed = FCampaignSaveCodec::Deserialize(TEXT("{broken"));
 	TestFalse(TEXT("Malformed JSON is rejected"), Malformed.bSucceeded);
 	TestTrue(TEXT("Malformed JSON is diagnosed"), Malformed.HasDiagnostic(TEXT("invalid_json")));
