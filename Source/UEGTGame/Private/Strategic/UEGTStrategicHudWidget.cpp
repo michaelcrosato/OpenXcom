@@ -3734,8 +3734,12 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 				const FStrategicFacilityView* Facility = Base.FacilityLayout.FindByPredicate(
 					[GridX, GridY](const FStrategicFacilityView& Entry)
 					{
-						return GridX >= Entry.GridX && GridX < Entry.GridX + Entry.GridWidth
-							&& GridY >= Entry.GridY && GridY < Entry.GridY + Entry.GridHeight;
+						return static_cast<int64>(GridX) >= Entry.GridX
+							&& static_cast<int64>(GridX)
+								< static_cast<int64>(Entry.GridX) + Entry.GridWidth
+							&& static_cast<int64>(GridY) >= Entry.GridY
+							&& static_cast<int64>(GridY)
+								< static_cast<int64>(Entry.GridY) + Entry.GridHeight;
 					});
 				const bool bAnchor = Facility != nullptr
 					&& GridX == Facility->GridX && GridY == Facility->GridY;
