@@ -6364,7 +6364,15 @@ FHorizonCompactEvaluation FStrategicCommandService::EvaluateHorizonCompact(
 		FRegionalMandateState ProjectedMandate = ExistingMandate;
 		if (ProjectedMandate.bResilienceCharterSigned)
 		{
-			ProjectedMandate.Support -= Evaluation.MemberSupportCost;
+			const int64 ProjectedSupport = static_cast<int64>(ProjectedMandate.Support)
+				- Evaluation.MemberSupportCost;
+			if (ProjectedSupport < 0 || ProjectedSupport > 100)
+			{
+				AddError(Validation, TEXT("invalid_regional_mandate"),
+					TEXT("A signed regional mandate has unsupported post-compact support."));
+				return Reject();
+			}
+			ProjectedMandate.Support = static_cast<int32>(ProjectedSupport);
 		}
 		int64 ProjectedContribution = 0;
 		int64 UpdatedProjection = 0;

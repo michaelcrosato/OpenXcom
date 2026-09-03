@@ -21678,6 +21678,18 @@ bool FStrategicHorizonCompactTest::RunTest(const FString& Parameters)
 		&& Initial.Funds == 1000000 && Initial.CommandSequence == 0
 		&& Initial.SimulationRandom.DrawCount == 0);
 
+	FCampaignState DuplicateMandate = Initial;
+	const FRegionalMandateState DuplicateTemplate = DuplicateMandate.RegionalMandates[0];
+	FRegionalMandateState& DuplicateEntry = DuplicateMandate.RegionalMandates.AddDefaulted_GetRef();
+	DuplicateEntry = DuplicateTemplate;
+	DuplicateEntry.Support = MIN_int32;
+	const FHorizonCompactEvaluation DuplicateMandatePreview =
+		FStrategicCommandService::EvaluateHorizonCompact(DuplicateMandate, Config, Ratify);
+	TestTrue(TEXT("Compact projection rejects malformed duplicate support without signed overflow"),
+		!DuplicateMandatePreview.bAllowed && DuplicateMandatePreview.Diagnostics.Num() == 1
+		&& DuplicateMandatePreview.Diagnostics[0].Code
+			== FName(TEXT("invalid_regional_mandate")));
+
 	FCampaignState Ratified = Initial;
 	FCampaignState RatifiedReplay = Initial;
 	const int64 DrawsBeforeRatification = Ratified.SimulationRandom.DrawCount;
