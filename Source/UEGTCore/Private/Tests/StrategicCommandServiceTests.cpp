@@ -10783,6 +10783,39 @@ bool FStrategicAdversarySchedulingTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicAdversaryCoordinateBoundaryTest,
+	"UEGT.Core.StrategicCommands.AdversaryCoordinateBoundary",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicAdversaryCoordinateBoundaryTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	FResolvedRuleSet Rules = MakeAdversaryRules();
+	FAdversaryMissionRule& Mission = Rules.AdversaryMissions.FindChecked(TEXT("mission.glass-tide-survey"));
+	Mission.OriginLongitudeMilliDegrees = MAX_int32;
+	Mission.OriginLatitudeMilliDegrees = MAX_int32;
+
+	FCampaignState State = MakeStateWithBase();
+	const int64 InitialSequence = State.CommandSequence;
+	State.NextAdversaryMissionSeconds = 5;
+	FAdvanceStrategicTimeCommand Advance;
+	Advance.ExpectedSequence = InitialSequence;
+	Advance.Rate = EStrategicTimeRate::FiveSeconds;
+	const FStrategicCommandResult Result = FStrategicCommandService::Execute(
+		State, Rules, MakeConfig(), Advance);
+
+	TestFalse(TEXT("Malformed adversary coordinates fail closed"), Result.bAccepted);
+	TestTrue(TEXT("Malformed adversary coordinates report simulation overflow"),
+		Result.HasDiagnostic(TEXT("simulation_overflow")));
+	TestEqual(TEXT("Malformed adversary coordinates do not advance the command sequence"),
+		State.CommandSequence, InitialSequence);
+	TestTrue(TEXT("Malformed adversary coordinates do not create a mission"),
+		State.AdversaryMissions.IsEmpty() && State.StrategicContacts.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicAdversaryBranchingPlanTest,
 	"UEGT.Core.StrategicCommands.AdversaryBranchingPlans",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

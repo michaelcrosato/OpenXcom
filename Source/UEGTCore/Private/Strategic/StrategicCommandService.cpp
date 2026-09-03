@@ -1251,6 +1251,11 @@ namespace StrategicCommandServicePrivate
 		const int32 ToLongitude,
 		const int32 ToLatitude)
 	{
+		if (!AreValidCoordinates(FromLongitude, FromLatitude)
+			|| !AreValidCoordinates(ToLongitude, ToLatitude))
+		{
+			return MAX_int64;
+		}
 		const int64 LongitudeDelta = SignedWrappedLongitudeDelta(FromLongitude, ToLongitude);
 		const int64 LatitudeDelta = static_cast<int64>(ToLatitude) - FromLatitude;
 		const uint64 SquaredDistance = static_cast<uint64>(LongitudeDelta * LongitudeDelta + LatitudeDelta * LatitudeDelta);
