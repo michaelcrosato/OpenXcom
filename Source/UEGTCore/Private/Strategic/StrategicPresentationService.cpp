@@ -344,6 +344,12 @@ namespace StrategicPresentationPrivate
 		}
 	}
 
+	int32 SaturatingNonNegativeAdd(const int32 Current, const int32 Contribution)
+	{
+		const int64 Sum = static_cast<int64>(Current) + static_cast<int64>(Contribution);
+		return static_cast<int32>(FMath::Clamp<int64>(Sum, 0, MAX_int32));
+	}
+
 	int32 PersonnelCountForCategory(
 		const FCampaignState& Campaign,
 		const FResolvedRuleSet& Rules,
@@ -354,12 +360,16 @@ namespace StrategicPresentationPrivate
 		for (const FPersonnelState& Person : Campaign.Personnel)
 		{
 			const FPersonnelRoleRule* Role = Rules.PersonnelRoles.Find(Person.RoleId);
-			Count += Person.BaseId == BaseId && Role != nullptr && Role->Category == Category ? 1 : 0;
+			Count = SaturatingNonNegativeAdd(
+				Count,
+				Person.BaseId == BaseId && Role != nullptr && Role->Category == Category ? 1 : 0);
 		}
 		for (const FRecruitmentOrderState& Order : Campaign.RecruitmentOrders)
 		{
 			const FPersonnelRoleRule* Role = Rules.PersonnelRoles.Find(Order.RoleId);
-			Count += Order.BaseId == BaseId && Role != nullptr && Role->Category == Category ? 1 : 0;
+			Count = SaturatingNonNegativeAdd(
+				Count,
+				Order.BaseId == BaseId && Role != nullptr && Role->Category == Category ? 1 : 0);
 		}
 		return Count;
 	}
@@ -396,11 +406,11 @@ namespace StrategicPresentationPrivate
 		int32 Count = 0;
 		for (const FCraftState& Craft : Campaign.Craft)
 		{
-			Count += Craft.BaseId == BaseId ? 1 : 0;
+			Count = SaturatingNonNegativeAdd(Count, Craft.BaseId == BaseId ? 1 : 0);
 		}
 		for (const FCraftAcquisitionOrderState& Order : Campaign.CraftAcquisitionOrders)
 		{
-			Count += Order.BaseId == BaseId ? 1 : 0;
+			Count = SaturatingNonNegativeAdd(Count, Order.BaseId == BaseId ? 1 : 0);
 		}
 		return Count;
 	}
@@ -417,12 +427,6 @@ namespace StrategicPresentationPrivate
 		return Left <= 0 || Right <= 0 ? 0
 			: Left > MAX_int64 / Right ? MAX_int64
 			: Left * Right;
-	}
-
-	int32 SaturatingNonNegativeAdd(const int32 Current, const int32 Contribution)
-	{
-		const int64 Sum = static_cast<int64>(Current) + static_cast<int64>(Contribution);
-		return static_cast<int32>(FMath::Clamp<int64>(Sum, 0, MAX_int32));
 	}
 
 	int64 NonNegativeDifference(const int64 Left, const int64 Right)
@@ -3278,8 +3282,11 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			else
 			{
 				Capacity = Config.MaxGeneralPersonnelPerBase;
-				Occupied = PersonnelCountForCategory(Campaign, Rules, PrimaryBase->BaseId, EPersonnelRoleCategory::FieldAgent)
-					+ PersonnelCountForCategory(Campaign, Rules, PrimaryBase->BaseId, EPersonnelRoleCategory::Pilot);
+				Occupied = SaturatingNonNegativeAdd(
+					PersonnelCountForCategory(
+						Campaign, Rules, PrimaryBase->BaseId, EPersonnelRoleCategory::FieldAgent),
+					PersonnelCountForCategory(
+						Campaign, Rules, PrimaryBase->BaseId, EPersonnelRoleCategory::Pilot));
 			}
 		}
 		FinishOption(Option, Campaign, bHasBase, Occupied < Capacity,
