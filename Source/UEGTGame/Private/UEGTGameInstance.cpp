@@ -719,7 +719,7 @@ FStrategicCommandResult UUEGTGameInstance::DismissPersonnel(const FDismissPerson
 FStrategicCommandResult UUEGTGameInstance::ApplyPersonnelDamage(const FApplyPersonnelDamageCommand& Command)
 {
 	return bCampaignActive && bContentReady
-		? FStrategicCommandService::Execute(CampaignState, SimulationConfig, Command)
+		? FStrategicCommandService::Execute(CampaignState, LoadedRules, SimulationConfig, Command)
 		: MakeUnavailableCommandResult();
 }
 

@@ -14700,6 +14700,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 
 FStrategicCommandResult FStrategicCommandService::Execute(
 	FCampaignState& State,
+	const FResolvedRuleSet& Rules,
 	const FStrategicSimulationConfig& Config,
 	const FApplyPersonnelDamageCommand& Command)
 {
@@ -14764,6 +14765,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	const int32 AppliedDamage = FMath::Min(Command.Damage, Person->CurrentHealth);
 	if (Command.Damage >= Person->CurrentHealth)
 	{
+		if (!ValidatePersonnelEquipmentForMutation(*Person, Rules, Result))
+		{
+			return Result;
+		}
 		for (const FName ItemId : Person->EquippedItems)
 		{
 			if (!TryAdjustInventory(*Base, ItemId, 1))

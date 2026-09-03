@@ -4378,6 +4378,7 @@ public:
 
 	static FStrategicCommandResult Execute(
 		FCampaignState& State,
+		const FResolvedRuleSet& Rules,
 		const FStrategicSimulationConfig& Config,
 		const FApplyPersonnelDamageCommand& Command);
 

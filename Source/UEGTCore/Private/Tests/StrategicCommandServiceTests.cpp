@@ -1855,7 +1855,7 @@ bool FStrategicStorageCapacityTest::RunTest(const FString& Parameters)
 	Fatal.Damage = Casualty.CurrentHealth;
 	Fatal.CauseId = TEXT("cause.storage-test");
 	TestTrue(TEXT("Forced casualty returns remain lossless while over capacity"),
-		FStrategicCommandService::Execute(State, Config, Fatal).bAccepted);
+		FStrategicCommandService::Execute(State, Rules, Config, Fatal).bAccepted);
 	const FBaseStorageEvaluation AfterCasualty = FStrategicCommandService::EvaluateBaseStorage(State, Rules, TestBaseId);
 	TestEqual(TEXT("Returned casualty equipment increases visible overflow"), AfterCasualty.Overflow, int64(14));
 
@@ -8021,12 +8021,35 @@ bool FStrategicPersonnelCareTest::RunTest(const FString& Parameters)
 		&& OversizedPersonnelEquipmentState.Personnel[0].EquippedItems.Num() == 17
 		&& OversizedPersonnelEquipmentState.Bases[0].Inventory.IsEmpty());
 
+	FCampaignState InvalidDamageEquipmentState = MakeStateWithBase();
+	const FGuid InvalidDamageEquipmentPersonnelId(0xAB9, 0xAA0, 0xAA1, 0xAA2);
+	FPersonnelState& InvalidDamageEquipmentPerson = AddTestPersonnel(
+		InvalidDamageEquipmentState, InvalidDamageEquipmentPersonnelId);
+	InvalidDamageEquipmentPerson.EquippedItems.Add(TEXT("item.sky-lance"));
+	const int64 InvalidDamageEquipmentSequence = InvalidDamageEquipmentState.CommandSequence;
+	FApplyPersonnelDamageCommand InvalidDamageEquipmentCommand;
+	InvalidDamageEquipmentCommand.ExpectedSequence = InvalidDamageEquipmentSequence;
+	InvalidDamageEquipmentCommand.PersonnelId = InvalidDamageEquipmentPersonnelId;
+	InvalidDamageEquipmentCommand.Damage = InvalidDamageEquipmentPerson.CurrentHealth;
+	InvalidDamageEquipmentCommand.CauseId = TEXT("cause.field-loss");
+	const FStrategicCommandResult InvalidDamageEquipmentResult = FStrategicCommandService::Execute(
+		InvalidDamageEquipmentState, Rules, Config, InvalidDamageEquipmentCommand);
+	TestTrue(TEXT("Fatal personnel damage rejects malformed persisted equipment before refunding it"),
+		!InvalidDamageEquipmentResult.bAccepted
+		&& InvalidDamageEquipmentResult.HasDiagnostic(TEXT("invalid_personnel_equipment"))
+		&& InvalidDamageEquipmentState.CommandSequence == InvalidDamageEquipmentSequence
+		&& InvalidDamageEquipmentState.Personnel.Num() == 1
+		&& InvalidDamageEquipmentState.Personnel[0].EquippedItems.Num() == 1
+		&& InvalidDamageEquipmentState.Personnel[0].EquippedItems[0] == TEXT("item.sky-lance")
+		&& InvalidDamageEquipmentState.Memorial.IsEmpty()
+		&& InvalidDamageEquipmentState.Bases[0].Inventory.IsEmpty());
+
 	FApplyPersonnelDamageCommand Damage;
 	Damage.ExpectedSequence = State.CommandSequence;
 	Damage.PersonnelId = PersonnelId;
 	Damage.Damage = 1;
 	Damage.CauseId = TEXT("cause.training-accident");
-	const FStrategicCommandResult Injured = FStrategicCommandService::Execute(State, Config, Damage);
+	const FStrategicCommandResult Injured = FStrategicCommandService::Execute(State, Rules, Config, Damage);
 	TestTrue(TEXT("Nonfatal damage commits"), Injured.bAccepted);
 	TestTrue(TEXT("Injury requests a decision pause"), Injured.bDecisionPause);
 	TestTrue(TEXT("Injury emits an event"), Injured.HasEvent(EStrategicEventType::PersonnelInjured));
@@ -8127,7 +8150,7 @@ bool FStrategicPersonnelCareTest::RunTest(const FString& Parameters)
 	Fatal.PersonnelId = PersonnelId;
 	Fatal.Damage = 1000;
 	Fatal.CauseId = TEXT("cause.field-loss");
-	const FStrategicCommandResult Died = FStrategicCommandService::Execute(State, Config, Fatal);
+	const FStrategicCommandResult Died = FStrategicCommandService::Execute(State, Rules, Config, Fatal);
 	TestTrue(TEXT("Fatal damage commits"), Died.bAccepted);
 	TestTrue(TEXT("Death emits an event"), Died.HasEvent(EStrategicEventType::PersonnelDied));
 	TestTrue(TEXT("Dead personnel leaves the roster"), State.Personnel.IsEmpty());
@@ -8168,7 +8191,7 @@ bool FStrategicPersonnelReturnPathTest::RunTest(const FString& Parameters)
 	Damage.PersonnelId = PersonnelId;
 	Damage.Damage = 10;
 	Damage.CauseId = TEXT("cause.field-injury");
-	const FStrategicCommandResult Injured = FStrategicCommandService::Execute(Pending, Config, Damage);
+	const FStrategicCommandResult Injured = FStrategicCommandService::Execute(Pending, Rules, Config, Damage);
 	TestTrue(TEXT("Return Path fixture creates a ten-health recovery decision"),
 		Injured.bAccepted && Injured.bDecisionPause && Pending.Personnel.Num() == 1
 		&& Pending.Personnel[0].Status == EPersonnelStatus::Recovering
@@ -8186,7 +8209,7 @@ bool FStrategicPersonnelReturnPathTest::RunTest(const FString& Parameters)
 	ExtremeDamageCommand.Damage = 1;
 	ExtremeDamageCommand.CauseId = TEXT("cause.field-injury");
 	const FStrategicCommandResult ExtremeDamageResult = FStrategicCommandService::Execute(
-		ExtremeDamage, Config, ExtremeDamageCommand);
+		ExtremeDamage, Rules, Config, ExtremeDamageCommand);
 	TestTrue(TEXT("Personnel damage rejects a non-positive health state before fatality bookkeeping"),
 		!ExtremeDamageResult.bAccepted
 		&& ExtremeDamageResult.HasDiagnostic(TEXT("invalid_personnel_state"))
@@ -8437,7 +8460,7 @@ bool FStrategicPersonnelStewardshipTest::RunTest(const FString& Parameters)
 	Damage.Damage = 10;
 	Damage.CauseId = TEXT("cause.field-injury");
 	TestTrue(TEXT("Recovery fixture injury is accepted"),
-		FStrategicCommandService::Execute(Recovery, Config, Damage).bAccepted);
+		FStrategicCommandService::Execute(Recovery, Rules, Config, Damage).bAccepted);
 	const FPersonnelRecoveryPlanView RecoveryPlan = FPersonnelRecoveryPlan::Evaluate(
 		Recovery, Config, ColleagueId);
 	TestTrue(TEXT("Recovery Advocacy exposes the exact discounted Surge Care reserve"),
@@ -9057,7 +9080,7 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 	PilotInjury.PersonnelId = PilotId;
 	PilotInjury.Damage = 1;
 	PilotInjury.CauseId = TEXT("cause.sortie-injury");
-	const FStrategicCommandResult Emergency = FStrategicCommandService::Execute(State, Config, PilotInjury);
+	const FStrategicCommandResult Emergency = FStrategicCommandService::Execute(State, Rules, Config, PilotInjury);
 	TestTrue(TEXT("Airborne pilot injury commits transactionally"), Emergency.bAccepted);
 	TestTrue(TEXT("Pilot injury emits an emergency craft recovery"), Emergency.HasEvent(EStrategicEventType::CraftRecovered));
 	TestTrue(TEXT("Emergency-recovered craft becomes grounded"), State.Craft[0].Status == ECraftStatus::Grounded);
@@ -24261,7 +24284,8 @@ bool FStrategicPersonnelProgressionTest::RunTest(const FString& Parameters)
 	Fatal.PersonnelId = MemorialPersonnelId;
 	Fatal.Damage = MemorialCandidate.CurrentHealth;
 	Fatal.CauseId = TEXT("cause.progression-test");
-	const FStrategicCommandResult FatalResult = FStrategicCommandService::Execute(MemorialState, Config, Fatal);
+	const FStrategicCommandResult FatalResult = FStrategicCommandService::Execute(
+		MemorialState, Rules, Config, Fatal);
 	TestTrue(TEXT("Fatal personnel loss retains doctrine and commendation service history"),
 		FatalResult.bAccepted && MemorialState.Personnel.IsEmpty() && MemorialState.Memorial.Num() == 1
 		&& MemorialState.Memorial[0].DoctrineSelections.Num() == 2
