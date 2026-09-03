@@ -4076,6 +4076,12 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules);
 
+	/** Read-only validation that a strategic time slice cannot overflow a returning craft's sortie counter. */
+	static FStrategicCommandResult ValidateStrategicTimeAdvanceCraftCapacity(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		int64 RequestedSeconds);
+
 	/** Read-only validation of persisted personnel, recruitment, memorial, and squad-bond state. */
 	static FStrategicCommandResult ValidateStrategicPersonnelState(
 		const FCampaignState& State,

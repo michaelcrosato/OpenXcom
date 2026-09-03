@@ -1283,6 +1283,26 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	if (CraftStateValidation.bAccepted)
+	{
+		const FStrategicCommandResult CraftCapacityValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceCraftCapacity(
+				Campaign, Rules, FStrategicClock::GetAdvanceForRate(EStrategicTimeRate::OneDay).GetTicks()
+					/ ETimespan::TicksPerSecond);
+		if (!CraftCapacityValidation.bAccepted)
+		{
+			Snapshot.bCanAdvanceTime = false;
+			if (!CraftCapacityValidation.Diagnostics.IsEmpty())
+			{
+				const FString& Diagnostic = CraftCapacityValidation.Diagnostics[0].Message;
+				if (!Snapshot.Diagnostics.ContainsByPredicate(
+					[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+				{
+					Snapshot.Diagnostics.Add(Diagnostic);
+				}
+			}
+		}
+	}
 	const FStrategicCommandResult StrategicContactStateValidation =
 		FStrategicCommandService::ValidateStrategicContactState(Campaign, Rules);
 	if (!StrategicContactStateValidation.bAccepted)

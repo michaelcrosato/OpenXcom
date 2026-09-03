@@ -9832,6 +9832,41 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 		&& InvalidSortie.Craft[0].Status == ECraftStatus::Airborne
 		&& InvalidSortie.Craft[0].CompletedSorties == MIN_int32);
 
+	FCampaignState InvalidReturningCapacityState = MakeStateWithBase();
+	AddTestFlightDeck(InvalidReturningCapacityState);
+	const FGuid InvalidReturningPilotId(0x6B9, 0x6BA, 0x6BB, 0x6BC);
+	const FGuid InvalidReturningCraftId(0x6BD, 0x6BE, 0x6BF, 0x6C0);
+	FPersonnelState& InvalidReturningPilot = AddTestPilot(
+		InvalidReturningCapacityState, InvalidReturningPilotId);
+	InvalidReturningPilot.Status = EPersonnelStatus::Deployed;
+	FCraftState& InvalidReturningCraft = AddTestCraft(
+		InvalidReturningCapacityState, InvalidReturningCraftId);
+	InvalidReturningCraft.AssignedPilotId = InvalidReturningPilotId;
+	InvalidReturningCraft.Status = ECraftStatus::Returning;
+	InvalidReturningCraft.RemainingRouteSeconds = 5;
+	InvalidReturningCraft.ReservedReturnSeconds = 5;
+	InvalidReturningCraft.CompletedSorties = MAX_int32;
+	const FStrategicCommandResult ReturningCapacityValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceCraftCapacity(
+			InvalidReturningCapacityState, Rules, 86400);
+	TestTrue(TEXT("Craft time-capacity validation rejects a returning craft at the sortie limit"),
+		!ReturningCapacityValidation.bAccepted
+		&& ReturningCapacityValidation.HasDiagnostic(TEXT("simulation_overflow")));
+	const int64 InvalidReturningCapacitySequence = InvalidReturningCapacityState.CommandSequence;
+	FAdvanceStrategicTimeCommand InvalidReturningCapacityAdvance;
+	InvalidReturningCapacityAdvance.ExpectedSequence = InvalidReturningCapacitySequence;
+	InvalidReturningCapacityAdvance.Rate = EStrategicTimeRate::OneDay;
+	const FStrategicCommandResult InvalidReturningCapacityResult = FStrategicCommandService::Execute(
+		InvalidReturningCapacityState, Rules, MakeConfig(), InvalidReturningCapacityAdvance);
+	TestTrue(TEXT("Time advancement rejects sortie-counter overflow before landing a returning craft"),
+		!InvalidReturningCapacityResult.bAccepted
+		&& InvalidReturningCapacityResult.HasDiagnostic(TEXT("simulation_overflow"))
+		&& InvalidReturningCapacityState.CommandSequence == InvalidReturningCapacitySequence
+		&& InvalidReturningCapacityState.Craft.Num() == 1
+		&& InvalidReturningCapacityState.Craft[0].Status == ECraftStatus::Returning
+		&& InvalidReturningCapacityState.Craft[0].CompletedSorties == MAX_int32
+		&& InvalidReturningPilot.Status == EPersonnelStatus::Deployed);
+
 	FCampaignState DuplicateWeaponState = MakeStateWithBase();
 	const FGuid DuplicateWeaponCraftId(0x689, 0x68a, 0x68b, 0x68c);
 	FCraftState& DuplicateWeaponCraft = AddTestCraft(DuplicateWeaponState, DuplicateWeaponCraftId);

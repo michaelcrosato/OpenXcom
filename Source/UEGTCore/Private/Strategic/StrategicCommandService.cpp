@@ -6016,6 +6016,25 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateStrategicCraftCapacity(
+		const FCampaignState& State,
+		const int64 RequestedSeconds,
+		FStrategicCommandResult& Result)
+	{
+		for (const FCraftState& Craft : State.Craft)
+		{
+			if (Craft.Status == ECraftStatus::Returning
+				&& Craft.RemainingRouteSeconds <= RequestedSeconds
+				&& Craft.CompletedSorties == MAX_int32)
+			{
+				AddError(Result, TEXT("simulation_overflow"),
+					TEXT("Strategic simulation exceeded a persisted numeric range."));
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool ValidateStrategicRandomCapacity(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -7664,6 +7683,29 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicCraftState(
 
 	FStrategicCommandResult Result;
 	if (!ValidateCraftState(State, Rules, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceCraftCapacity(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules,
+	const int64 RequestedSeconds)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (RequestedSeconds <= 0)
+	{
+		AddError(Result, TEXT("invalid_time_advance"),
+			TEXT("Craft-capacity validation requires a positive strategic time slice."));
+		return Result;
+	}
+	if (!ValidateCraftState(State, Rules, Result)
+		|| !ValidateStrategicCraftCapacity(State, RequestedSeconds, Result))
 	{
 		return Result;
 	}
@@ -11753,6 +11795,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	if (!ValidateCraftState(State, Rules, Result))
+	{
+		return Result;
+	}
+	if (!ValidateStrategicCraftCapacity(State, RequestedSeconds, Result))
 	{
 		return Result;
 	}

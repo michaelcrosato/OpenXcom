@@ -1110,6 +1110,57 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidManufacturingOutputSnapshot.bCanAdvanceTime
 		&& InvalidManufacturingOutputSnapshot.Diagnostics.Contains(
 			TEXT("Strategic simulation exceeded a persisted numeric range.")));
+	FResolvedRuleSet InvalidCraftRules = Rules;
+	FPersonnelRoleRule PresentationPilot;
+	PresentationPilot.Identity.RuleId = TEXT("role.presentation-pilot");
+	PresentationPilot.DisplayName = TEXT("Presentation Pilot");
+	PresentationPilot.Category = EPersonnelRoleCategory::Pilot;
+	PresentationPilot.MonthlySalary = 1;
+	PresentationPilot.BaseHealth = 50;
+	PresentationPilot.BaseAccuracy = 55;
+	PresentationPilot.BaseResolve = 60;
+	PresentationPilot.BaseMobility = 50;
+	PresentationPilot.BaseStrength = 45;
+	InvalidCraftRules.PersonnelRoles.Add(
+		PresentationPilot.Identity.RuleId, PresentationPilot);
+	FCampaignState InvalidReturningCapacityCampaign = InvalidFinancialCampaign;
+	InvalidReturningCapacityCampaign.SimulationRandom.Initialize(0);
+	InvalidReturningCapacityCampaign.MonthlyFunding = 100;
+	FPersonnelState& ReturningPilot =
+		InvalidReturningCapacityCampaign.Personnel.AddDefaulted_GetRef();
+	ReturningPilot.PersonnelId = FGuid(921, 922, 923, 924);
+	ReturningPilot.BaseId = BaseId;
+	ReturningPilot.DisplayName = TEXT("Returning Pilot");
+	ReturningPilot.RoleId = PresentationPilot.Identity.RuleId;
+	ReturningPilot.MaxHealth = 50;
+	ReturningPilot.CurrentHealth = 50;
+	ReturningPilot.Status = EPersonnelStatus::Deployed;
+	ReturningPilot.Rank = 1;
+	ReturningPilot.Accuracy = 55;
+	ReturningPilot.Resolve = 60;
+	ReturningPilot.Mobility = 50;
+	ReturningPilot.Strength = 45;
+	FCraftState& ReturningCraft =
+		InvalidReturningCapacityCampaign.Craft.AddDefaulted_GetRef();
+	ReturningCraft.CraftId = FGuid(925, 926, 927, 928);
+	ReturningCraft.BaseId = BaseId;
+	ReturningCraft.DisplayName = TEXT("Returning Relay");
+	ReturningCraft.CraftRuleId = CraftRule.Identity.RuleId;
+	ReturningCraft.CurrentHull = CraftRule.MaxHull;
+	ReturningCraft.CurrentFuel = CraftRule.FuelCapacity;
+	ReturningCraft.AssignedPilotId = ReturningPilot.PersonnelId;
+	ReturningCraft.Status = ECraftStatus::Returning;
+	ReturningCraft.RemainingRouteSeconds = 5;
+	ReturningCraft.ReservedReturnSeconds = 5;
+	ReturningCraft.CompletedSorties = MAX_int32;
+	const FStrategicDashboardSnapshot InvalidReturningCapacitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidReturningCapacityCampaign, InvalidCraftRules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement before a returning craft overflows its sortie counter"),
+		InvalidReturningCapacitySnapshot.bSucceeded
+		&& !InvalidReturningCapacitySnapshot.bCanAdvanceTime
+		&& InvalidReturningCapacitySnapshot.Diagnostics.Contains(
+			TEXT("Strategic simulation exceeded a persisted numeric range.")));
 	FCampaignState InvalidNoBaseLayoutCampaign = InvalidFinancialCampaign;
 	InvalidNoBaseLayoutCampaign.SimulationRandom.Initialize(0);
 	InvalidNoBaseLayoutCampaign.Bases.Reset();
