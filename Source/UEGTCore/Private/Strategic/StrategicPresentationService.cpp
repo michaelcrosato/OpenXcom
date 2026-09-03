@@ -1460,7 +1460,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		{
 			FStrategicInventoryView& Item = View.Inventory.AddDefaulted_GetRef();
 			Item.ItemId = Stack.ItemId;
-			Item.Quantity = Stack.Quantity;
+			Item.Quantity = FMath::Max(0, Stack.Quantity);
 			const FItemRule* Rule = Rules.Items.Find(Stack.ItemId);
 			Item.DisplayName = Rule != nullptr ? RuleName(Rule->DisplayName, Stack.ItemId) : HumanizeId(Stack.ItemId);
 			Item.UnitSellValue = Rule != nullptr ? FMath::Max(0, Rule->SellValue) : 0;
@@ -2342,7 +2342,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		{
 			FStrategicCraftSalvageView& Salvage = View.PendingSalvage.AddDefaulted_GetRef();
 			Salvage.ItemId = Stack.ItemId;
-			Salvage.Quantity = Stack.Quantity;
+			Salvage.Quantity = FMath::Max(0, Stack.Quantity);
 			if (const FItemRule* Item = Rules.Items.Find(Stack.ItemId))
 			{
 				Salvage.DisplayName = RuleName(Item->DisplayName, Stack.ItemId);

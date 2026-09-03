@@ -2055,6 +2055,8 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	NegativeProjectCampaign.ManufacturingProjects[0].AssignedEngineers = -4;
 	NegativeProjectCampaign.ManufacturingProjects[0].UnitsRemaining = -3;
 	NegativeProjectCampaign.FacilityConstructionProjects[0].RemainingBuildSeconds = -2;
+	NegativeProjectCampaign.Bases[0].Inventory[0].Quantity = -7;
+	NegativeProjectCampaign.Craft[0].PendingSalvage[0].Quantity = -6;
 	const FStrategicDashboardSnapshot NegativeProjectSnapshot =
 		FStrategicPresentationService::BuildDashboard(
 			NegativeProjectCampaign, Rules, Config);
@@ -2080,6 +2082,20 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 				return Facility.bConstructing;
 			})
 		: nullptr;
+	const FStrategicInventoryView* NegativeInventoryView = NegativeProjectSnapshot.Bases.Num() > 0
+		? NegativeProjectSnapshot.Bases[0].Inventory.FindByPredicate(
+			[&Manufactured](const FStrategicInventoryView& Item)
+			{
+				return Item.ItemId == Manufactured.Identity.RuleId;
+			})
+		: nullptr;
+	const FStrategicCraftSalvageView* NegativeSalvageView = NegativeProjectSnapshot.Craft.Num() > 0
+		? NegativeProjectSnapshot.Craft[0].PendingSalvage.FindByPredicate(
+			[&RecoveredMaterial](const FStrategicCraftSalvageView& Salvage)
+			{
+				return Salvage.ItemId == RecoveredMaterial.Identity.RuleId;
+			})
+		: nullptr;
 	TestTrue(TEXT("Dashboard clamps negative persisted project values without mutating campaign state"),
 		NegativeProjectSnapshot.bSucceeded
 		&& NegativeResearchView != nullptr
@@ -2093,10 +2109,16 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& NegativeConstructionView->RemainingSeconds == 0
 		&& NegativeConstructionFacility != nullptr
 		&& NegativeConstructionFacility->RemainingBuildSeconds == 0
+		&& NegativeInventoryView != nullptr
+		&& NegativeInventoryView->Quantity == 0
+		&& NegativeSalvageView != nullptr
+		&& NegativeSalvageView->Quantity == 0
 		&& NegativeProjectCampaign.ResearchProjects[0].AssignedScientists == -5
 		&& NegativeProjectCampaign.ManufacturingProjects[0].AssignedEngineers == -4
 		&& NegativeProjectCampaign.ManufacturingProjects[0].UnitsRemaining == -3
-		&& NegativeProjectCampaign.FacilityConstructionProjects[0].RemainingBuildSeconds == -2);
+		&& NegativeProjectCampaign.FacilityConstructionProjects[0].RemainingBuildSeconds == -2
+		&& NegativeProjectCampaign.Bases[0].Inventory[0].Quantity == -7
+		&& NegativeProjectCampaign.Craft[0].PendingSalvage[0].Quantity == -6);
 	TestTrue(TEXT("Construction view exposes its progress-based cancellation refund"),
 		Snapshot.Projects[2].Type == EStrategicProjectType::Construction
 		&& Snapshot.Projects[2].CancellationRefund == 56);
