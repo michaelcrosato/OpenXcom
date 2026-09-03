@@ -9175,6 +9175,33 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 		&& InvalidFuelLaunchState.Craft[0].CurrentFuel == 501
 		&& InvalidFuelPilot.Status == EPersonnelStatus::Available);
 
+	FCampaignState InvalidCargoLaunchState = MakeStateWithBase();
+	AddTestFlightDeck(InvalidCargoLaunchState);
+	const FGuid InvalidCargoLaunchPilotId(0x6A9, 0x6AA, 0x6AB, 0x6AC);
+	const FGuid InvalidCargoLaunchCraftId(0x6AD, 0x6AE, 0x6AF, 0x6B0);
+	FPersonnelState& InvalidCargoLaunchPilot = AddTestPilot(
+		InvalidCargoLaunchState, InvalidCargoLaunchPilotId);
+	FCraftState& InvalidCargoLaunchCraft = AddTestCraft(
+		InvalidCargoLaunchState, InvalidCargoLaunchCraftId);
+	InvalidCargoLaunchCraft.AssignedPilotId = InvalidCargoLaunchPilotId;
+	InvalidCargoLaunchCraft.Cargo.Add({ TEXT("item.service-rifle"), 1 });
+	const int64 InvalidCargoLaunchSequence = InvalidCargoLaunchState.CommandSequence;
+	FLaunchCraftCommand InvalidCargoLaunch;
+	InvalidCargoLaunch.ExpectedSequence = InvalidCargoLaunchSequence;
+	InvalidCargoLaunch.CraftId = InvalidCargoLaunchCraftId;
+	InvalidCargoLaunch.FuelUnits = 50;
+	const FStrategicCommandResult InvalidCargoLaunchResult = FStrategicCommandService::Execute(
+		InvalidCargoLaunchState, Rules, InvalidCargoLaunch);
+	TestTrue(TEXT("Craft launch rejects malformed persisted cargo atomically"),
+		!InvalidCargoLaunchResult.bAccepted
+		&& InvalidCargoLaunchResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidCargoLaunchState.CommandSequence == InvalidCargoLaunchSequence
+		&& InvalidCargoLaunchState.Craft.Num() == 1
+		&& InvalidCargoLaunchState.Craft[0].Status == ECraftStatus::Grounded
+		&& InvalidCargoLaunchState.Craft[0].CurrentFuel == 500
+		&& InvalidCargoLaunchState.Craft[0].Cargo.Num() == 1
+		&& InvalidCargoLaunchPilot.Status == EPersonnelStatus::Available);
+
 	FLaunchCraftCommand Launch;
 	Launch.ExpectedSequence = State.CommandSequence;
 	Launch.CraftId = CraftId;
@@ -9232,6 +9259,34 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Recovered craft becomes grounded"), State.Craft[0].Status == ECraftStatus::Grounded);
 	TestTrue(TEXT("Recovered pilot becomes available"), State.Personnel[0].Status == EPersonnelStatus::Available);
 	TestEqual(TEXT("Completed sortie count increments"), State.Craft[0].CompletedSorties, 1);
+
+	FCampaignState InvalidRecoveryState = MakeStateWithBase();
+	AddTestFlightDeck(InvalidRecoveryState);
+	const FGuid InvalidRecoveryPilotId(0x6B1, 0x6B2, 0x6B3, 0x6B4);
+	const FGuid InvalidRecoveryCraftId(0x6B5, 0x6B6, 0x6B7, 0x6B8);
+	FPersonnelState& InvalidRecoveryPilot = AddTestPilot(
+		InvalidRecoveryState, InvalidRecoveryPilotId);
+	InvalidRecoveryPilot.Status = EPersonnelStatus::Deployed;
+	FCraftState& InvalidRecoveryCraft = AddTestCraft(
+		InvalidRecoveryState, InvalidRecoveryCraftId);
+	InvalidRecoveryCraft.AssignedPilotId = InvalidRecoveryPilotId;
+	InvalidRecoveryCraft.Status = ECraftStatus::Airborne;
+	InvalidRecoveryCraft.CurrentFuel = 501;
+	const int64 InvalidRecoverySequence = InvalidRecoveryState.CommandSequence;
+	FRecoverCraftCommand InvalidRecovery;
+	InvalidRecovery.ExpectedSequence = InvalidRecoverySequence;
+	InvalidRecovery.CraftId = InvalidRecoveryCraftId;
+	const FStrategicCommandResult InvalidRecoveryResult = FStrategicCommandService::Execute(
+		InvalidRecoveryState, Rules, InvalidRecovery);
+	TestTrue(TEXT("Craft recovery rejects malformed persisted fuel atomically"),
+		!InvalidRecoveryResult.bAccepted
+		&& InvalidRecoveryResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidRecoveryState.CommandSequence == InvalidRecoverySequence
+		&& InvalidRecoveryState.Craft.Num() == 1
+		&& InvalidRecoveryState.Craft[0].Status == ECraftStatus::Airborne
+		&& InvalidRecoveryState.Craft[0].CompletedSorties == 0
+		&& InvalidRecoveryState.Craft[0].CurrentFuel == 501
+		&& InvalidRecoveryPilot.Status == EPersonnelStatus::Deployed);
 
 	FCampaignState InvalidSortie = MakeStateWithBase();
 	AddTestFlightDeck(InvalidSortie);
@@ -15164,6 +15219,28 @@ bool FStrategicTransportLogisticsTest::RunTest(const FString& Parameters)
 	SetRoster.ExpectedSequence = State.CommandSequence;
 	SetRoster.CraftId = FirstCraftId;
 	SetRoster.PersonnelIds = { SecondAgentId, FirstAgentId };
+	FCampaignState InvalidRosterState = State;
+	FCraftState* InvalidRosterCraft = InvalidRosterState.Craft.FindByPredicate(
+		[&FirstCraftId](const FCraftState& Craft) { return Craft.CraftId == FirstCraftId; });
+	TestNotNull(TEXT("Malformed roster fixture contains the target craft"), InvalidRosterCraft);
+	if (InvalidRosterCraft != nullptr)
+	{
+		InvalidRosterCraft->CurrentHull = 0;
+		const int64 InvalidRosterSequence = InvalidRosterState.CommandSequence;
+		FSetCraftAgentsCommand InvalidRoster = SetRoster;
+		InvalidRoster.ExpectedSequence = InvalidRosterSequence;
+		const FStrategicCommandResult InvalidRosterResult = FStrategicCommandService::Execute(
+			InvalidRosterState, Rules, InvalidRoster);
+		TestTrue(TEXT("Craft roster rejects malformed persisted hull atomically"),
+			!InvalidRosterResult.bAccepted
+			&& InvalidRosterResult.HasDiagnostic(TEXT("invalid_craft_state"))
+			&& InvalidRosterState.CommandSequence == InvalidRosterSequence
+			&& InvalidRosterCraft->AssignedAgentIds.IsEmpty()
+			&& InvalidRosterCraft->CurrentHull == 0
+			&& InvalidRosterState.Personnel[0].Status == EPersonnelStatus::Available
+			&& InvalidRosterState.Personnel[1].Status == EPersonnelStatus::Available);
+	}
+
 	const FStrategicCommandResult RosterSet = FStrategicCommandService::Execute(State, Rules, SetRoster);
 	TestTrue(TEXT("Available field agents join grounded transport"), RosterSet.bAccepted);
 	TestTrue(TEXT("Roster change emits typed event"), RosterSet.HasEvent(EStrategicEventType::CraftAgentsChanged));
@@ -15200,6 +15277,30 @@ bool FStrategicTransportLogisticsTest::RunTest(const FString& Parameters)
 	FInventoryStack& LoadStack = LoadCargo.Cargo.AddDefaulted_GetRef();
 	LoadStack.ItemId = TEXT("item.service-rifle");
 	LoadStack.Quantity = 4;
+	FCampaignState InvalidCargoState = State;
+	FCraftState* InvalidCargoCraft = InvalidCargoState.Craft.FindByPredicate(
+		[&FirstCraftId](const FCraftState& Craft) { return Craft.CraftId == FirstCraftId; });
+	FInventoryStack* InvalidCargoInventory = InvalidCargoState.Bases[0].Inventory.FindByPredicate(
+		[](const FInventoryStack& Stack) { return Stack.ItemId == FName(TEXT("item.service-rifle")); });
+	TestNotNull(TEXT("Malformed cargo fixture contains the target craft"), InvalidCargoCraft);
+	TestNotNull(TEXT("Malformed cargo fixture contains stored inventory"), InvalidCargoInventory);
+	if (InvalidCargoCraft != nullptr && InvalidCargoInventory != nullptr)
+	{
+		InvalidCargoCraft->CurrentFuel = 1601;
+		const int64 InvalidCargoSequence = InvalidCargoState.CommandSequence;
+		FSetCraftCargoCommand InvalidCargo = LoadCargo;
+		InvalidCargo.ExpectedSequence = InvalidCargoSequence;
+		const FStrategicCommandResult InvalidCargoResult = FStrategicCommandService::Execute(
+			InvalidCargoState, Rules, InvalidCargo);
+		TestTrue(TEXT("Craft cargo rejects malformed persisted fuel atomically"),
+			!InvalidCargoResult.bAccepted
+			&& InvalidCargoResult.HasDiagnostic(TEXT("invalid_craft_state"))
+			&& InvalidCargoState.CommandSequence == InvalidCargoSequence
+			&& InvalidCargoCraft->Cargo.IsEmpty()
+			&& InvalidCargoCraft->CurrentFuel == 1601
+			&& InvalidCargoInventory->Quantity == 10);
+	}
+
 	const FStrategicCommandResult Loaded = FStrategicCommandService::Execute(State, Rules, LoadCargo);
 	TestTrue(TEXT("Inventory-backed cargo loads transactionally"), Loaded.bAccepted);
 	TestTrue(TEXT("Cargo change emits typed event"), Loaded.HasEvent(EStrategicEventType::CraftCargoChanged));

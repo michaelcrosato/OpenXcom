@@ -16253,6 +16253,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	{
 		FindPersonnel(Transaction, AgentId)->Status = EPersonnelStatus::Deployed;
 	}
+	if (!ValidateCraftState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	const FGuid BaseId = Craft->BaseId;
 	const FGuid PilotId = Pilot->PersonnelId;
 	const FName CraftRuleId = Craft->CraftRuleId;
@@ -16339,6 +16343,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 				Contact->Status = EStrategicContactStatus::Detected;
 			}
 		}
+		if (!ValidateCraftState(Transaction, Rules, Result))
+		{
+			return Result;
+		}
 		++Transaction.CommandSequence;
 		FStrategicEvent& Event = AddEvent(Result, EStrategicEventType::CraftReturnStarted, Transaction.CommandSequence, Transaction.StrategicTime.Utc);
 		Event.BaseId = BaseId;
@@ -16365,6 +16373,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			return Result;
 		}
 		Agent->Status = EPersonnelStatus::Available;
+	}
+	if (!ValidateCraftState(Transaction, Rules, Result))
+	{
+		return Result;
 	}
 	const int32 Sorties = Craft->CompletedSorties;
 	++Transaction.CommandSequence;
@@ -16455,6 +16467,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	FCraftState* Craft = FindCraft(Transaction, Command.CraftId);
 	check(Craft != nullptr);
 	Craft->AssignedAgentIds = Command.PersonnelIds;
+	if (!ValidateCraftState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	SortStateCollections(Transaction);
 	++Transaction.CommandSequence;
 	FStrategicEvent& Event = AddEvent(Result, EStrategicEventType::CraftAgentsChanged, Transaction.CommandSequence, Transaction.StrategicTime.Utc);
@@ -16561,6 +16577,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		}
 	}
 	Craft->Cargo = Command.Cargo;
+	if (!ValidateCraftState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	int64 TotalUnits = 0;
 	for (const FInventoryStack& Stack : Craft->Cargo)
 	{
