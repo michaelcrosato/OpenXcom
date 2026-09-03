@@ -16411,6 +16411,15 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Craft references a missing home base."));
 		return Result;
 	}
+	int64 ExistingCargoMass = 0;
+	if (Craft->Cargo.Num() > 64
+		|| !TryComputeCargoMass(Craft->Cargo, Rules, ExistingCargoMass)
+		|| ExistingCargoMass > CraftRule->CargoCapacity)
+	{
+		AddError(Result, TEXT("invalid_craft_cargo"),
+			TEXT("Craft has invalid persisted cargo that cannot be returned to base inventory."));
+		return Result;
+	}
 	TMap<FName, int64> InventoryDeltas;
 	for (const FInventoryStack& Stack : Craft->Cargo)
 	{

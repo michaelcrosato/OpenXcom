@@ -8973,6 +8973,25 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 		&& DuplicateWeaponState.Bases[0].Inventory.Num() == 1
 		&& DuplicateWeaponState.Bases[0].Inventory[0].Quantity == 5);
 
+	FCampaignState NegativeCargoState = MakeStateWithBase();
+	const FGuid NegativeCargoCraftId(0x68d, 0x68e, 0x68f, 0x690);
+	FCraftState& NegativeCargoCraft = AddTestCraft(NegativeCargoState, NegativeCargoCraftId);
+	NegativeCargoCraft.Cargo.Add({ TEXT("item.service-rifle"), -1 });
+	const int64 NegativeCargoSequence = NegativeCargoState.CommandSequence;
+	FSetCraftCargoCommand ClearNegativeCargo;
+	ClearNegativeCargo.ExpectedSequence = NegativeCargoState.CommandSequence;
+	ClearNegativeCargo.CraftId = NegativeCargoCraftId;
+	const FStrategicCommandResult NegativeCargoResult = FStrategicCommandService::Execute(
+		NegativeCargoState, Rules, ClearNegativeCargo);
+	TestTrue(TEXT("Craft cargo changes reject negative persisted quantities before refunding inventory"),
+		!NegativeCargoResult.bAccepted
+		&& NegativeCargoResult.HasDiagnostic(TEXT("invalid_craft_cargo"))
+		&& NegativeCargoState.CommandSequence == NegativeCargoSequence
+		&& NegativeCargoState.Craft.Num() == 1
+		&& NegativeCargoState.Craft[0].Cargo.Num() == 1
+		&& NegativeCargoState.Craft[0].Cargo[0].Quantity == -1
+		&& NegativeCargoState.Bases[0].Inventory.IsEmpty());
+
 	return true;
 }
 
