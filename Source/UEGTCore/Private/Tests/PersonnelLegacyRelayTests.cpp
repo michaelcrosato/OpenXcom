@@ -160,6 +160,35 @@ bool FPersonnelLegacyRelayEvaluationTest::RunTest(const FString& Parameters)
 		&& Dormant.StrengthBonus == 2
 		&& Dormant.RecipientCount == 0
 		&& Dormant.RecipientIds.IsEmpty());
+
+	FPersonnelDoctrineRule Extreme;
+	Extreme.Identity.RuleId = TEXT("doctrine.extreme");
+	Extreme.DisplayName = TEXT("Extreme");
+	Extreme.MaxSelections = 3;
+	Extreme.AccuracyBonus = MAX_int32;
+	Extreme.ResolveBonus = MAX_int32;
+	Extreme.MobilityBonus = MAX_int32;
+	Extreme.StrengthBonus = MAX_int32;
+	FResolvedRuleSet ExtremeRules;
+	ExtremeRules.PersonnelDoctrines.Add(Extreme.Identity.RuleId, Extreme);
+	FCampaignState ExtremeCampaign;
+	const FGuid ExtremeSpecialistId(100, 1, 1, 1);
+	const FGuid ExtremeRecipientId(101, 1, 1, 1);
+	AddPerson(ExtremeCampaign, ExtremeSpecialistId, TEXT("Extreme Specialist"), 25,
+		{ Extreme.Identity.RuleId, Extreme.Identity.RuleId, Extreme.Identity.RuleId });
+	AddPerson(ExtremeCampaign, ExtremeRecipientId, TEXT("Extreme Recipient"), 1, {});
+	const FPersonnelLegacyRelayView ExtremeRelay = FPersonnelLegacyRelay::Evaluate(
+		ExtremeCampaign, ExtremeRules, { ExtremeSpecialistId, ExtremeRecipientId });
+	const int32 ExpectedExtremeBonus = 1073741824;
+	TestTrue(TEXT("Legacy Relay widens rounded doctrine bonuses and aggregate scoring at int32 maximum"),
+		ExtremeRelay.bHasSpecialist && ExtremeRelay.bActive
+		&& ExtremeRelay.SpecialistId == ExtremeSpecialistId
+		&& ExtremeRelay.DoctrineId == Extreme.Identity.RuleId
+		&& ExtremeRelay.AccuracyBonus == ExpectedExtremeBonus
+		&& ExtremeRelay.ResolveBonus == ExpectedExtremeBonus
+		&& ExtremeRelay.MobilityBonus == ExpectedExtremeBonus
+		&& ExtremeRelay.StrengthBonus == ExpectedExtremeBonus
+		&& ExtremeRelay.RecipientIds == TArray<FGuid>{ ExtremeRecipientId });
 	return true;
 }
 

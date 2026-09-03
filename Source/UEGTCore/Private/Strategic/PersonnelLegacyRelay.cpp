@@ -32,7 +32,7 @@ namespace PersonnelLegacyRelayPrivate
 
 	int32 SharedBonus(const int32 AuthoredBonus)
 	{
-		return FMath::DivideAndRoundUp(FMath::Max(0, AuthoredBonus), 2);
+		return static_cast<int32>((static_cast<int64>(FMath::Max(0, AuthoredBonus)) + 1) / 2);
 	}
 
 	struct FDoctrineProjection
@@ -42,7 +42,7 @@ namespace PersonnelLegacyRelayPrivate
 		int32 ResolveBonus = 0;
 		int32 MobilityBonus = 0;
 		int32 StrengthBonus = 0;
-		int32 TotalBonus = 0;
+		int64 TotalBonus = 0;
 	};
 
 	FDoctrineProjection SelectDoctrine(
@@ -72,8 +72,8 @@ namespace PersonnelLegacyRelayPrivate
 			Candidate.ResolveBonus = SharedBonus(Rule.ResolveBonus);
 			Candidate.MobilityBonus = SharedBonus(Rule.MobilityBonus);
 			Candidate.StrengthBonus = SharedBonus(Rule.StrengthBonus);
-			Candidate.TotalBonus = Candidate.AccuracyBonus + Candidate.ResolveBonus
-				+ Candidate.MobilityBonus + Candidate.StrengthBonus;
+			Candidate.TotalBonus = static_cast<int64>(Candidate.AccuracyBonus)
+				+ Candidate.ResolveBonus + Candidate.MobilityBonus + Candidate.StrengthBonus;
 			if (Candidate.TotalBonus <= 0)
 			{
 				continue;
