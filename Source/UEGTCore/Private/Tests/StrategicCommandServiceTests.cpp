@@ -962,6 +962,22 @@ bool FStrategicResearchWorkflowTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Locked research cannot start"), Locked.bAccepted);
 	TestTrue(TEXT("Missing prerequisite is diagnosed"), Locked.HasDiagnostic(TEXT("research_prerequisite_missing")));
 
+	FResolvedRuleSet InvalidResearchRules = Rules;
+	InvalidResearchRules.Research.FindChecked(TEXT("research.signal-analysis")).Effort = 0;
+	FCampaignState InvalidResearchStartState = MakeStateWithBase();
+	FStartResearchCommand InvalidResearchStart;
+	InvalidResearchStart.ExpectedSequence = InvalidResearchStartState.CommandSequence;
+	InvalidResearchStart.BaseId = TestBaseId;
+	InvalidResearchStart.ResearchId = TEXT("research.signal-analysis");
+	const int64 InvalidResearchStartSequence = InvalidResearchStartState.CommandSequence;
+	const FStrategicCommandResult InvalidResearchStartResult = FStrategicCommandService::Execute(
+		InvalidResearchStartState, InvalidResearchRules, InvalidResearchStart);
+	TestTrue(TEXT("Research with non-positive effort cannot start a project"),
+		!InvalidResearchStartResult.bAccepted
+		&& InvalidResearchStartResult.HasDiagnostic(TEXT("unknown_research"))
+		&& InvalidResearchStartState.CommandSequence == InvalidResearchStartSequence
+		&& InvalidResearchStartState.ResearchProjects.IsEmpty());
+
 	FStartResearchCommand Start;
 	Start.ExpectedSequence = State.CommandSequence;
 	Start.BaseId = TestBaseId;
@@ -969,6 +985,21 @@ bool FStrategicResearchWorkflowTest::RunTest(const FString& Parameters)
 	const FStrategicCommandResult Started = FStrategicCommandService::Execute(State, Rules, Start);
 	TestTrue(TEXT("Unlocked research starts"), Started.bAccepted);
 	TestEqual(TEXT("One project is active"), State.ResearchProjects.Num(), 1);
+
+	FCampaignState InvalidResearchStaffState = State;
+	const int64 InvalidResearchStaffSequence = InvalidResearchStaffState.CommandSequence;
+	FSetResearchStaffCommand InvalidResearchStaff;
+	InvalidResearchStaff.ExpectedSequence = InvalidResearchStaffSequence;
+	InvalidResearchStaff.ResearchId = Start.ResearchId;
+	InvalidResearchStaff.AssignedScientists = 1;
+	const FStrategicCommandResult InvalidResearchStaffResult = FStrategicCommandService::Execute(
+		InvalidResearchStaffState, InvalidResearchRules, InvalidResearchStaff);
+	TestTrue(TEXT("Research staffing rejects a non-positive effort rule"),
+		!InvalidResearchStaffResult.bAccepted
+		&& InvalidResearchStaffResult.HasDiagnostic(TEXT("invalid_research_project"))
+		&& InvalidResearchStaffState.CommandSequence == InvalidResearchStaffSequence
+		&& InvalidResearchStaffState.ResearchProjects.Num() == 1
+		&& InvalidResearchStaffState.ResearchProjects[0].AssignedScientists == 0);
 
 	FSetResearchStaffCommand OverCapacity;
 	OverCapacity.ExpectedSequence = State.CommandSequence;

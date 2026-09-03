@@ -10629,9 +10629,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	const FResearchRule* Research = Rules.Research.Find(Command.ResearchId);
-	if (Research == nullptr)
+	if (Research == nullptr || Research->Effort <= 0)
 	{
-		AddError(Result, TEXT("unknown_research"), FString::Printf(TEXT("Research rule '%s' is not loaded."), *Command.ResearchId.ToString()));
+		AddError(Result, TEXT("unknown_research"), FString::Printf(
+			TEXT("Research rule '%s' is not loaded or has invalid effort."),
+			*Command.ResearchId.ToString()));
 		return Result;
 	}
 	if (State.CompletedResearch.Contains(Command.ResearchId))
@@ -10716,7 +10718,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	const FResearchRule* Research = Rules.Research.Find(Project->ResearchId);
-	if (Research == nullptr || Project->AssignedScientists < 0
+	if (Research == nullptr || Research->Effort <= 0 || Project->AssignedScientists < 0
 		|| Project->AccumulatedWorkSeconds < 0)
 	{
 		AddError(Result, TEXT("invalid_research_project"), FString::Printf(
