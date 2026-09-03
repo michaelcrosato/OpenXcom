@@ -701,7 +701,9 @@ FTacticalVisibilityResult FTacticalNavigationService::RefreshPlayerDiscovery(
 	}
 
 	TSet<int32> Discovered;
-	Discovered.Reserve(Battle.PlayerDiscoveredCellIndices.Num() + Result.VisibleCellIndices.Num());
+	const int64 DiscoveredCapacity = static_cast<int64>(Battle.PlayerDiscoveredCellIndices.Num())
+		+ static_cast<int64>(Result.VisibleCellIndices.Num());
+	Discovered.Reserve(static_cast<int32>(FMath::Min<int64>(DiscoveredCapacity, MAX_int32)));
 	for (const int32 CellIndex : Battle.PlayerDiscoveredCellIndices)
 	{
 		if (Battle.Cells.IsValidIndex(CellIndex))
