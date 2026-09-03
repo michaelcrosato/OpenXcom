@@ -350,6 +350,19 @@ namespace StrategicPresentationPrivate
 		return static_cast<int32>(FMath::Clamp<int64>(Sum, 0, MAX_int32));
 	}
 
+	int64 SaturatingAdd(const int64 Current, const int64 Contribution)
+	{
+		if (Contribution > 0 && Current > MAX_int64 - Contribution)
+		{
+			return MAX_int64;
+		}
+		if (Contribution < 0 && Current < MIN_int64 - Contribution)
+		{
+			return MIN_int64;
+		}
+		return Current + Contribution;
+	}
+
 	int32 PersonnelCountForCategory(
 		const FCampaignState& Campaign,
 		const FResolvedRuleSet& Rules,
@@ -1404,7 +1417,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 							Facility->ScaleEffectByIntegrity(100, ClampedDamage));
 					}
 					View.Facilities.Add(MoveTemp(FacilityName));
-					Snapshot.MonthlyOutgoings += Facility->MonthlyMaintenance;
+					Snapshot.MonthlyOutgoings = SaturatingAdd(
+						Snapshot.MonthlyOutgoings, Facility->MonthlyMaintenance);
 				}
 				else
 				{
@@ -1419,7 +1433,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				if (const FFacilityRule* Facility = Rules.Facilities.Find(FacilityId))
 				{
 					View.Facilities.Add(RuleName(Facility->DisplayName, FacilityId));
-					Snapshot.MonthlyOutgoings += Facility->MonthlyMaintenance;
+					Snapshot.MonthlyOutgoings = SaturatingAdd(
+						Snapshot.MonthlyOutgoings, Facility->MonthlyMaintenance);
 				}
 				else
 				{
@@ -2127,7 +2142,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		{
 			View.RoleDisplayName = RuleName(Role->DisplayName, Person.RoleId);
 			View.RoleCategory = Role->Category;
-			Snapshot.MonthlyOutgoings += Role->MonthlySalary;
+			Snapshot.MonthlyOutgoings = SaturatingAdd(
+				Snapshot.MonthlyOutgoings, Role->MonthlySalary);
 		}
 		else
 		{
@@ -2236,7 +2252,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 					? MAX_int64 : RepairRefund + RefuelRefund;
 				View.bCanCancelService = true;
 			}
-			Snapshot.MonthlyOutgoings += Rule->MonthlyMaintenance;
+			Snapshot.MonthlyOutgoings = SaturatingAdd(
+				Snapshot.MonthlyOutgoings, Rule->MonthlyMaintenance);
 		}
 		else
 		{
