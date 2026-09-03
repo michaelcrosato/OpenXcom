@@ -111,6 +111,11 @@ bool FDeterministicRandomBoundaryTest::RunTest(const FString& Parameters)
 		Restored.RestoreFromSave(7, MAX_int64 - 1, ValidState));
 	TestTrue(TEXT("A restored stream with one draw remaining is valid"), Restored.IsValid());
 
+	Stream.NextUInt64();
+	Stream.NextUInt64();
+	TestEqual(TEXT("Terminal draws saturate instead of wrapping the save counter"), Stream.DrawCount, MAX_int64);
+	TestFalse(TEXT("A saturated stream remains invalid for save validation"), Stream.IsValid());
+
 	return true;
 }
 

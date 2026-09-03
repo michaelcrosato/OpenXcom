@@ -64,7 +64,10 @@ uint64 FDeterministicRandomStream::NextUInt64()
 	Value ^= Value << 25;
 	Value ^= Value >> 27;
 	State = Value;
-	++DrawCount;
+	if (DrawCount >= 0 && DrawCount < MAX_int64)
+	{
+		++DrawCount;
+	}
 	return Value * DeterministicRandomPrivate::OutputMultiplier;
 }
 
