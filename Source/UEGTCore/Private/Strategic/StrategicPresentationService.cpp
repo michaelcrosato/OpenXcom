@@ -730,6 +730,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 
 	if (!Campaign.StrategicTime.IsUsable())
 	{
+		Snapshot.bCanAdvanceTime = false;
 		Snapshot.Diagnostics.Add(TEXT("Campaign time is not usable."));
 		return Snapshot;
 	}
@@ -743,6 +744,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		|| Config.MutualAidConvoyTransitHours <= 0
 		|| Config.MutualAidConvoyTransitHours > 8760)
 	{
+		Snapshot.bCanAdvanceTime = false;
 		Snapshot.Diagnostics.Add(TEXT("Strategic presentation requires valid base-grid, personnel-capacity, and logistics settings."));
 		return Snapshot;
 	}
@@ -809,6 +811,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		|| Config.HorizonCompactEmergencyMaximumVoterPressure >= 100
 		|| !FStrategicCommandService::GetAdversaryAdaptationProgress(Campaign, Config, Adaptation))
 	{
+		Snapshot.bCanAdvanceTime = false;
 		Snapshot.Diagnostics.Add(TEXT("Strategic presentation requires valid adversary adaptation, campaign-outcome, regional-policy, and base-defense economy settings."));
 		return Snapshot;
 	}

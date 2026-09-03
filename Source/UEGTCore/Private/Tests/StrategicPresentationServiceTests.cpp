@@ -903,6 +903,16 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidSequenceSnapshot.bCanAdvanceTime
 		&& InvalidSequenceSnapshot.Diagnostics.Contains(
 			TEXT("Campaign command sequence cannot accept another command.")));
+	FCampaignState InvalidTimestampCampaign = Campaign;
+	InvalidTimestampCampaign.StrategicTime.Utc = FDateTime::MinValue();
+	const FStrategicDashboardSnapshot InvalidTimestampSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidTimestampCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement when campaign time is unusable"),
+		!InvalidTimestampSnapshot.bSucceeded
+		&& !InvalidTimestampSnapshot.bCanAdvanceTime
+		&& InvalidTimestampSnapshot.Diagnostics.Contains(
+			TEXT("Campaign time is not usable.")));
 	const FStrategicCraftView* InvalidSequenceSalvageCraft =
 		InvalidSequenceSnapshot.Craft.FindByPredicate(
 			[&Craft](const FStrategicCraftView& CraftView)
@@ -2764,6 +2774,7 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		FStrategicPresentationService::BuildDashboard(Campaign, Rules, UnsupportedGridConfig);
 	TestTrue(TEXT("Dashboard rejects an unsupported base-grid dimension before enumerating placements"),
 		!UnsupportedGridSnapshot.bSucceeded
+		&& !UnsupportedGridSnapshot.bCanAdvanceTime
 		&& UnsupportedGridSnapshot.Diagnostics.Contains(
 			TEXT("Strategic presentation requires valid base-grid, personnel-capacity, and logistics settings.")));
 	TestTrue(TEXT("Defense construction option exposes accuracy, damage, and rounded expected output"),
