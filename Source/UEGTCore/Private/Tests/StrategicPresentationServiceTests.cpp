@@ -1165,6 +1165,16 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 				return Diagnostic.Contains(TEXT("Strategic site"))
 					&& Diagnostic.Contains(TEXT("invalid persisted"));
 			}));
+	FCampaignState InvalidAdversaryReadinessCampaign = Campaign;
+	InvalidAdversaryReadinessCampaign.AdversaryMissionsLaunched = 8;
+	const FStrategicDashboardSnapshot InvalidAdversaryReadinessSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidAdversaryReadinessCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid adversary counters"),
+		InvalidAdversaryReadinessSnapshot.bSucceeded
+		&& !InvalidAdversaryReadinessSnapshot.bCanAdvanceTime
+		&& InvalidAdversaryReadinessSnapshot.Diagnostics.Contains(
+			TEXT("Launched, active, escaped, and thwarted adversary mission counters are inconsistent.")));
 	FCampaignState MalformedFacilityCampaign = Campaign;
 	const FBaseFacilityState DuplicateFacility = MalformedFacilityCampaign.Bases[0].Facilities[0];
 	MalformedFacilityCampaign.Bases[0].Facilities.Add(DuplicateFacility);

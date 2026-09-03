@@ -7448,6 +7448,22 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicSiteState(
 	return Result;
 }
 
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicAdversaryState(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules,
+	const FStrategicSimulationConfig& Config)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (!ValidateAdversaryState(State, Rules, Config, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
 FStrategicCommandResult FStrategicCommandService::ValidateStrategicCommandSequence(
 	const FCampaignState& State)
 {

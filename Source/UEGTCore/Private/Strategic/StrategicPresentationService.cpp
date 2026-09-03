@@ -1217,6 +1217,21 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	const FStrategicCommandResult AdversaryStateValidation =
+		FStrategicCommandService::ValidateStrategicAdversaryState(Campaign, Rules, Config);
+	if (!AdversaryStateValidation.bAccepted)
+	{
+		Snapshot.bCanAdvanceTime = false;
+		if (!AdversaryStateValidation.Diagnostics.IsEmpty())
+		{
+			const FString& Diagnostic = AdversaryStateValidation.Diagnostics[0].Message;
+			if (!Snapshot.Diagnostics.ContainsByPredicate(
+				[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+			{
+				Snapshot.Diagnostics.Add(Diagnostic);
+			}
+		}
+	}
 	TSet<const FStrategicBaseState*> BasesWithValidInfrastructure;
 	for (const FStrategicBaseState& Base : Campaign.Bases)
 	{
