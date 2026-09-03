@@ -8875,6 +8875,29 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Recovered pilot becomes available"), State.Personnel[0].Status == EPersonnelStatus::Available);
 	TestEqual(TEXT("Completed sortie count increments"), State.Craft[0].CompletedSorties, 1);
 
+	FCampaignState InvalidSortie = MakeStateWithBase();
+	AddTestFlightDeck(InvalidSortie);
+	const FGuid InvalidSortiePilotId(0x681, 0x682, 0x683, 0x684);
+	const FGuid InvalidSortieCraftId(0x685, 0x686, 0x687, 0x688);
+	AddTestPilot(InvalidSortie, InvalidSortiePilotId).Status = EPersonnelStatus::Deployed;
+	FCraftState& InvalidSortieCraft = AddTestCraft(InvalidSortie, InvalidSortieCraftId);
+	InvalidSortieCraft.AssignedPilotId = InvalidSortiePilotId;
+	InvalidSortieCraft.Status = ECraftStatus::Airborne;
+	InvalidSortieCraft.CompletedSorties = MIN_int32;
+	const int64 InvalidSortieSequence = InvalidSortie.CommandSequence;
+	FRecoverCraftCommand InvalidSortieCommand;
+	InvalidSortieCommand.ExpectedSequence = InvalidSortie.CommandSequence;
+	InvalidSortieCommand.CraftId = InvalidSortieCraftId;
+	const FStrategicCommandResult InvalidSortieResult = FStrategicCommandService::Execute(
+		InvalidSortie, Rules, InvalidSortieCommand);
+	TestTrue(TEXT("Craft recovery rejects a negative sortie counter before incrementing it"),
+		!InvalidSortieResult.bAccepted
+		&& InvalidSortieResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidSortie.CommandSequence == InvalidSortieSequence
+		&& InvalidSortie.Craft.Num() == 1
+		&& InvalidSortie.Craft[0].Status == ECraftStatus::Airborne
+		&& InvalidSortie.Craft[0].CompletedSorties == MIN_int32);
+
 	return true;
 }
 

@@ -16149,6 +16149,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("invalid_craft_pilot"), TEXT("Airborne craft pilot state is invalid."));
 		return Result;
 	}
+	if (Craft->CompletedSorties < 0)
+	{
+		AddError(Result, TEXT("invalid_craft_state"), TEXT("Craft sortie count cannot be negative."));
+		return Result;
+	}
 	if (Craft->CompletedSorties == MAX_int32)
 	{
 		AddError(Result, TEXT("craft_sortie_overflow"), TEXT("Craft sortie count cannot accept another completed mission."));
