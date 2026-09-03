@@ -13372,6 +13372,16 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Facility construction project references a missing base."));
 		return Result;
 	}
+	if (!Project->ProjectId.IsValid() || !Project->FacilityInstanceId.IsValid())
+	{
+		AddError(Result, TEXT("invalid_construction_id"), TEXT("Facility construction project and facility instance ids must be valid."));
+		return Result;
+	}
+	if (Project->GridX < 0 || Project->GridY < 0)
+	{
+		AddError(Result, TEXT("invalid_construction_state"), TEXT("Facility construction placement cannot use negative grid coordinates."));
+		return Result;
+	}
 	const FFacilityRule* Facility = Rules.Facilities.Find(Project->FacilityId);
 	if (Facility == nullptr || Facility->BuildCost < 0 || Facility->BuildHours <= 0)
 	{

@@ -7369,6 +7369,57 @@ bool FStrategicQueueEditingConstructionCancellationTest::RunTest(const FString& 
 		&& Cancelled.Events.Num() == 1
 		&& Cancelled.Events[0].Amount == 250);
 
+	FCampaignState InvalidConstructionIdentityState = State;
+	FStartFacilityConstructionCommand InvalidConstructionIdentityBuild = Build;
+	InvalidConstructionIdentityBuild.ExpectedSequence = InvalidConstructionIdentityState.CommandSequence;
+	InvalidConstructionIdentityBuild.ProjectId = FGuid(0x717, 0x718, 0x719, 0x720);
+	InvalidConstructionIdentityBuild.FacilityInstanceId = FGuid(0x721, 0x722, 0x723, 0x724);
+	TestTrue(TEXT("Malformed construction identity fixture starts"),
+		FStrategicCommandService::Execute(
+			InvalidConstructionIdentityState, Rules, Config,
+			InvalidConstructionIdentityBuild).bAccepted);
+	InvalidConstructionIdentityState.FacilityConstructionProjects[0].ProjectId.Invalidate();
+	const int64 InvalidConstructionIdentitySequence = InvalidConstructionIdentityState.CommandSequence;
+	const int64 InvalidConstructionIdentityFunds = InvalidConstructionIdentityState.Funds;
+	FCancelFacilityConstructionCommand InvalidConstructionIdentityCancel;
+	InvalidConstructionIdentityCancel.ExpectedSequence = InvalidConstructionIdentitySequence;
+	InvalidConstructionIdentityCancel.ProjectId = FGuid();
+	const FStrategicCommandResult InvalidConstructionIdentityResult =
+		FStrategicCommandService::Execute(
+			InvalidConstructionIdentityState, Rules, InvalidConstructionIdentityCancel);
+	TestTrue(TEXT("Construction cancellation rejects an invalid project identity"),
+		!InvalidConstructionIdentityResult.bAccepted
+		&& InvalidConstructionIdentityResult.HasDiagnostic(TEXT("invalid_construction_id"))
+		&& InvalidConstructionIdentityState.Funds == InvalidConstructionIdentityFunds
+		&& InvalidConstructionIdentityState.CommandSequence == InvalidConstructionIdentitySequence
+		&& InvalidConstructionIdentityState.FacilityConstructionProjects.Num() == 1);
+
+	FCampaignState InvalidConstructionPlacementState = State;
+	FStartFacilityConstructionCommand InvalidConstructionPlacementBuild = Build;
+	InvalidConstructionPlacementBuild.ExpectedSequence = InvalidConstructionPlacementState.CommandSequence;
+	InvalidConstructionPlacementBuild.ProjectId = FGuid(0x725, 0x726, 0x727, 0x728);
+	InvalidConstructionPlacementBuild.FacilityInstanceId = FGuid(0x729, 0x730, 0x731, 0x732);
+	TestTrue(TEXT("Malformed construction placement fixture starts"),
+		FStrategicCommandService::Execute(
+			InvalidConstructionPlacementState, Rules, Config,
+			InvalidConstructionPlacementBuild).bAccepted);
+	InvalidConstructionPlacementState.FacilityConstructionProjects[0].GridX = -1;
+	const int64 InvalidConstructionPlacementSequence = InvalidConstructionPlacementState.CommandSequence;
+	const int64 InvalidConstructionPlacementFunds = InvalidConstructionPlacementState.Funds;
+	FCancelFacilityConstructionCommand InvalidConstructionPlacementCancel;
+	InvalidConstructionPlacementCancel.ExpectedSequence = InvalidConstructionPlacementSequence;
+	InvalidConstructionPlacementCancel.ProjectId = InvalidConstructionPlacementBuild.ProjectId;
+	const FStrategicCommandResult InvalidConstructionPlacementResult =
+		FStrategicCommandService::Execute(
+			InvalidConstructionPlacementState, Rules, InvalidConstructionPlacementCancel);
+	TestTrue(TEXT("Construction cancellation rejects negative placement coordinates"),
+		!InvalidConstructionPlacementResult.bAccepted
+		&& InvalidConstructionPlacementResult.HasDiagnostic(TEXT("invalid_construction_state"))
+		&& InvalidConstructionPlacementState.Funds == InvalidConstructionPlacementFunds
+		&& InvalidConstructionPlacementState.CommandSequence == InvalidConstructionPlacementSequence
+		&& InvalidConstructionPlacementState.FacilityConstructionProjects.Num() == 1
+		&& InvalidConstructionPlacementState.FacilityConstructionProjects[0].GridX == -1);
+
 	CancelConstruction.ExpectedSequence = State.CommandSequence;
 	const FStrategicCommandResult MissingRejected = FStrategicCommandService::Execute(State, Rules, CancelConstruction);
 	TestFalse(TEXT("Completed cancellation cannot be repeated"), MissingRejected.bAccepted);
