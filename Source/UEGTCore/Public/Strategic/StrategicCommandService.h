@@ -4068,6 +4068,11 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules);
 
+	/** Read-only validation of recurring costs and their application to campaign funds. */
+	static FStrategicCommandResult ValidateStrategicFinancialState(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules);
+
 	/** Read-only validation of persisted Mutual Aid Convoy state. */
 	static FStrategicCommandResult ValidateStrategicMutualAidConvoyState(
 		const FCampaignState& State,

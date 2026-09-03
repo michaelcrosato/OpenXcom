@@ -4836,6 +4836,29 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateMonthlyFinancialTotals(
+		const FCampaignState& State,
+		const int64 MonthlyMaintenance,
+		const int64 MonthlySalaries,
+		const int64 MonthlyCraftMaintenance,
+		FStrategicCommandResult& Result)
+	{
+		int64 MonthlyOutgoings = 0;
+		int64 FacilityAndSalaryCosts = 0;
+		int64 NetFunding = 0;
+		int64 NewFunds = 0;
+		if (!TryAdd(MonthlyMaintenance, MonthlySalaries, FacilityAndSalaryCosts)
+			|| !TryAdd(FacilityAndSalaryCosts, MonthlyCraftMaintenance, MonthlyOutgoings)
+			|| !TrySubtract(State.MonthlyFunding, MonthlyOutgoings, NetFunding)
+			|| !TryAdd(State.Funds, NetFunding, NewFunds))
+		{
+			AddError(Result, TEXT("financial_overflow"),
+				TEXT("Monthly campaign finances exceed the supported numeric range."));
+			return false;
+		}
+		return true;
+	}
+
 	bool ValidatePersonnelState(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -7426,6 +7449,37 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicPersonnelStat
 
 	FStrategicCommandResult Result;
 	if (!ValidatePersonnelState(State, Rules, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicFinancialState(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	int64 MonthlyMaintenance = 0;
+	if (!ComputeMonthlyMaintenance(State, Rules, MonthlyMaintenance, Result))
+	{
+		return Result;
+	}
+	int64 MonthlySalaries = 0;
+	if (!ComputeMonthlyPersonnelSalaries(State, Rules, MonthlySalaries, Result))
+	{
+		return Result;
+	}
+	int64 MonthlyCraftMaintenance = 0;
+	if (!ComputeMonthlyCraftMaintenance(State, Rules, MonthlyCraftMaintenance, Result))
+	{
+		return Result;
+	}
+	if (!ValidateMonthlyFinancialTotals(
+		State, MonthlyMaintenance, MonthlySalaries, MonthlyCraftMaintenance, Result))
 	{
 		return Result;
 	}
@@ -11464,15 +11518,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	{
 		return Result;
 	}
-	int64 ValidatedMonthlyOutgoings = 0;
-	int64 FacilityAndSalaryCosts = 0;
-	if (!TryAdd(MonthlyMaintenance, MonthlySalaries, FacilityAndSalaryCosts)
-		|| !TryAdd(FacilityAndSalaryCosts, MonthlyCraftMaintenance, ValidatedMonthlyOutgoings))
+	if (!ValidateMonthlyFinancialTotals(
+		State, MonthlyMaintenance, MonthlySalaries, MonthlyCraftMaintenance, Result))
 	{
-		AddError(Result, TEXT("financial_overflow"), TEXT("Combined monthly operating costs exceed the campaign numeric range."));
 		return Result;
 	}
-	static_cast<void>(ValidatedMonthlyOutgoings);
 	if (!ValidateResearchProjects(State, Rules, Result)
 		|| !ValidateManufacturingProjects(State, Rules, Result))
 	{

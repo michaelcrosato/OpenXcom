@@ -984,6 +984,38 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 				return Diagnostic.Contains(TEXT("Personnel"))
 					&& Diagnostic.Contains(TEXT("invalid persisted"));
 			}));
+	FResolvedRuleSet InvalidFinancialRules = Rules;
+	InvalidFinancialRules.Facilities.FindChecked(Operations.Identity.RuleId).MonthlyMaintenance = MAX_int32;
+	FCampaignState InvalidFinancialCampaign = Campaign;
+	InvalidFinancialCampaign.ResearchProjects.Reset();
+	InvalidFinancialCampaign.ManufacturingProjects.Reset();
+	InvalidFinancialCampaign.FacilityConstructionProjects.Reset();
+	InvalidFinancialCampaign.Personnel.Reset();
+	InvalidFinancialCampaign.PersonnelSquadBonds.Reset();
+	InvalidFinancialCampaign.RecruitmentOrders.Reset();
+	InvalidFinancialCampaign.Memorial.Reset();
+	InvalidFinancialCampaign.Craft.Reset();
+	InvalidFinancialCampaign.CraftAcquisitionOrders.Reset();
+	InvalidFinancialCampaign.StrategicContacts.Reset();
+	InvalidFinancialCampaign.StrategicSites.Reset();
+	InvalidFinancialCampaign.TacticalOperations.Reset();
+	InvalidFinancialCampaign.TacticalBattles.Reset();
+	InvalidFinancialCampaign.AdversaryMissions.Reset();
+	InvalidFinancialCampaign.AdversaryMissionsLaunched = 0;
+	InvalidFinancialCampaign.RegionalPressure.Reset();
+	InvalidFinancialCampaign.RegionalMandates.Reset();
+	InvalidFinancialCampaign.MonthlyFunding = MIN_int64;
+	const FStrategicDashboardSnapshot InvalidFinancialSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidFinancialCampaign, InvalidFinancialRules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement when monthly finances overflow"),
+		InvalidFinancialSnapshot.bSucceeded
+		&& !InvalidFinancialSnapshot.bCanAdvanceTime
+		&& InvalidFinancialSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("Monthly campaign finances"));
+			}));
 	const FStrategicCraftView* InvalidSequenceSalvageCraft =
 		InvalidSequenceSnapshot.Craft.FindByPredicate(
 			[&Craft](const FStrategicCraftView& CraftView)
