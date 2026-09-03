@@ -1330,6 +1330,13 @@ bool FStrategicLogisticsSpecializationBenefitTest::RunTest(const FString& Parame
 		&& State.Bases.Num() == 1
 		&& Base.Facilities.Num() == 1
 		&& State.SimulationRandom.GetStateForSave() == InitialRandomState);
+	const FBaseInfrastructureEvaluation InvalidInfrastructure =
+		FStrategicCommandService::EvaluateBaseInfrastructure(State, Rules, Base.BaseId);
+	TestTrue(TEXT("Infrastructure evaluation propagates invalid storage-capacity diagnostics"),
+		!InvalidInfrastructure.bValid
+		&& InvalidInfrastructure.Diagnostics.Num() == 1
+		&& InvalidInfrastructure.Diagnostics[0].Code
+			== FName(TEXT("invalid_storage_facility")));
 	return true;
 }
 

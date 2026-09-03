@@ -7438,7 +7438,12 @@ FBaseInfrastructureEvaluation FStrategicCommandService::EvaluateBaseInfrastructu
 	Evaluation.ExpectedDefenseDamage = static_cast<int32>((ExpectedDefenseDamageHundredths + 50) / 100);
 	int64 StorageCapacity = 0;
 	FStrategicCommandResult SpecializationValidation;
-	if (ComputeBaseStorageCapacity(*Base, Rules, StorageCapacity, SpecializationValidation))
+	if (!ComputeBaseStorageCapacity(*Base, Rules, StorageCapacity, SpecializationValidation))
+	{
+		Evaluation.Diagnostics = MoveTemp(SpecializationValidation.Diagnostics);
+		return Evaluation;
+	}
+	else
 	{
 		Evaluation.Specialization = BuildBaseSpecialization(
 			Evaluation.DetectionStrength,
