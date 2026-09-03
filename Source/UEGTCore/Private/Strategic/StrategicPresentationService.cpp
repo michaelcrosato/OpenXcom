@@ -483,7 +483,11 @@ namespace StrategicPresentationPrivate
 
 	bool CanApplyStorageDelta(const FStrategicBaseView* Base, const int64 Delta)
 	{
-		if (Base == nullptr || !Base->bStorageEnforced)
+		if (Base == nullptr || !Base->bInfrastructureValid)
+		{
+			return false;
+		}
+		if (!Base->bStorageEnforced)
 		{
 			return true;
 		}
@@ -504,6 +508,10 @@ namespace StrategicPresentationPrivate
 		if (Base == nullptr)
 		{
 			return TEXT("The production base is unavailable.");
+		}
+		if (!Base->bInfrastructureValid)
+		{
+			return TEXT("Storage actions are unavailable while the base has invalid facility state.");
 		}
 		const int64 Required = NonNegativeDifference(Delta, Base->StorageAvailable);
 		return FString::Printf(TEXT("This change needs %lld more storage units; sell, equip, or relocate inventory first."),
@@ -1086,6 +1094,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			FStrategicCommandService::EvaluateBaseInfrastructure(Campaign, Rules, Base.BaseId);
 		const bool bInfrastructureValid = FacilityLayoutValidation.bAccepted
 			&& Infrastructure.bValid;
+		View.bInfrastructureValid = bInfrastructureValid;
 		if (bInfrastructureValid)
 		{
 			View.BaseScientistCapacity = Infrastructure.BaseScientistCapacity;

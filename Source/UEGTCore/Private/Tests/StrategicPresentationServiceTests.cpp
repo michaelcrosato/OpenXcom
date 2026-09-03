@@ -999,6 +999,12 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 			{
 				return Project.Type == EStrategicProjectType::Manufacturing;
 			});
+	const FStrategicCraftView* OutOfGridCraftView =
+		OutOfGridFacilitySnapshot.Craft.FindByPredicate(
+			[](const FStrategicCraftView& Craft)
+			{
+				return Craft.StatusType == ECraftStatus::Grounded;
+			});
 	const FStrategicFacilityView* OutOfGridFacilityView =
 		OutOfGridFacilitySnapshot.Bases[0].FacilityLayout.FindByPredicate(
 			[&Operations](const FStrategicFacilityView& Facility)
@@ -1013,6 +1019,7 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 				return Diagnostic.Contains(TEXT("outside the configured base grid"));
 			})
 		&& OutOfGridFacilitySnapshot.Bases.Num() == 1
+		&& !OutOfGridFacilitySnapshot.Bases[0].bInfrastructureValid
 		&& OutOfGridFacilitySnapshot.Bases[0].ScientistCapacity == 0
 		&& OutOfGridFacilitySnapshot.Bases[0].EngineerCapacity == 0
 		&& OutOfGridFacilitySnapshot.Bases[0].CraftCapacity == 0
@@ -1035,7 +1042,12 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& OutOfGridResearchProject->MissingFacilityIds.Contains(Operations.Identity.RuleId)
 		&& OutOfGridManufacturingProject != nullptr
 		&& OutOfGridManufacturingProject->bPaused
-		&& OutOfGridManufacturingProject->MissingFacilityIds.Contains(Operations.Identity.RuleId));
+		&& OutOfGridManufacturingProject->MissingFacilityIds.Contains(Operations.Identity.RuleId)
+		&& !OutOfGridManufacturingProject->bCanRemoveManufacturingUnit
+		&& !OutOfGridManufacturingProject->bCanCancel
+		&& OutOfGridCraftView != nullptr
+		&& OutOfGridCraftView->PendingSalvage.Num() == 1
+		&& !OutOfGridCraftView->PendingSalvage[0].bCanRetainAtBase);
 	FCampaignState OutOfGridConstructionCampaign = Campaign;
 	OutOfGridConstructionCampaign.FacilityConstructionProjects[0].GridX = Config.BaseGridWidth;
 	const FStrategicDashboardSnapshot OutOfGridConstructionSnapshot =

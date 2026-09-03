@@ -1256,6 +1256,10 @@ struct UEGTCORE_API FStrategicBaseView
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	int32 ExpectedDefenseDamage = 0;
 
+	/** True when this base's derived infrastructure is valid for storage-backed actions. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	bool bInfrastructureValid = false;
+
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	bool bStorageEnforced = false;
 
