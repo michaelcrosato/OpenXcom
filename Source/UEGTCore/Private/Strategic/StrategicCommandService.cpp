@@ -25,6 +25,7 @@ namespace StrategicCommandServicePrivate
 	constexpr int32 WorksCadreSpecializedSecondaryPercentEach = 5;
 	constexpr int32 WorksCadreMaximumFrontloadPercent =
 		WorksCadreMaximumEngineerCount * WorksCadreSpecializedPrimaryPercentEach;
+	constexpr int32 MaximumPersonnelSquadBondRecords = 10000;
 
 	bool IsKnownWorksCadreCharter(const EWorksCadreCharter Charter)
 	{
@@ -1364,7 +1365,18 @@ namespace StrategicCommandServicePrivate
 			}
 		}
 
-		int32 NewRecordCount = 0;
+		const int64 SurvivorCount = SurvivorIds.Num();
+		const int64 PotentialRecordCount = SurvivorCount > 1
+			? SurvivorCount * (SurvivorCount - 1) / 2
+			: 0;
+		if (PotentialRecordCount > MaximumPersonnelSquadBondRecords)
+		{
+			AddError(Result, TEXT("personnel_squad_bond_capacity"),
+				TEXT("The surviving personnel roster would exceed the squad-bond record capacity."));
+			return false;
+		}
+
+		int64 NewRecordCount = 0;
 		for (int32 FirstIndex = 0; FirstIndex < SurvivorIds.Num(); ++FirstIndex)
 		{
 			for (int32 SecondIndex = FirstIndex + 1; SecondIndex < SurvivorIds.Num(); ++SecondIndex)
@@ -1385,7 +1397,8 @@ namespace StrategicCommandServicePrivate
 				NewRecordCount += Existing == nullptr ? 1 : 0;
 			}
 		}
-		if (State.PersonnelSquadBonds.Num() > 10000 - NewRecordCount)
+		if (static_cast<int64>(State.PersonnelSquadBonds.Num())
+			> MaximumPersonnelSquadBondRecords - NewRecordCount)
 		{
 			AddError(Result, TEXT("personnel_squad_bond_capacity"),
 				TEXT("The campaign cannot retain additional personnel squad-bond records."));
@@ -4669,7 +4682,7 @@ namespace StrategicCommandServicePrivate
 			SeenPersonnelIds.Add(Record.PersonnelId);
 			CareerMissionCounts.Add(Record.PersonnelId, Record.Missions);
 		}
-		if (State.PersonnelSquadBonds.Num() > 10000)
+		if (State.PersonnelSquadBonds.Num() > MaximumPersonnelSquadBondRecords)
 		{
 			AddError(Result, TEXT("invalid_personnel_squad_bond"),
 				TEXT("The personnel squad-bond ledger exceeds its supported record count."));
