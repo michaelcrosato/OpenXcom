@@ -3498,7 +3498,7 @@ namespace CampaignSavePrivate
 							{
 								++PersonnelEquipmentCounts.FindOrAdd(ItemId);
 							}
-							TMap<FName, int32> TacticalEquipmentCounts;
+							TMap<FName, int64> TacticalEquipmentCounts;
 							for (const FTacticalWeaponState& WeaponState : Unit.WeaponStates)
 							{
 								bPlayerLoadoutOwnershipValid &= Person->EquippedItems.Contains(WeaponState.WeaponItemId);
@@ -3521,7 +3521,7 @@ namespace CampaignSavePrivate
 									++TacticalEquipmentCounts.FindOrAdd(Magazine.AmmunitionItemId);
 								}
 							}
-							for (const TPair<FName, int32>& EquipmentCount : TacticalEquipmentCounts)
+							for (const TPair<FName, int64>& EquipmentCount : TacticalEquipmentCounts)
 							{
 								bPlayerLoadoutOwnershipValid &= EquipmentCount.Value <= PersonnelEquipmentCounts.FindRef(EquipmentCount.Key);
 							}

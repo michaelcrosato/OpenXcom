@@ -13732,6 +13732,38 @@ bool FStrategicTacticalBaseDefenseTest::RunTest(const FString& Parameters)
 		&& BoundaryBreach != nullptr
 		&& BoundaryBreach->Amount == -static_cast<int64>(MAX_int32) * 2
 		&& BoundaryBreach->Quantity == 2);
+
+	FCampaignSaveEnvelope InvalidLoadoutEnvelope = FCampaignSaveCodec::CreateNew(
+		State, MakePackages(), TEXT("0.45.0-invalid-loadout"), State.StrategicTime.Utc,
+		FGuid(0x91000031, 2, 3, 4));
+	const FGuid LoadoutPersonnelId = InvalidLoadoutEnvelope.State.TacticalOperations[0].AgentIds[0];
+	FPersonnelState* InvalidLoadoutPerson = InvalidLoadoutEnvelope.State.Personnel.FindByPredicate(
+		[&LoadoutPersonnelId](const FPersonnelState& Person)
+		{
+			return Person.PersonnelId == LoadoutPersonnelId;
+		});
+	FTacticalUnitState* InvalidLoadoutUnit = InvalidLoadoutEnvelope.State.TacticalBattles[0].Units.FindByPredicate(
+		[&LoadoutPersonnelId](const FTacticalUnitState& Unit)
+		{
+			return Unit.PersonnelId == LoadoutPersonnelId;
+		});
+	TestTrue(TEXT("Malformed tactical loadout fixture finds its player records"),
+		InvalidLoadoutPerson != nullptr && InvalidLoadoutUnit != nullptr);
+	if (InvalidLoadoutPerson != nullptr && InvalidLoadoutUnit != nullptr)
+	{
+		InvalidLoadoutPerson->EquippedItems.Add(TEXT("item.service-rifle"));
+		FTacticalWeaponState& InvalidWeapon = InvalidLoadoutUnit->WeaponStates.AddDefaulted_GetRef();
+		InvalidWeapon.WeaponItemId = TEXT("item.service-rifle");
+		InvalidLoadoutUnit->CarriedItems.Add({ TEXT("item.service-rifle"), MAX_int32 });
+		InvalidLoadoutEnvelope.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(
+			InvalidLoadoutEnvelope);
+		const FCampaignSaveValidationResult InvalidLoadoutValidation =
+			FCampaignSaveCodec::Validate(InvalidLoadoutEnvelope, MakePackages());
+		TestTrue(TEXT("Save validation rejects an overlarge tactical loadout without counter wraparound"),
+			!InvalidLoadoutValidation.bSucceeded
+			&& InvalidLoadoutValidation.HasDiagnostic(TEXT("invalid_tactical_unit"))
+			&& InvalidLoadoutValidation.HasDiagnostic(TEXT("invalid_tactical_player_unit")));
+	}
 	return true;
 }
 
