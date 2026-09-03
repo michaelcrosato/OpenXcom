@@ -1444,7 +1444,10 @@ FTacticalDebriefView FTacticalPresentationService::BuildDebrief(
 		PersonView.EndingHealth = Unit != nullptr
 			? Unit->CurrentHealth
 			: (PersonAfter != nullptr ? PersonAfter->CurrentHealth : 0);
-		PersonView.DamageTaken = FMath::Max(0, PersonView.StartingHealth - PersonView.EndingHealth);
+		PersonView.DamageTaken = static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(PersonView.StartingHealth) - PersonView.EndingHealth,
+			0,
+			MAX_int32));
 		PersonView.bKilled = Death != nullptr || (PersonAfter == nullptr && Memorial != nullptr);
 		PersonView.bInjured = !PersonView.bKilled && (Injury != nullptr || PersonView.DamageTaken > 0);
 		PersonView.ExperienceGained = Experience != nullptr

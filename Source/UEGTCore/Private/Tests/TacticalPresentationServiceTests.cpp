@@ -1069,6 +1069,19 @@ bool FTacticalDebriefPresentationTest::RunTest(const FString& Parameters)
 		&& Casualty->bServiceBandAdvanced
 		&& Casualty->AwardedCommendationIds == TArray<FName>{ FirstResponse.Identity.RuleId });
 
+	FCampaignState ExtremeHealthBefore = Before;
+	ExtremeHealthBefore.Personnel[0].CurrentHealth = MAX_int32;
+	ExtremeHealthBefore.TacticalBattles[0].Units[0].CurrentHealth = MIN_int32;
+	const FTacticalDebriefView ExtremeHealthDebrief = FTacticalPresentationService::BuildDebrief(
+		ExtremeHealthBefore, After, Rules, Resolution, OperationId);
+	const FTacticalDebriefPersonnelView* ExtremeHealthSurvivor = ExtremeHealthDebrief.Personnel.FindByPredicate(
+		[&SurvivorId](const FTacticalDebriefPersonnelView& Person) { return Person.PersonnelId == SurvivorId; });
+	TestTrue(TEXT("Debrief damage clamps an extreme signed health delta instead of wrapping"),
+		ExtremeHealthDebrief.bAvailable && ExtremeHealthSurvivor != nullptr
+		&& ExtremeHealthSurvivor->StartingHealth == MAX_int32
+		&& ExtremeHealthSurvivor->EndingHealth == MIN_int32
+		&& ExtremeHealthSurvivor->DamageTaken == MAX_int32);
+
 	const FGuid BaseId(2701, 2702, 2703, 2704);
 	const FGuid AssaultId(2801, 2802, 2803, 2804);
 	FCampaignState BaseDefenseBefore = Before;
