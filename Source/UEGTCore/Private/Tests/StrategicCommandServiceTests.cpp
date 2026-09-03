@@ -9184,6 +9184,39 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 		&& OversizedCraftEquipmentState.Craft[0].EquipmentItems.Num() == 3
 		&& OversizedCraftEquipmentState.Bases[0].Inventory.IsEmpty());
 
+	FCampaignState OversizedCraftRearmState = MakeStateWithBase();
+	const FGuid OversizedRearmCraftId(0x699, 0x69A, 0x69B, 0x69C);
+	FCraftState& OversizedRearmCraft = AddTestCraft(
+		OversizedCraftRearmState, OversizedRearmCraftId);
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		OversizedRearmCraft.EquipmentItems.Add(TEXT("item.sky-lance"));
+	}
+	FCraftWeaponState& OversizedRearmWeapon =
+		OversizedRearmCraft.WeaponStates.AddDefaulted_GetRef();
+	OversizedRearmWeapon.WeaponItemId = TEXT("item.sky-lance");
+	FInventoryStack& OversizedRearmAmmunition =
+		OversizedCraftRearmState.Bases[0].Inventory.AddDefaulted_GetRef();
+	OversizedRearmAmmunition.ItemId = TEXT("item.sky-lance-rounds");
+	OversizedRearmAmmunition.Quantity = 18;
+	const int64 OversizedRearmSequence = OversizedCraftRearmState.CommandSequence;
+	FRearmCraftCommand RearmOversizedCraft;
+	RearmOversizedCraft.ExpectedSequence = OversizedCraftRearmState.CommandSequence;
+	RearmOversizedCraft.CraftId = OversizedRearmCraftId;
+	const FStrategicCommandResult OversizedRearmResult =
+		FStrategicCommandService::Execute(
+			OversizedCraftRearmState, Rules, RearmOversizedCraft);
+	TestTrue(TEXT("Craft rearming rejects an oversized persisted loadout before consuming ammunition"),
+		!OversizedRearmResult.bAccepted
+		&& OversizedRearmResult.HasDiagnostic(TEXT("invalid_craft_equipment"))
+		&& OversizedCraftRearmState.CommandSequence == OversizedRearmSequence
+		&& OversizedCraftRearmState.Craft.Num() == 1
+		&& OversizedCraftRearmState.Craft[0].EquipmentItems.Num() == 3
+		&& OversizedCraftRearmState.Craft[0].WeaponStates.Num() == 1
+		&& OversizedCraftRearmState.Craft[0].WeaponStates[0].Ammunition == 0
+		&& OversizedCraftRearmState.Bases[0].Inventory.Num() == 1
+		&& OversizedCraftRearmState.Bases[0].Inventory[0].Quantity == 18);
+
 	return true;
 }
 

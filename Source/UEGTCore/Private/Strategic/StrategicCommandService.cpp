@@ -15821,18 +15821,22 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Craft references a missing home base."));
 		return Result;
 	}
+	const FCraftRule* Rule = Rules.Craft.Find(ExistingCraft->CraftRuleId);
+	if (Rule == nullptr)
+	{
+		AddError(Result, TEXT("unknown_craft_rule"), TEXT("Craft references an unloaded rule."));
+		return Result;
+	}
+	if (!ValidateCraftEquipmentForMutation(*ExistingCraft, *Rule, Rules, Result))
+	{
+		return Result;
+	}
 
 	TMap<FName, int32> MountCounts;
 	for (const FName ItemId : ExistingCraft->EquipmentItems)
 	{
-		const FItemRule* Item = Rules.Items.Find(ItemId);
-		if (Item == nullptr || !IsEquippableCraftItem(*Item)
-			|| (Item->IsCraftWeapon() && !IsValidCraftWeaponRule(*Item, Rules)))
-		{
-			AddError(Result, TEXT("invalid_craft_equipment"), FString::Printf(TEXT("Craft references invalid equipment item '%s'."), *ItemId.ToString()));
-			return Result;
-		}
-		if (Item->IsCraftWeapon())
+		const FItemRule& Item = Rules.Items.FindChecked(ItemId);
+		if (Item.IsCraftWeapon())
 		{
 			++MountCounts.FindOrAdd(ItemId);
 		}
