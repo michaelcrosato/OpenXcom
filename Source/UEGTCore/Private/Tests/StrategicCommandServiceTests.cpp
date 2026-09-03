@@ -2563,6 +2563,13 @@ bool FStrategicMutualAidRelayWeaveTest::RunTest(const FString& Parameters)
 		&& PromotedConvoy->RemainingTransitSeconds == int64(48) * 3600);
 	TestEqual(TEXT("Relay Weave dispatch, holds, outage, and promotion consume no random draws"),
 		State.SimulationRandom.DrawCount, DrawsBefore);
+
+	FCampaignState InvalidProjectionSequence = MakeStateWithBase();
+	InvalidProjectionSequence.CommandSequence = MIN_int64;
+	const FMutualAidRelayQueueView InvalidProjection = FMutualAidRelayQueue::ProjectNext(
+		InvalidProjectionSequence, Rules, TestBaseId, int64(1) * 3600);
+	TestFalse(TEXT("Relay Weave rejects a negative command sequence before projecting its next dispatch"),
+		InvalidProjection.bValid);
 	return true;
 }
 
