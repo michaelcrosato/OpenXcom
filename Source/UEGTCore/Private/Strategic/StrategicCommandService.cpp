@@ -7319,6 +7319,24 @@ FPersonnelDoctrineEvaluation FStrategicCommandService::EvaluatePersonnelDoctrine
 	return Evaluation;
 }
 
+FStrategicCommandResult FStrategicCommandService::ValidateFacilityLayout(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules,
+	const FStrategicSimulationConfig& Config)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (!ValidateFacilityState(State, Rules, Result)
+		|| !ValidateFacilityGridState(State, Rules, Config, Result)
+		|| !ValidateFacilityConstructionProjects(State, Rules, Config, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
 FBaseInfrastructureEvaluation FStrategicCommandService::EvaluateBaseInfrastructure(
 	const FCampaignState& State,
 	const FResolvedRuleSet& Rules,

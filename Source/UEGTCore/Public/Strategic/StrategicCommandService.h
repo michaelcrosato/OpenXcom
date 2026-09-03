@@ -4042,6 +4042,12 @@ public:
 		const FResolvedRuleSet& Rules,
 		const FSelectPersonnelDoctrineCommand& Command);
 
+	/** Read-only validation of installed facility placement, grid bounds, and construction projects. */
+	static FStrategicCommandResult ValidateFacilityLayout(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config);
+
 	static FBaseInfrastructureEvaluation EvaluateBaseInfrastructure(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,

@@ -1008,6 +1008,37 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& OutOfGridManufacturingProject != nullptr
 		&& OutOfGridManufacturingProject->bPaused
 		&& OutOfGridManufacturingProject->MissingFacilityIds.Contains(Operations.Identity.RuleId));
+	FCampaignState OutOfGridConstructionCampaign = Campaign;
+	OutOfGridConstructionCampaign.FacilityConstructionProjects[0].GridX = Config.BaseGridWidth;
+	const FStrategicDashboardSnapshot OutOfGridConstructionSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			OutOfGridConstructionCampaign, Rules, Config);
+	const FStrategicProjectView* OutOfGridConstructionProject =
+		OutOfGridConstructionSnapshot.Projects.FindByPredicate(
+			[](const FStrategicProjectView& Project)
+			{
+				return Project.Type == EStrategicProjectType::Construction;
+			});
+	const FStrategicFacilityView* OutOfGridConstructionFacility =
+		OutOfGridConstructionSnapshot.Bases[0].FacilityLayout.FindByPredicate(
+			[](const FStrategicFacilityView& Facility)
+			{
+				return Facility.bConstructing;
+			});
+	TestTrue(TEXT("Dashboard validates construction footprints before exposing derived infrastructure"),
+		OutOfGridConstructionSnapshot.bSucceeded
+		&& !OutOfGridConstructionSnapshot.bCanAdvanceTime
+		&& OutOfGridConstructionSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("invalid persisted state"));
+			})
+		&& OutOfGridConstructionSnapshot.Bases.Num() == 1
+		&& OutOfGridConstructionSnapshot.Bases[0].CraftCapacity == 0
+		&& OutOfGridConstructionSnapshot.Bases[0].StorageCapacity == 0
+		&& OutOfGridConstructionProject != nullptr
+		&& OutOfGridConstructionFacility != nullptr
+		&& OutOfGridConstructionFacility->GridX == Config.BaseGridWidth);
 	FCampaignState OutOfGridConvoyCampaign = OutOfGridFacilityCampaign;
 	const FGuid OutOfGridDestinationBaseId(201, 202, 203, 204);
 	FStrategicBaseState& OutOfGridDestinationBase =

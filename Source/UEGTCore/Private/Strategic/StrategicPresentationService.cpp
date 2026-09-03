@@ -170,33 +170,6 @@ namespace StrategicPresentationPrivate
 		return Result;
 	}
 
-	bool IsFacilityGridValid(
-		const FStrategicBaseState& Base,
-		const FResolvedRuleSet& Rules,
-		const FStrategicSimulationConfig& Config,
-		FString& OutDiagnostic)
-	{
-		for (const FBaseFacilityState& Facility : Base.Facilities)
-		{
-			const FFacilityRule* Rule = Rules.Facilities.Find(Facility.FacilityId);
-			if (Rule == nullptr)
-			{
-				continue;
-			}
-			if (Facility.GridX < 0 || Facility.GridY < 0
-				|| Rule->GridWidth <= 0 || Rule->GridHeight <= 0
-				|| static_cast<int64>(Facility.GridX) + Rule->GridWidth > Config.BaseGridWidth
-				|| static_cast<int64>(Facility.GridY) + Rule->GridHeight > Config.BaseGridHeight)
-			{
-				OutDiagnostic = FString::Printf(
-					TEXT("Facility '%s' at base '%s' lies outside the configured base grid."),
-					*Facility.FacilityId.ToString(), *Base.Name);
-				return false;
-			}
-		}
-		return true;
-	}
-
 	bool HasRequirements(const TArray<FName>& Requirements, const FCampaignState& Campaign)
 	{
 		return !Requirements.ContainsByPredicate(
@@ -1064,14 +1037,19 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 
 	const FMutualAidRelayQueueSnapshot MutualAidRelayQueue =
 		FMutualAidRelayQueue::Evaluate(Campaign, Rules);
+	const FStrategicCommandResult FacilityLayoutValidation =
+		FStrategicCommandService::ValidateFacilityLayout(Campaign, Rules, Config);
+	if (!FacilityLayoutValidation.bAccepted
+		&& !FacilityLayoutValidation.Diagnostics.IsEmpty())
+	{
+		Snapshot.Diagnostics.Add(FacilityLayoutValidation.Diagnostics[0].Message);
+	}
 	TSet<const FStrategicBaseState*> BasesWithValidInfrastructure;
 	for (const FStrategicBaseState& Base : Campaign.Bases)
 	{
 		const FBaseInfrastructureEvaluation Infrastructure =
 			FStrategicCommandService::EvaluateBaseInfrastructure(Campaign, Rules, Base.BaseId);
-		FString FacilityGridDiagnostic;
-		if (Infrastructure.bValid
-			&& IsFacilityGridValid(Base, Rules, Config, FacilityGridDiagnostic))
+		if (FacilityLayoutValidation.bAccepted && Infrastructure.bValid)
 		{
 			BasesWithValidInfrastructure.Add(&Base);
 		}
@@ -1091,10 +1069,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.LatitudeMilliDegrees = Base.LatitudeMilliDegrees;
 		const FBaseInfrastructureEvaluation Infrastructure =
 			FStrategicCommandService::EvaluateBaseInfrastructure(Campaign, Rules, Base.BaseId);
-		FString FacilityGridDiagnostic;
-		const bool bFacilityGridValid = Infrastructure.bValid
-			&& IsFacilityGridValid(Base, Rules, Config, FacilityGridDiagnostic);
-		const bool bInfrastructureValid = Infrastructure.bValid && bFacilityGridValid;
+		const bool bInfrastructureValid = FacilityLayoutValidation.bAccepted
+			&& Infrastructure.bValid;
 		if (bInfrastructureValid)
 		{
 			View.BaseScientistCapacity = Infrastructure.BaseScientistCapacity;
@@ -1113,10 +1089,6 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		else if (!Infrastructure.Diagnostics.IsEmpty())
 		{
 			Snapshot.Diagnostics.Add(Infrastructure.Diagnostics[0].Message);
-		}
-		else if (!FacilityGridDiagnostic.IsEmpty())
-		{
-			Snapshot.Diagnostics.Add(MoveTemp(FacilityGridDiagnostic));
 		}
 		if (bInfrastructureValid)
 		{
