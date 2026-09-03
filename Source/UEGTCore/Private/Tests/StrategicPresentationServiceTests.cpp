@@ -944,6 +944,22 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 			{
 				return Diagnostic.Contains(TEXT("invalid or overflowing inventory storage data"));
 			}));
+	FCampaignState InvalidCraftReadinessCampaign = Campaign;
+	InvalidCraftReadinessCampaign.Craft[0].AssignedPilotId.Invalidate();
+	InvalidCraftReadinessCampaign.Craft[0].AssignedAgentIds.Reset();
+	InvalidCraftReadinessCampaign.Craft[0].RemainingRouteSeconds = 1;
+	const FStrategicDashboardSnapshot InvalidCraftReadinessSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidCraftReadinessCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid craft state"),
+		InvalidCraftReadinessSnapshot.bSucceeded
+		&& !InvalidCraftReadinessSnapshot.bCanAdvanceTime
+		&& InvalidCraftReadinessSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("Craft"))
+					&& Diagnostic.Contains(TEXT("invalid persisted"));
+			}));
 	FCampaignState MalformedFacilityCampaign = Campaign;
 	const FBaseFacilityState DuplicateFacility = MalformedFacilityCampaign.Bases[0].Facilities[0];
 	MalformedFacilityCampaign.Bases[0].Facilities.Add(DuplicateFacility);

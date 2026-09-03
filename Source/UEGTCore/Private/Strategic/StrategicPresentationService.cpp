@@ -1092,6 +1092,21 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	const FStrategicCommandResult CraftStateValidation =
+		FStrategicCommandService::ValidateStrategicCraftState(Campaign, Rules);
+	if (!CraftStateValidation.bAccepted)
+	{
+		Snapshot.bCanAdvanceTime = false;
+		if (!CraftStateValidation.Diagnostics.IsEmpty())
+		{
+			const FString& Diagnostic = CraftStateValidation.Diagnostics[0].Message;
+			if (!Snapshot.Diagnostics.ContainsByPredicate(
+				[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+			{
+				Snapshot.Diagnostics.Add(Diagnostic);
+			}
+		}
+	}
 	TSet<const FStrategicBaseState*> BasesWithValidInfrastructure;
 	for (const FStrategicBaseState& Base : Campaign.Bases)
 	{
