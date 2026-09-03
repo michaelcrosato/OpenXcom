@@ -1006,6 +1006,51 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& OutOfGridManufacturingProject != nullptr
 		&& OutOfGridManufacturingProject->bPaused
 		&& OutOfGridManufacturingProject->MissingFacilityIds.Contains(Operations.Identity.RuleId));
+	FCampaignState OutOfGridConvoyCampaign = OutOfGridFacilityCampaign;
+	const FGuid OutOfGridDestinationBaseId(201, 202, 203, 204);
+	FStrategicBaseState& OutOfGridDestinationBase =
+		OutOfGridConvoyCampaign.Bases.AddDefaulted_GetRef();
+	OutOfGridDestinationBase.BaseId = OutOfGridDestinationBaseId;
+	OutOfGridDestinationBase.Name = TEXT("Destination Station");
+	OutOfGridDestinationBase.RegionId = Mission.TargetRegionId;
+	const FGuid OutOfGridConvoyId(205, 206, 207, 208);
+	FMutualAidConvoyState& OutOfGridConvoy =
+		OutOfGridConvoyCampaign.MutualAidConvoys.AddDefaulted_GetRef();
+	OutOfGridConvoy.ConvoyId = OutOfGridConvoyId;
+	OutOfGridConvoy.SourceBaseId = BaseId;
+	OutOfGridConvoy.DestinationBaseId = OutOfGridDestinationBaseId;
+	OutOfGridConvoy.ItemId = Manufactured.Identity.RuleId;
+	OutOfGridConvoy.Quantity = 1;
+	OutOfGridConvoy.DispatchSequence = 1;
+	OutOfGridConvoy.TotalTransitSeconds = 3600;
+	OutOfGridConvoy.RemainingTransitSeconds = 3600;
+	OutOfGridConvoy.RoutePressure = 10;
+	OutOfGridConvoy.ForecastInterdictionDelaySeconds = 3600;
+	const FStrategicDashboardSnapshot OutOfGridConvoySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			OutOfGridConvoyCampaign, Rules, OutOfGridConfig);
+	const FStrategicMutualAidConvoyView* OutOfGridConvoyView =
+		OutOfGridConvoySnapshot.MutualAidConvoys.FindByPredicate(
+			[&OutOfGridConvoyId](const FStrategicMutualAidConvoyView& View)
+			{
+				return View.ConvoyId == OutOfGridConvoyId;
+			});
+	TestTrue(TEXT("Dashboard with an invalid convoy base withholds queue and convoy projections"),
+		OutOfGridConvoySnapshot.bSucceeded
+		&& OutOfGridConvoyView != nullptr
+		&& OutOfGridConvoyView->Quantity == 1
+		&& !OutOfGridConvoyView->RelayQueue.bValid
+		&& OutOfGridConvoyView->RetuneRoutes.IsEmpty()
+		&& !OutOfGridConvoyView->bCanCommissionSignalEscort
+		&& !OutOfGridConvoyView->bCanPrioritizeRelief
+		&& !OutOfGridConvoyView->bCanStandDownRelief
+		&& !OutOfGridConvoyView->bCanDivertRelief
+		&& !OutOfGridConvoyView->bCanConfigureRelayWaypoint
+		&& !OutOfGridConvoyView->bCanConfigureBalancedHandoff
+		&& OutOfGridConvoyView->RetuneUnavailableReasonCode
+			== FName(TEXT("invalid_facility_state"))
+		&& OutOfGridConvoyView->SignalEscortCommissionUnavailableReasonCode
+			== FName(TEXT("invalid_facility_state")));
 	FCampaignState MalformedServiceCampaign = Campaign;
 	const FBaseFacilityState DuplicateFlightDeck =
 		MalformedServiceCampaign.Bases[0].Facilities[1];

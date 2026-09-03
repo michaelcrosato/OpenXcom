@@ -1741,10 +1741,41 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				- static_cast<int64>(Convoy.BalancedHandoffQuantity), MIN_int32, MAX_int32));
 		View.BalancedHandoffStorage = SafeProduct(
 			FMath::Max(0, Item->Mass), Convoy.BalancedHandoffQuantity);
-		if (const FMutualAidRelayQueueView* Relay =
-			MutualAidRelayQueue.FindConvoy(Convoy.ConvoyId))
+		const bool bConvoyInfrastructureValid =
+			BasesWithValidInfrastructure.Contains(Source)
+			&& BasesWithValidInfrastructure.Contains(CurrentLegOrigin)
+			&& BasesWithValidInfrastructure.Contains(Destination)
+			&& (Waypoint == nullptr || BasesWithValidInfrastructure.Contains(Waypoint));
+		if (bConvoyInfrastructureValid)
 		{
-			View.RelayQueue = *Relay;
+			if (const FMutualAidRelayQueueView* Relay =
+				MutualAidRelayQueue.FindConvoy(Convoy.ConvoyId))
+			{
+				View.RelayQueue = *Relay;
+			}
+		}
+		else
+		{
+			const FName InvalidFacilityStateCode = TEXT("invalid_facility_state");
+			const FString InvalidFacilityStateMessage =
+				TEXT("Mutual Aid Convoy actions are unavailable while its route bases have invalid facility state.");
+			Snapshot.Diagnostics.Add(
+				TEXT("A persisted Mutual Aid Convoy references a base with invalid facility state."));
+			View.SignalEscortCommissionUnavailableReasonCode = InvalidFacilityStateCode;
+			View.SignalEscortCommissionUnavailableReason = InvalidFacilityStateMessage;
+			View.ReliefPriorityUnavailableReasonCode = InvalidFacilityStateCode;
+			View.ReliefPriorityUnavailableReason = InvalidFacilityStateMessage;
+			View.ReliefStandDownUnavailableReasonCode = InvalidFacilityStateCode;
+			View.ReliefStandDownUnavailableReason = InvalidFacilityStateMessage;
+			View.ReliefDiversionUnavailableReasonCode = InvalidFacilityStateCode;
+			View.ReliefDiversionUnavailableReason = InvalidFacilityStateMessage;
+			View.RelayWaypointUnavailableReasonCode = InvalidFacilityStateCode;
+			View.RelayWaypointUnavailableReason = InvalidFacilityStateMessage;
+			View.BalancedHandoffUnavailableReasonCode = InvalidFacilityStateCode;
+			View.BalancedHandoffUnavailableReason = InvalidFacilityStateMessage;
+			View.RetuneUnavailableReasonCode = InvalidFacilityStateCode;
+			View.RetuneUnavailableReason = InvalidFacilityStateMessage;
+			continue;
 		}
 		FCommissionMutualAidSignalEscortCommand CommissionEscort;
 		CommissionEscort.ExpectedSequence = Campaign.CommandSequence;
