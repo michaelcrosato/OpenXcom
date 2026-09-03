@@ -19584,7 +19584,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		{
 			FStrategicBaseState* Base = FindBase(Transaction, BaseId);
 			check(Base != nullptr);
-			int32 TotalFacilityDamage = 0;
+			int64 TotalFacilityDamage = 0;
 			int32 FacilitiesHit = 0;
 			for (int32 Target = 0; Target < MaximumFacilityTargets; ++Target)
 			{
@@ -19598,7 +19598,12 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 				const int32 AppliedDamage = FMath::Min(MissionRule->BaseFacilityDamage,
 					FacilityRule.MaxIntegrity - Facility->Damage);
 				Facility->Damage += AppliedDamage;
-				TotalFacilityDamage += AppliedDamage;
+				if (!TryAdd(TotalFacilityDamage, AppliedDamage, TotalFacilityDamage))
+				{
+					Result.Events.Reset();
+					AddError(Result, TEXT("facility_damage_overflow"), TEXT("Tactical base-defense damage exceeds the supported range."));
+					return Result;
+				}
 				++FacilitiesHit;
 				FStrategicEvent& Damaged = AddEvent(Result, EStrategicEventType::FacilityDamaged,
 					NextSequence, Transaction.StrategicTime.Utc);
@@ -21115,7 +21120,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	else
 	{
-		int32 TotalFacilityDamage = 0;
+		int64 TotalFacilityDamage = 0;
 		int32 FacilitiesHit = 0;
 		const int32 TargetCount = FMath::Min(DamageCandidateIds.Num(), MissionRule->BaseFacilitiesHit);
 		for (int32 Target = 0; Target < TargetCount; ++Target)
@@ -21131,7 +21136,12 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 				MissionRule->BaseFacilityDamage,
 				FacilityRule.MaxIntegrity - Facility->Damage);
 			Facility->Damage += AppliedDamage;
-			TotalFacilityDamage += AppliedDamage;
+			if (!TryAdd(TotalFacilityDamage, AppliedDamage, TotalFacilityDamage))
+			{
+				Result.Events.Reset();
+				AddError(Result, TEXT("facility_damage_overflow"), TEXT("Base-defense damage exceeds the supported range."));
+				return Result;
+			}
 			++FacilitiesHit;
 			FStrategicEvent& Damaged = AddEvent(Result, EStrategicEventType::FacilityDamaged,
 				NextSequence, Transaction.StrategicTime.Utc);

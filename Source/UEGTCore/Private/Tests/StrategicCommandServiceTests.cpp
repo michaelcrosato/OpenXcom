@@ -13705,6 +13705,33 @@ bool FStrategicTacticalBaseDefenseTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Failed base defense does not start squad-bond history"),
 		Failure.PersonnelSquadBonds.IsEmpty()
 		&& !Defeat.HasEvent(EStrategicEventType::PersonnelSquadBondAdvanced));
+
+	FResolvedRuleSet BoundaryRules = Rules;
+	BoundaryRules.AdversaryMissions.FindChecked(TEXT("mission.test-base-raid")).BaseFacilityDamage = MAX_int32;
+	BoundaryRules.AdversaryMissions.FindChecked(TEXT("mission.test-base-raid")).BaseFacilitiesHit = 2;
+	BoundaryRules.Facilities.FindChecked(TEXT("facility.operations-hub")).MaxIntegrity = MAX_int32;
+	BoundaryRules.Facilities.FindChecked(TEXT("facility.compact-store")).MaxIntegrity = MAX_int32;
+	FCampaignState BoundaryState = State;
+	BoundaryState.TacticalBattles[0].Phase = ETacticalBattlePhase::Resolved;
+	BoundaryState.TacticalBattles[0].Objectives[0].Status = ETacticalObjectiveStatus::Failed;
+	BoundaryState.TacticalBattles[0].Objectives[0].AdversaryInteractions =
+		BoundaryState.TacticalBattles[0].Objectives[0].RequiredInteractions;
+	FResolveTacticalOperationCommand BoundaryResolve;
+	BoundaryResolve.ExpectedSequence = BoundaryState.CommandSequence;
+	BoundaryResolve.OperationId = BoundaryState.TacticalOperations[0].OperationId;
+	BoundaryResolve.bObjectiveCompleted = false;
+	const FStrategicCommandResult BoundaryResult = FStrategicCommandService::Execute(
+		BoundaryState, BoundaryRules, Config, BoundaryResolve);
+	const FStrategicEvent* BoundaryBreach = BoundaryResult.Events.FindByPredicate(
+		[](const FStrategicEvent& Event)
+		{
+			return Event.Type == EStrategicEventType::BaseAssaultBreached;
+		});
+	TestTrue(TEXT("Tactical breach aggregates large facility damage without int32 wraparound"),
+		BoundaryResult.bAccepted
+		&& BoundaryBreach != nullptr
+		&& BoundaryBreach->Amount == -static_cast<int64>(MAX_int32) * 2
+		&& BoundaryBreach->Quantity == 2);
 	return true;
 }
 
