@@ -7766,6 +7766,16 @@ bool FStrategicFacilityDurabilityAndRepairTest::RunTest(const FString& Parameter
 		&& InvalidRepairStartSibling.Damage == -1);
 
 	FCampaignState DuplicateFacilityState = State;
+	FBaseFacilityState* DuplicateFacilityTarget = DuplicateFacilityState.Bases[0].Facilities.FindByPredicate(
+		[&FacilityInstanceId](const FBaseFacilityState& Facility)
+		{
+			return Facility.InstanceId == FacilityInstanceId;
+		});
+	TestNotNull(TEXT("Duplicate facility fixture resolves the original facility"), DuplicateFacilityTarget);
+	if (DuplicateFacilityTarget != nullptr)
+	{
+		DuplicateFacilityTarget->Damage = 1;
+	}
 	FBaseFacilityState& DuplicateFacility = DuplicateFacilityState.Bases[0].Facilities.AddDefaulted_GetRef();
 	DuplicateFacility.InstanceId = FacilityInstanceId;
 	DuplicateFacility.FacilityId = TEXT("facility.fabrication-bay");
@@ -7777,14 +7787,34 @@ bool FStrategicFacilityDurabilityAndRepairTest::RunTest(const FString& Parameter
 	DuplicateFacilityDamage.BaseId = TestBaseId;
 	DuplicateFacilityDamage.FacilityInstanceId = FacilityInstanceId;
 	DuplicateFacilityDamage.Damage = 1;
+	FStartFacilityRepairCommand DuplicateFacilityRepair = Repair;
+	DuplicateFacilityRepair.ExpectedSequence = DuplicateFacilitySequence;
+	const FFacilityRepairEvaluation DuplicateFacilityRepairPreview =
+		FStrategicCommandService::EvaluateFacilityRepair(
+			DuplicateFacilityState, Rules, DuplicateFacilityRepair);
+	TestTrue(TEXT("Facility repair preview rejects duplicate installed facility identities"),
+		!DuplicateFacilityRepairPreview.bAllowed
+		&& DuplicateFacilityRepairPreview.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_facility_state"));
+			}));
 	const FStrategicCommandResult DuplicateFacilityResult = FStrategicCommandService::Execute(
 		DuplicateFacilityState, Rules, DuplicateFacilityDamage);
-	TestTrue(TEXT("Facility mutation rejects duplicate installed facility identities atomically"),
-		!DuplicateFacilityResult.bAccepted
-		&& DuplicateFacilityResult.HasDiagnostic(TEXT("invalid_facility_state"))
-		&& DuplicateFacilityState.CommandSequence == DuplicateFacilitySequence
-		&& DuplicateFacilityState.Bases[0].Facilities.Num() == 3
-		&& DuplicateFacilityState.Bases[0].Facilities[1].Damage == 0);
+	TestFalse(TEXT("Facility mutation rejects duplicate installed facility identities"),
+		DuplicateFacilityResult.bAccepted);
+	TestTrue(TEXT("Duplicate facility mutation has a stable diagnostic"),
+		DuplicateFacilityResult.HasDiagnostic(TEXT("invalid_facility_state")));
+	TestEqual(TEXT("Duplicate facility mutation leaves sequence unchanged"),
+		DuplicateFacilityState.CommandSequence, DuplicateFacilitySequence);
+	TestEqual(TEXT("Duplicate facility mutation leaves all facilities present"),
+		DuplicateFacilityState.Bases[0].Facilities.Num(), 3);
+	TestEqual(TEXT("Duplicate facility mutation leaves the selected facility unchanged"),
+		DuplicateFacilityState.Bases[0].Facilities.FindByPredicate(
+			[&FacilityInstanceId](const FBaseFacilityState& Facility)
+			{
+				return Facility.InstanceId == FacilityInstanceId;
+			})->Damage, 1);
 
 	const FStrategicCommandResult RepairStarted = FStrategicCommandService::Execute(State, Rules, Repair);
 	TestTrue(TEXT("All-or-nothing facility repair starts atomically"), RepairStarted.bAccepted);
@@ -14174,6 +14204,39 @@ bool FStrategicBaseAssaultDefenseTest::RunTest(const FString& Parameters)
 	const FStrategicCommandResult BlockedAdvance = FStrategicCommandService::Execute(State, Rules, Config, Advance);
 	TestFalse(TEXT("Pending base assault blocks strategic time"), BlockedAdvance.bAccepted);
 	TestTrue(TEXT("Pending time block has a stable diagnostic"), BlockedAdvance.HasDiagnostic(TEXT("base_assault_pending")));
+
+	FCampaignState OutOfGridDefense = Pending;
+	FBaseFacilityState* OutOfGridBattery = OutOfGridDefense.Bases[0].Facilities.FindByPredicate(
+		[BatteryId](const FBaseFacilityState& Facility)
+		{
+			return Facility.InstanceId == BatteryId;
+		});
+	TestNotNull(TEXT("Out-of-grid defense fixture retains its battery"), OutOfGridBattery);
+	if (OutOfGridBattery != nullptr)
+	{
+		OutOfGridBattery->GridX = Config.BaseGridWidth;
+		FResolveBaseAssaultCommand OutOfGridResolve;
+		OutOfGridResolve.ExpectedSequence = OutOfGridDefense.CommandSequence;
+		OutOfGridResolve.AssaultId = OutOfGridDefense.BaseAssaults[0].AssaultId;
+		const int64 OutOfGridSequence = OutOfGridDefense.CommandSequence;
+		const int64 OutOfGridDraws = OutOfGridDefense.SimulationRandom.DrawCount;
+		const FBaseAssaultEvaluation OutOfGridPreview = FStrategicCommandService::EvaluateBaseAssault(
+			OutOfGridDefense, Rules, Config, OutOfGridResolve);
+		const FStrategicCommandResult OutOfGridResult = FStrategicCommandService::Execute(
+			OutOfGridDefense, Rules, Config, OutOfGridResolve);
+		TestTrue(TEXT("Base-defense preview and resolution reject an installed facility outside the configured grid"),
+			!OutOfGridPreview.bAllowed
+			&& OutOfGridPreview.Diagnostics.ContainsByPredicate(
+				[](const FStrategicCommandDiagnostic& Diagnostic)
+				{
+					return Diagnostic.Code == FName(TEXT("invalid_facility_state"));
+				})
+			&& !OutOfGridResult.bAccepted
+			&& OutOfGridResult.HasDiagnostic(TEXT("invalid_facility_state"))
+			&& OutOfGridDefense.CommandSequence == OutOfGridSequence
+			&& OutOfGridDefense.SimulationRandom.DrawCount == OutOfGridDraws
+			&& OutOfGridBattery->GridX == Config.BaseGridWidth);
+	}
 
 	FResolveBaseAssaultCommand Resolve;
 	Resolve.ExpectedSequence = State.CommandSequence;

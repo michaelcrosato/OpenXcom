@@ -7307,6 +7307,11 @@ FBaseInfrastructureEvaluation FStrategicCommandService::EvaluateBaseInfrastructu
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
 	FBasePersonnelCapacityProfile PersonnelCapacity;
 	if (!ComputeBasePersonnelCapacities(*Base, Rules, PersonnelCapacity, Validation)
 		|| !ComputeBaseCraftCapacity(*Base, Rules, Evaluation.CraftCapacity, Validation)
@@ -13968,6 +13973,10 @@ FFacilityRepairEvaluation FStrategicCommandService::EvaluateFacilityRepair(
 		AddError(Validation, TEXT("unknown_base"), TEXT("Facility repair base does not exist."));
 		return Reject();
 	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
+		return Reject();
+	}
 	if (!Command.FacilityInstanceId.IsValid())
 	{
 		AddError(Validation, TEXT("unknown_facility_instance"), TEXT("Facility instance id must be valid."));
@@ -14084,6 +14093,10 @@ FBaseAssaultEvaluation FStrategicCommandService::EvaluateBaseAssault(
 	{
 		AddError(Validation, TEXT("invalid_base_defense_overcharge_config"),
 			TEXT("Grid Overcharge cost, accuracy, and damage settings must remain within supported limits."));
+		return Reject();
+	}
+	if (!ValidateFacilityGridState(State, Rules, Config, Validation))
+	{
 		return Reject();
 	}
 	if (!Command.AssaultId.IsValid())
@@ -19942,6 +19955,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		}
 		if (!ValidateAdversaryConfig(Config, Result)
 			|| !ValidateFacilityState(State, Rules, Result)
+			|| !ValidateFacilityGridState(State, Rules, Config, Result)
 			|| !ValidateStrategicContacts(State, Rules, Result)
 			|| !ValidateAdversaryState(State, Rules, Config, Result))
 		{
@@ -20323,6 +20337,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			[&Operation](const FTacticalBattleState& Entry) { return Entry.OperationId == Operation.OperationId; });
 		if (!ValidatePersonnelState(Transaction, Rules, Result)
 			|| !ValidateFacilityState(Transaction, Rules, Result)
+			|| !ValidateFacilityGridState(Transaction, Rules, Config, Result)
 			|| !ValidateStrategicContacts(Transaction, Rules, Result)
 			|| !ValidateAdversaryState(Transaction, Rules, Config, Result))
 		{
@@ -21591,6 +21606,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	if (!ValidateAdversaryConfig(Config, Result)
 		|| !ValidateFacilityState(State, Rules, Result)
+		|| !ValidateFacilityGridState(State, Rules, Config, Result)
 		|| !ValidateStrategicContacts(State, Rules, Result)
 		|| !ValidateAdversaryState(State, Rules, Config, Result))
 	{
