@@ -1026,6 +1026,28 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidRandomSnapshot.bCanAdvanceTime
 		&& InvalidRandomSnapshot.Diagnostics.Contains(
 			TEXT("Deterministic random state is invalid.")));
+	FCampaignState InvalidNoBaseLayoutCampaign = InvalidFinancialCampaign;
+	InvalidNoBaseLayoutCampaign.SimulationRandom.Initialize(0);
+	InvalidNoBaseLayoutCampaign.Bases.Reset();
+	FFacilityConstructionProjectState& OrphanedConstruction =
+		InvalidNoBaseLayoutCampaign.FacilityConstructionProjects.AddDefaulted_GetRef();
+	OrphanedConstruction.ProjectId = FGuid(901, 902, 903, 904);
+	OrphanedConstruction.FacilityInstanceId = FGuid(905, 906, 907, 908);
+	OrphanedConstruction.BaseId = FGuid(909, 910, 911, 912);
+	OrphanedConstruction.FacilityId = Operations.Identity.RuleId;
+	OrphanedConstruction.RemainingBuildSeconds = 3600;
+	const FStrategicDashboardSnapshot InvalidNoBaseLayoutSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidNoBaseLayoutCampaign, InvalidFinancialRules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for an orphaned construction project without bases"),
+		InvalidNoBaseLayoutSnapshot.bSucceeded
+		&& !InvalidNoBaseLayoutSnapshot.bCanAdvanceTime
+		&& InvalidNoBaseLayoutSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("Facility construction project"))
+					&& Diagnostic.Contains(TEXT("invalid persisted state"));
+			}));
 	const FStrategicCraftView* InvalidSequenceSalvageCraft =
 		InvalidSequenceSnapshot.Craft.FindByPredicate(
 			[&Craft](const FStrategicCraftView& CraftView)

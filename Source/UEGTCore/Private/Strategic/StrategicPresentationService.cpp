@@ -1152,10 +1152,13 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		FMutualAidRelayQueue::Evaluate(Campaign, Rules);
 	const FStrategicCommandResult FacilityLayoutValidation =
 		FStrategicCommandService::ValidateFacilityLayout(Campaign, Rules, Config);
-	if (!FacilityLayoutValidation.bAccepted
-		&& !FacilityLayoutValidation.Diagnostics.IsEmpty())
+	if (!FacilityLayoutValidation.bAccepted)
 	{
-		Snapshot.Diagnostics.Add(FacilityLayoutValidation.Diagnostics[0].Message);
+		Snapshot.bCanAdvanceTime = false;
+		if (!FacilityLayoutValidation.Diagnostics.IsEmpty())
+		{
+			Snapshot.Diagnostics.Add(FacilityLayoutValidation.Diagnostics[0].Message);
+		}
 	}
 	const FStrategicCommandResult ProjectStateValidation =
 		FStrategicCommandService::ValidateStrategicProjectState(Campaign, Rules);
