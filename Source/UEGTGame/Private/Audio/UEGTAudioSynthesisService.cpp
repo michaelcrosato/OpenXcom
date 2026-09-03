@@ -47,10 +47,14 @@ namespace UEGTAudioSynthesisPrivate
 
 int32 FUEGTAudioCueDefinition::GetExpectedFrameCount() const
 {
-	return SampleRate > 0 && DurationMilliseconds > 0
-		? FMath::Max(1, static_cast<int32>(
-			(static_cast<int64>(SampleRate) * DurationMilliseconds) / 1000))
-		: 0;
+	if (SampleRate <= 0 || DurationMilliseconds <= 0)
+	{
+		return 0;
+	}
+
+	const int64 FrameCount =
+		(static_cast<int64>(SampleRate) * DurationMilliseconds) / 1000;
+	return static_cast<int32>(FMath::Clamp<int64>(FrameCount, 1, MAX_int32));
 }
 
 bool FUEGTAudioCueDefinition::IsValid() const

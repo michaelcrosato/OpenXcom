@@ -61,6 +61,25 @@ bool FUEGTAudioSynthesisTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FUEGTAudioDefinitionBoundsTest,
+	"UEGT.Core.Game.Audio.DefinitionBounds",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FUEGTAudioDefinitionBoundsTest::RunTest(const FString& Parameters)
+{
+	FUEGTAudioCueDefinition Definition;
+	Definition.DebugName = FName(TEXT("boundary-definition"));
+	Definition.SampleRate = MAX_int32;
+	Definition.DurationMilliseconds = MAX_int32;
+
+	TestEqual(TEXT("Extreme positive audio dimensions saturate the frame-count contract"),
+		Definition.GetExpectedFrameCount(), MAX_int32);
+	TestFalse(TEXT("Extreme dimensions remain rejected as an invalid synthesis definition"),
+		Definition.IsValid());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FUEGTAudioEventRoutingTest,
 	"UEGT.Core.Game.Audio.EventRoutingPriority",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
