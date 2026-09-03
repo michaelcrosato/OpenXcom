@@ -8898,6 +8898,31 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 		&& InvalidSortie.Craft[0].Status == ECraftStatus::Airborne
 		&& InvalidSortie.Craft[0].CompletedSorties == MIN_int32);
 
+	FCampaignState DuplicateWeaponState = MakeStateWithBase();
+	const FGuid DuplicateWeaponCraftId(0x689, 0x68a, 0x68b, 0x68c);
+	FCraftState& DuplicateWeaponCraft = AddTestCraft(DuplicateWeaponState, DuplicateWeaponCraftId);
+	DuplicateWeaponCraft.EquipmentItems.Add(TEXT("item.sky-lance"));
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		FCraftWeaponState& WeaponState = DuplicateWeaponCraft.WeaponStates.AddDefaulted_GetRef();
+		WeaponState.WeaponItemId = TEXT("item.sky-lance");
+		WeaponState.Ammunition = 1;
+	}
+	const int64 DuplicateWeaponSequence = DuplicateWeaponState.CommandSequence;
+	FSetCraftEquipmentCommand ClearDuplicateWeaponState;
+	ClearDuplicateWeaponState.ExpectedSequence = DuplicateWeaponState.CommandSequence;
+	ClearDuplicateWeaponState.CraftId = DuplicateWeaponCraftId;
+	const FStrategicCommandResult DuplicateWeaponResult = FStrategicCommandService::Execute(
+		DuplicateWeaponState, Rules, ClearDuplicateWeaponState);
+	TestTrue(TEXT("Craft equipment changes reject duplicate weapon state before refunding ammunition twice"),
+		!DuplicateWeaponResult.bAccepted
+		&& DuplicateWeaponResult.HasDiagnostic(TEXT("invalid_craft_weapon_state"))
+		&& DuplicateWeaponState.CommandSequence == DuplicateWeaponSequence
+		&& DuplicateWeaponState.Craft.Num() == 1
+		&& DuplicateWeaponState.Craft[0].EquipmentItems.Num() == 1
+		&& DuplicateWeaponState.Craft[0].WeaponStates.Num() == 2
+		&& DuplicateWeaponState.Bases[0].Inventory.IsEmpty());
+
 	return true;
 }
 

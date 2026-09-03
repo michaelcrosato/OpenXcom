@@ -15605,6 +15605,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Craft references a missing base."));
 		return Result;
 	}
+	TSet<FName> SeenWeaponStates;
 	TMap<FName, int64> InventoryDeltas;
 	for (const FName ItemId : Craft->EquipmentItems)
 	{
@@ -15613,11 +15614,20 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	for (const FCraftWeaponState& WeaponState : Craft->WeaponStates)
 	{
 		const FItemRule* Weapon = Rules.Items.Find(WeaponState.WeaponItemId);
-		if (Weapon == nullptr || !IsValidCraftWeaponRule(*Weapon, Rules) || WeaponState.Ammunition < 0)
+		const int32 MountCount = CountEquippedItem(Craft->EquipmentItems, WeaponState.WeaponItemId);
+		const int64 MaximumAmmunition = Weapon != nullptr
+			? static_cast<int64>(Weapon->MagazineCapacity) * MountCount
+			: -1;
+		if (Weapon == nullptr || !IsValidCraftWeaponRule(*Weapon, Rules) || MountCount <= 0
+			|| SeenWeaponStates.Contains(WeaponState.WeaponItemId)
+			|| WeaponState.Ammunition < 0 || WeaponState.Ammunition > MaximumAmmunition
+			|| WeaponState.RemainingCooldownSeconds < 0
+			|| WeaponState.RemainingCooldownSeconds > Weapon->FireIntervalSeconds)
 		{
 			AddError(Result, TEXT("invalid_craft_weapon_state"), TEXT("Craft has invalid ammunition state that cannot be unloaded."));
 			return Result;
 		}
+		SeenWeaponStates.Add(WeaponState.WeaponItemId);
 		InventoryDeltas.FindOrAdd(Weapon->AmmunitionItemId) += WeaponState.Ammunition;
 	}
 	for (const FName ItemId : Command.ItemIds)
