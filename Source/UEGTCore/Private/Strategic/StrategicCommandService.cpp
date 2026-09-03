@@ -16172,6 +16172,13 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("salvage_disposition_required"), TEXT("Retain or sell all recovered salvage before launching this craft."));
 		return Result;
 	}
+	if (Craft->CurrentHull <= 0 || Craft->CurrentHull > Rule->MaxHull
+		|| Craft->CurrentFuel < 0 || Craft->CurrentFuel > Rule->FuelCapacity)
+	{
+		AddError(Result, TEXT("invalid_craft_state"),
+			TEXT("Craft hull or fuel state is outside its rule limits."));
+		return Result;
+	}
 	if (Command.FuelUnits < Rule->FuelBurnPerHour || Command.FuelUnits > Craft->CurrentFuel)
 	{
 		AddError(Result, TEXT("invalid_sortie_fuel"), FString::Printf(TEXT("Sortie must reserve at least %d fuel units without exceeding current fuel %d."), Rule->FuelBurnPerHour, Craft->CurrentFuel));

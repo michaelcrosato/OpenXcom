@@ -8947,6 +8947,58 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Grounded craft can equip stored craft items"), Equipped.bAccepted);
 	TestTrue(TEXT("Craft equipment leaves base inventory"), State.Bases[0].Inventory.IsEmpty());
 
+	FCampaignState InvalidHullLaunchState = MakeStateWithBase();
+	const FGuid InvalidHullPilotId(0x699, 0x69A, 0x69B, 0x69C);
+	const FGuid InvalidHullCraftId(0x69D, 0x69E, 0x69F, 0x6A0);
+	FPersonnelState& InvalidHullPilot = AddTestPilot(
+		InvalidHullLaunchState, InvalidHullPilotId);
+	FCraftState& InvalidHullCraft = AddTestCraft(
+		InvalidHullLaunchState, InvalidHullCraftId);
+	InvalidHullCraft.AssignedPilotId = InvalidHullPilotId;
+	InvalidHullCraft.CurrentHull = 0;
+	const int64 InvalidHullLaunchSequence = InvalidHullLaunchState.CommandSequence;
+	FLaunchCraftCommand InvalidHullLaunch;
+	InvalidHullLaunch.ExpectedSequence = InvalidHullLaunchState.CommandSequence;
+	InvalidHullLaunch.CraftId = InvalidHullCraftId;
+	InvalidHullLaunch.FuelUnits = 50;
+	const FStrategicCommandResult InvalidHullLaunchResult = FStrategicCommandService::Execute(
+		InvalidHullLaunchState, Rules, InvalidHullLaunch);
+	TestTrue(TEXT("Craft launch rejects non-positive persisted hull before consuming fuel"),
+		!InvalidHullLaunchResult.bAccepted
+		&& InvalidHullLaunchResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidHullLaunchState.CommandSequence == InvalidHullLaunchSequence
+		&& InvalidHullLaunchState.Craft.Num() == 1
+		&& InvalidHullLaunchState.Craft[0].Status == ECraftStatus::Grounded
+		&& InvalidHullLaunchState.Craft[0].CurrentHull == 0
+		&& InvalidHullLaunchState.Craft[0].CurrentFuel == 500
+		&& InvalidHullPilot.Status == EPersonnelStatus::Available);
+
+	FCampaignState InvalidFuelLaunchState = MakeStateWithBase();
+	const FGuid InvalidFuelPilotId(0x6A1, 0x6A2, 0x6A3, 0x6A4);
+	const FGuid InvalidFuelCraftId(0x6A5, 0x6A6, 0x6A7, 0x6A8);
+	FPersonnelState& InvalidFuelPilot = AddTestPilot(
+		InvalidFuelLaunchState, InvalidFuelPilotId);
+	FCraftState& InvalidFuelCraft = AddTestCraft(
+		InvalidFuelLaunchState, InvalidFuelCraftId);
+	InvalidFuelCraft.AssignedPilotId = InvalidFuelPilotId;
+	InvalidFuelCraft.CurrentFuel = 501;
+	const int64 InvalidFuelLaunchSequence = InvalidFuelLaunchState.CommandSequence;
+	FLaunchCraftCommand InvalidFuelLaunch;
+	InvalidFuelLaunch.ExpectedSequence = InvalidFuelLaunchState.CommandSequence;
+	InvalidFuelLaunch.CraftId = InvalidFuelCraftId;
+	InvalidFuelLaunch.FuelUnits = 50;
+	const FStrategicCommandResult InvalidFuelLaunchResult = FStrategicCommandService::Execute(
+		InvalidFuelLaunchState, Rules, InvalidFuelLaunch);
+	TestTrue(TEXT("Craft launch rejects fuel above the persisted rule capacity before consuming it"),
+		!InvalidFuelLaunchResult.bAccepted
+		&& InvalidFuelLaunchResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidFuelLaunchState.CommandSequence == InvalidFuelLaunchSequence
+		&& InvalidFuelLaunchState.Craft.Num() == 1
+		&& InvalidFuelLaunchState.Craft[0].Status == ECraftStatus::Grounded
+		&& InvalidFuelLaunchState.Craft[0].CurrentHull == 100
+		&& InvalidFuelLaunchState.Craft[0].CurrentFuel == 501
+		&& InvalidFuelPilot.Status == EPersonnelStatus::Available);
+
 	FLaunchCraftCommand Launch;
 	Launch.ExpectedSequence = State.CommandSequence;
 	Launch.CraftId = CraftId;
