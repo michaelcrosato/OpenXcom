@@ -14537,6 +14537,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("personnel_assigned_to_craft"), TEXT("Personnel assigned to a craft must be removed from its roster before dismissal."));
 		return Result;
 	}
+	if (!ValidateProjectStaffingForCategory(
+			State, Person->BaseId, Role->Category, Result))
+	{
+		return Result;
+	}
 	if (WouldViolateStaffingCommitmentAfterRelease(State, Rules, Person->BaseId, Role->Category))
 	{
 		AddError(Result, TEXT("personnel_staffing_committed"), TEXT("Release one project or Signal Watch staffing commitment before dismissing this personnel member."));

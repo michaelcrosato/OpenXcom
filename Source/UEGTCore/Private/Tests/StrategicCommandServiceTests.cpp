@@ -12854,6 +12854,22 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Personnel transfer reports the malformed research project"),
 		TransferResult.HasDiagnostic(TEXT("invalid_research_project")));
 
+	FDismissPersonnelCommand Dismiss;
+	Dismiss.ExpectedSequence = ResearchState.CommandSequence;
+	Dismiss.PersonnelId = ScientistId;
+	const FStrategicCommandResult DismissResult =
+		FStrategicCommandService::Execute(ResearchState, Rules, Dismiss);
+	TestFalse(TEXT("Personnel dismissal rejects malformed source project staffing"),
+		DismissResult.bAccepted);
+	TestTrue(TEXT("Rejected personnel dismissal leaves the scientist in the roster"),
+		ResearchState.Personnel.ContainsByPredicate(
+			[&ScientistId](const FPersonnelState& Person)
+			{
+				return Person.PersonnelId == ScientistId;
+			}));
+	TestTrue(TEXT("Personnel dismissal reports the malformed research project"),
+		DismissResult.HasDiagnostic(TEXT("invalid_research_project")));
+
 	FCampaignState ManufacturingState = MakeStateWithBase();
 	const FGuid ManufacturingId(0x7a130001, 0x7a130002, 0x7a130003, 0x7a130004);
 	FManufacturingProjectState& InvalidManufacturing =
