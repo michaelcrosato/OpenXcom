@@ -15579,6 +15579,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	check(TransferredCraft != nullptr);
 	const FName CraftRuleId = TransferredCraft->CraftRuleId;
 	TransferredCraft->BaseId = Command.DestinationBaseId;
+	if (!ValidateCraftState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	SortStateCollections(Transaction);
 	++Transaction.CommandSequence;
 	FStrategicEvent& Event = AddEvent(Result, EStrategicEventType::CraftTransferred,
@@ -15642,6 +15646,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		}
 	}
 	Craft->AssignedPilotId = Command.PersonnelId;
+	if (!ValidateCraftState(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	const FGuid BaseId = Craft->BaseId;
 	const FName CraftRuleId = Craft->CraftRuleId;
 	++Transaction.CommandSequence;

@@ -8880,7 +8880,7 @@ bool FStrategicCraftTransferTest::RunTest(const FString& Parameters)
 	DestinationDeck.GridY = 0;
 
 	const FGuid CraftId(0x655, 0x656, 0x657, 0x658);
-	FCraftState& Craft = AddTestCraft(State, CraftId);
+	FCraftState& Craft = AddTestTransportCraft(State, CraftId);
 	Craft.EquipmentItems.Add(TEXT("item.sky-lance"));
 	FInventoryStack& Cargo = Craft.Cargo.AddDefaulted_GetRef();
 	Cargo.ItemId = TEXT("item.service-rifle");
@@ -8925,6 +8925,27 @@ bool FStrategicCraftTransferTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Craft cannot transfer to an unknown base"), UnknownBaseRejected.bAccepted);
 	TestTrue(TEXT("Unknown destination is diagnosed"), UnknownBaseRejected.HasDiagnostic(TEXT("unknown_base")));
 
+	FCampaignState InvalidTransferState = State;
+	FCraftState* InvalidTransferCraft = InvalidTransferState.Craft.FindByPredicate(
+		[CraftId](const FCraftState& Entry) { return Entry.CraftId == CraftId; });
+	TestNotNull(TEXT("Malformed transfer fixture contains the craft"), InvalidTransferCraft);
+	if (InvalidTransferCraft != nullptr)
+	{
+		InvalidTransferCraft->CurrentHull = 0;
+		const int64 InvalidTransferSequence = InvalidTransferState.CommandSequence;
+		FTransferCraftCommand InvalidTransfer = Transfer;
+		InvalidTransfer.ExpectedSequence = InvalidTransferSequence;
+		const FStrategicCommandResult InvalidTransferResult = FStrategicCommandService::Execute(
+			InvalidTransferState, Rules, InvalidTransfer);
+		TestTrue(TEXT("Craft transfer rejects malformed persisted hull atomically"),
+			!InvalidTransferResult.bAccepted
+			&& InvalidTransferResult.HasDiagnostic(TEXT("invalid_craft_state"))
+			&& InvalidTransferState.CommandSequence == InvalidTransferSequence
+			&& InvalidTransferState.Craft.Num() == 1
+			&& InvalidTransferState.Craft[0].BaseId == TestBaseId
+			&& InvalidTransferState.Craft[0].CurrentHull == 0);
+	}
+
 	const FStrategicCommandResult Transferred = FStrategicCommandService::Execute(State, Rules, Transfer);
 	TestTrue(TEXT("Grounded uncrewed craft transfers atomically"), Transferred.bAccepted);
 	TestTrue(TEXT("Craft transfer emits a typed event"), Transferred.HasEvent(EStrategicEventType::CraftTransferred));
@@ -8942,7 +8963,7 @@ bool FStrategicCraftTransferTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Craft transfer event identifies craft, rule, and destination"), TransferEvent != nullptr
 		&& TransferEvent->CraftId == CraftId
 		&& TransferEvent->BaseId == DestinationBaseId
-		&& TransferEvent->RuleId == FName(TEXT("craft.sparrow-interceptor")));
+		&& TransferEvent->RuleId == FName(TEXT("craft.heron-transport")));
 
 	FCraftAcquisitionOrderState& ReservedBerth = State.CraftAcquisitionOrders.AddDefaulted_GetRef();
 	ReservedBerth.OrderId = FGuid(0x671, 0x672, 0x673, 0x674);
@@ -8995,6 +9016,29 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 	Assign.ExpectedSequence = State.CommandSequence;
 	Assign.CraftId = CraftId;
 	Assign.PersonnelId = PilotId;
+	FCampaignState InvalidPilotAssignmentState = State;
+	FCraftState* InvalidPilotAssignmentCraft = InvalidPilotAssignmentState.Craft.FindByPredicate(
+		[CraftId](const FCraftState& Entry) { return Entry.CraftId == CraftId; });
+	TestNotNull(TEXT("Malformed pilot-assignment fixture contains the craft"), InvalidPilotAssignmentCraft);
+	if (InvalidPilotAssignmentCraft != nullptr)
+	{
+		InvalidPilotAssignmentCraft->CurrentFuel = 501;
+		const int64 InvalidPilotAssignmentSequence = InvalidPilotAssignmentState.CommandSequence;
+		FAssignCraftPilotCommand InvalidPilotAssignment = Assign;
+		InvalidPilotAssignment.ExpectedSequence = InvalidPilotAssignmentSequence;
+		const FStrategicCommandResult InvalidPilotAssignmentResult = FStrategicCommandService::Execute(
+			InvalidPilotAssignmentState, Rules, InvalidPilotAssignment);
+		TestTrue(TEXT("Pilot assignment rejects malformed persisted fuel atomically"),
+			!InvalidPilotAssignmentResult.bAccepted
+			&& InvalidPilotAssignmentResult.HasDiagnostic(TEXT("invalid_craft_state"))
+			&& InvalidPilotAssignmentState.CommandSequence == InvalidPilotAssignmentSequence
+			&& InvalidPilotAssignmentState.Craft.Num() == 1
+			&& !InvalidPilotAssignmentState.Craft[0].AssignedPilotId.IsValid()
+			&& InvalidPilotAssignmentState.Craft[0].CurrentFuel == 501
+			&& InvalidPilotAssignmentState.Personnel.Num() == 1
+			&& InvalidPilotAssignmentState.Personnel[0].Status == EPersonnelStatus::Available);
+	}
+
 	const FStrategicCommandResult Assigned = FStrategicCommandService::Execute(State, Rules, Assign);
 	TestTrue(TEXT("Available pilot can be assigned"), Assigned.bAccepted);
 	TestTrue(TEXT("Pilot assignment emits an event"), Assigned.HasEvent(EStrategicEventType::CraftPilotAssigned));
