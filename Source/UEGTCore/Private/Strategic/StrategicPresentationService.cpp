@@ -170,6 +170,33 @@ namespace StrategicPresentationPrivate
 		return Result;
 	}
 
+	bool IsFacilityGridValid(
+		const FStrategicBaseState& Base,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		FString& OutDiagnostic)
+	{
+		for (const FBaseFacilityState& Facility : Base.Facilities)
+		{
+			const FFacilityRule* Rule = Rules.Facilities.Find(Facility.FacilityId);
+			if (Rule == nullptr)
+			{
+				continue;
+			}
+			if (Facility.GridX < 0 || Facility.GridY < 0
+				|| Rule->GridWidth <= 0 || Rule->GridHeight <= 0
+				|| static_cast<int64>(Facility.GridX) + Rule->GridWidth > Config.BaseGridWidth
+				|| static_cast<int64>(Facility.GridY) + Rule->GridHeight > Config.BaseGridHeight)
+			{
+				OutDiagnostic = FString::Printf(
+					TEXT("Facility '%s' at base '%s' lies outside the configured base grid."),
+					*Facility.FacilityId.ToString(), *Base.Name);
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool HasRequirements(const TArray<FName>& Requirements, const FCampaignState& Campaign)
 	{
 		return !Requirements.ContainsByPredicate(
@@ -1040,6 +1067,17 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 	TSet<const FStrategicBaseState*> BasesWithValidInfrastructure;
 	for (const FStrategicBaseState& Base : Campaign.Bases)
 	{
+		const FBaseInfrastructureEvaluation Infrastructure =
+			FStrategicCommandService::EvaluateBaseInfrastructure(Campaign, Rules, Base.BaseId);
+		FString FacilityGridDiagnostic;
+		if (Infrastructure.bValid
+			&& IsFacilityGridValid(Base, Rules, Config, FacilityGridDiagnostic))
+		{
+			BasesWithValidInfrastructure.Add(&Base);
+		}
+	}
+	for (const FStrategicBaseState& Base : Campaign.Bases)
+	{
 		FStrategicBaseView& View = Snapshot.Bases.AddDefaulted_GetRef();
 		View.BaseId = Base.BaseId;
 		View.Name = Base.Name;
@@ -1049,9 +1087,12 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.LatitudeMilliDegrees = Base.LatitudeMilliDegrees;
 		const FBaseInfrastructureEvaluation Infrastructure =
 			FStrategicCommandService::EvaluateBaseInfrastructure(Campaign, Rules, Base.BaseId);
-		if (Infrastructure.bValid)
+		FString FacilityGridDiagnostic;
+		const bool bFacilityGridValid = Infrastructure.bValid
+			&& IsFacilityGridValid(Base, Rules, Config, FacilityGridDiagnostic);
+		const bool bInfrastructureValid = Infrastructure.bValid && bFacilityGridValid;
+		if (bInfrastructureValid)
 		{
-			BasesWithValidInfrastructure.Add(&Base);
 			View.BaseScientistCapacity = Infrastructure.BaseScientistCapacity;
 			View.FacilityScientistCapacity = Infrastructure.FacilityScientistCapacity;
 			View.ScientistCapacity = Infrastructure.ScientistCapacity;
@@ -1069,7 +1110,11 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		{
 			Snapshot.Diagnostics.Add(Infrastructure.Diagnostics[0].Message);
 		}
-		if (Infrastructure.bValid)
+		else if (!FacilityGridDiagnostic.IsEmpty())
+		{
+			Snapshot.Diagnostics.Add(MoveTemp(FacilityGridDiagnostic));
+		}
+		if (bInfrastructureValid)
 		{
 			if (const FMutualAidRelayQueueBaseView* RelayBase =
 				MutualAidRelayQueue.FindBase(Base.BaseId))
@@ -1088,7 +1133,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.GridHeight = Config.BaseGridHeight;
 		const FBaseStorageEvaluation Storage =
 			FStrategicCommandService::EvaluateBaseStorage(Campaign, Rules, Base.BaseId);
-		if (Storage.bValid)
+		if (bInfrastructureValid && Storage.bValid)
 		{
 			View.bStorageEnforced = Storage.bEnforced;
 			View.StorageCapacity = Storage.Capacity;
@@ -1100,11 +1145,12 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			View.StorageAvailable = Storage.Available;
 			View.StorageOverflow = Storage.Overflow;
 		}
-		else if (!Storage.Diagnostics.IsEmpty())
+		else if (bInfrastructureValid && !Storage.Diagnostics.IsEmpty())
 		{
 			Snapshot.Diagnostics.Add(Storage.Diagnostics[0].Message);
 		}
-		View.Specialization = Infrastructure.Specialization;
+		View.Specialization = bInfrastructureValid
+			? Infrastructure.Specialization : FStrategicBaseSpecializationView();
 		FSetSignalWatchStaffCommand CurrentSignalWatch;
 		CurrentSignalWatch.ExpectedSequence = Campaign.CommandSequence;
 		CurrentSignalWatch.BaseId = Base.BaseId;
@@ -1112,7 +1158,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		const FSignalWatchStaffEvaluation SignalWatch =
 			FStrategicCommandService::EvaluateSignalWatchStaff(
 				Campaign, Rules, CurrentSignalWatch);
-		if (SignalWatch.bValid)
+		if (bInfrastructureValid && SignalWatch.bValid)
 		{
 			View.SignalWatchPolicyId = SignalWatch.PolicyId;
 			View.SignalWatchScientists = SignalWatch.CurrentScientists;
@@ -1137,7 +1183,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				}
 			}
 		}
-		else if (!SignalWatch.Diagnostics.IsEmpty())
+		else if (bInfrastructureValid && !SignalWatch.Diagnostics.IsEmpty())
 		{
 			Snapshot.Diagnostics.Add(SignalWatch.Diagnostics[0].Message);
 		}
@@ -1148,7 +1194,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		const FWorksCadreStaffEvaluation WorksCadre =
 			FStrategicCommandService::EvaluateWorksCadreStaff(
 				Campaign, Rules, CurrentWorksCadre);
-		if (WorksCadre.bValid)
+		if (bInfrastructureValid && WorksCadre.bValid)
 		{
 			View.WorksCadrePolicyId = WorksCadre.PolicyId;
 			View.WorksCadreEngineers = WorksCadre.CurrentEngineers;
@@ -1212,7 +1258,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				}
 			}
 		}
-		else if (!WorksCadre.Diagnostics.IsEmpty())
+		else if (bInfrastructureValid && !WorksCadre.Diagnostics.IsEmpty())
 		{
 			Snapshot.Diagnostics.Add(WorksCadre.Diagnostics[0].Message);
 		}
@@ -1401,10 +1447,14 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			Campaign, Rules, Base.BaseId, EPersonnelRoleCategory::Scientist);
 		View.EngineerPersonnel = PersonnelCountForCategory(
 			Campaign, Rules, Base.BaseId, EPersonnelRoleCategory::Engineer);
-		View.ScientistOverCapacity = FMath::Max(0,
-			FMath::Max(View.AssignedScientists, View.ScientistPersonnel) - View.ScientistCapacity);
-		View.EngineerOverCapacity = FMath::Max(0,
-			FMath::Max(View.AssignedEngineers, View.EngineerPersonnel) - View.EngineerCapacity);
+		View.ScientistOverCapacity = bInfrastructureValid
+			? FMath::Max(0,
+				FMath::Max(View.AssignedScientists, View.ScientistPersonnel) - View.ScientistCapacity)
+			: 0;
+		View.EngineerOverCapacity = bInfrastructureValid
+			? FMath::Max(0,
+				FMath::Max(View.AssignedEngineers, View.EngineerPersonnel) - View.EngineerCapacity)
+			: 0;
 		if (!Base.Facilities.IsEmpty())
 		{
 			for (const FBaseFacilityState& Installed : Base.Facilities)
@@ -1435,8 +1485,11 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 							Facility->ScaleEffectByIntegrity(100, ClampedDamage));
 					}
 					View.Facilities.Add(MoveTemp(FacilityName));
-					Snapshot.MonthlyOutgoings = SaturatingAdd(
-						Snapshot.MonthlyOutgoings, Facility->MonthlyMaintenance);
+					if (bInfrastructureValid)
+					{
+						Snapshot.MonthlyOutgoings = SaturatingAdd(
+							Snapshot.MonthlyOutgoings, Facility->MonthlyMaintenance);
+					}
 				}
 				else
 				{
@@ -1451,8 +1504,11 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				if (const FFacilityRule* Facility = Rules.Facilities.Find(FacilityId))
 				{
 					View.Facilities.Add(RuleName(Facility->DisplayName, FacilityId));
-					Snapshot.MonthlyOutgoings = SaturatingAdd(
-						Snapshot.MonthlyOutgoings, Facility->MonthlyMaintenance);
+					if (bInfrastructureValid)
+					{
+						Snapshot.MonthlyOutgoings = SaturatingAdd(
+							Snapshot.MonthlyOutgoings, Facility->MonthlyMaintenance);
+					}
 				}
 				else
 				{
@@ -1485,6 +1541,14 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				Option.DestinationBaseName = Destination.Name;
 				Option.TransitSeconds =
 					static_cast<int64>(Config.MutualAidConvoyTransitHours) * 3600LL;
+				if (!bInfrastructureValid || !BasesWithValidInfrastructure.Contains(&Destination))
+				{
+					Option.UnavailableReasonCode = TEXT("invalid_facility_state");
+					Option.UnavailableReason = !bInfrastructureValid
+						? TEXT("The source base has invalid facility state.")
+						: TEXT("The destination base has invalid facility state.");
+					continue;
+				}
 				for (const EMutualAidRoutePolicy Policy :
 					FStrategicCommandService::GetMutualAidRoutePolicies())
 				{

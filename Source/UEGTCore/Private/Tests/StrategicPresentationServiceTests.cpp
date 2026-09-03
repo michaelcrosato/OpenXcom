@@ -938,6 +938,74 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& MalformedResearchProject != nullptr
 		&& MalformedResearchProject->bPaused
 		&& MalformedResearchProject->MissingFacilityIds.Contains(Operations.Identity.RuleId));
+	FCampaignState OutOfGridFacilityCampaign = Campaign;
+	OutOfGridFacilityCampaign.Bases[0].Facilities[0].GridX = Config.BaseGridWidth;
+	FStrategicSimulationConfig OutOfGridConfig = Config;
+	OutOfGridConfig.ManufacturingFacilityId = Operations.Identity.RuleId;
+	const FStrategicDashboardSnapshot OutOfGridFacilitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			OutOfGridFacilityCampaign, Rules, OutOfGridConfig);
+	const FStrategicActionOptionView* OutOfGridFacilityOption =
+		OutOfGridFacilitySnapshot.ActionOptions.FindByPredicate(
+			[&Operations](const FStrategicActionOptionView& Option)
+			{
+				return Option.Type == EStrategicActionOptionType::Facility
+					&& Option.RuleId == Operations.Identity.RuleId;
+			});
+	const FStrategicActionOptionView* OutOfGridCraftOption =
+		OutOfGridFacilitySnapshot.ActionOptions.FindByPredicate(
+			[](const FStrategicActionOptionView& Option)
+			{
+				return Option.Type == EStrategicActionOptionType::Craft;
+			});
+	const FStrategicProjectView* OutOfGridResearchProject =
+		OutOfGridFacilitySnapshot.Projects.FindByPredicate(
+			[](const FStrategicProjectView& Project)
+			{
+				return Project.Type == EStrategicProjectType::Research;
+			});
+	const FStrategicProjectView* OutOfGridManufacturingProject =
+		OutOfGridFacilitySnapshot.Projects.FindByPredicate(
+			[](const FStrategicProjectView& Project)
+			{
+				return Project.Type == EStrategicProjectType::Manufacturing;
+			});
+	const FStrategicFacilityView* OutOfGridFacilityView =
+		OutOfGridFacilitySnapshot.Bases[0].FacilityLayout.FindByPredicate(
+			[&Operations](const FStrategicFacilityView& Facility)
+			{
+				return !Facility.bConstructing && Facility.FacilityId == Operations.Identity.RuleId;
+			});
+	TestTrue(TEXT("Dashboard with an out-of-grid facility withholds derived infrastructure and actions"),
+		OutOfGridFacilitySnapshot.bSucceeded
+		&& OutOfGridFacilitySnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("outside the configured base grid"));
+			})
+		&& OutOfGridFacilitySnapshot.Bases.Num() == 1
+		&& OutOfGridFacilitySnapshot.Bases[0].ScientistCapacity == 0
+		&& OutOfGridFacilitySnapshot.Bases[0].EngineerCapacity == 0
+		&& OutOfGridFacilitySnapshot.Bases[0].CraftCapacity == 0
+		&& OutOfGridFacilitySnapshot.Bases[0].StorageCapacity == 0
+		&& OutOfGridFacilitySnapshot.Bases[0].StorageCommitted == 0
+		&& OutOfGridFacilitySnapshot.Bases[0].RelayChannelCount == 0
+		&& OutOfGridFacilitySnapshot.Bases[0].SpecializationRelayChannelBonus == 0
+		&& !OutOfGridFacilitySnapshot.Bases[0].Specialization.bSpecialized
+		&& OutOfGridFacilityView != nullptr
+		&& OutOfGridFacilityView->GridX == Config.BaseGridWidth
+		&& OutOfGridFacilitySnapshot.MonthlyOutgoings == 25
+		&& OutOfGridFacilityOption != nullptr
+		&& !OutOfGridFacilityOption->bAvailable
+		&& OutOfGridFacilityOption->ValidFacilityPlacements.IsEmpty()
+		&& OutOfGridCraftOption != nullptr
+		&& !OutOfGridCraftOption->bAvailable
+		&& OutOfGridResearchProject != nullptr
+		&& OutOfGridResearchProject->bPaused
+		&& OutOfGridResearchProject->MissingFacilityIds.Contains(Operations.Identity.RuleId)
+		&& OutOfGridManufacturingProject != nullptr
+		&& OutOfGridManufacturingProject->bPaused
+		&& OutOfGridManufacturingProject->MissingFacilityIds.Contains(Operations.Identity.RuleId));
 	FCampaignState MalformedServiceCampaign = Campaign;
 	const FBaseFacilityState DuplicateFlightDeck =
 		MalformedServiceCampaign.Bases[0].Facilities[1];
