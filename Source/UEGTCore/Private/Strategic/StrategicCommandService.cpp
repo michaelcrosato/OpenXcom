@@ -5592,6 +5592,57 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateResearchProjects(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		FStrategicCommandResult& Result)
+	{
+		TSet<FName> SeenResearch;
+		for (const FResearchProjectState& Project : State.ResearchProjects)
+		{
+			const FResearchRule* Research = Rules.Research.Find(Project.ResearchId);
+			if (Research == nullptr || Research->Effort <= 0
+				|| SeenResearch.Contains(Project.ResearchId)
+				|| FindBase(State, Project.BaseId) == nullptr
+				|| Project.AssignedScientists < 0
+				|| Project.AccumulatedWorkSeconds < 0
+				|| State.CompletedResearch.Contains(Project.ResearchId))
+			{
+				AddError(Result, TEXT("invalid_research_project"), FString::Printf(
+					TEXT("Research project '%s' has invalid persisted state."),
+					*Project.ResearchId.ToString()));
+				return false;
+			}
+			SeenResearch.Add(Project.ResearchId);
+		}
+		return true;
+	}
+
+	bool ValidateManufacturingProjects(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		FStrategicCommandResult& Result)
+	{
+		TSet<FGuid> SeenProjects;
+		for (const FManufacturingProjectState& Project : State.ManufacturingProjects)
+		{
+			const FItemRule* Item = Rules.Items.Find(Project.ItemId);
+			if (!Project.ProjectId.IsValid() || SeenProjects.Contains(Project.ProjectId)
+				|| Item == nullptr || !Item->IsManufacturable() || Item->ManufactureCost < 0
+				|| FindBase(State, Project.BaseId) == nullptr
+				|| Project.AssignedEngineers < 0 || Project.UnitsRemaining <= 0
+				|| Project.AccumulatedWorkSeconds < 0)
+			{
+				AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
+					TEXT("Manufacturing project '%s' has invalid persisted state."),
+					*Project.ProjectId.ToString()));
+				return false;
+			}
+			SeenProjects.Add(Project.ProjectId);
+		}
+		return true;
+	}
+
 	bool WouldViolateStaffingCommitmentAfterRelease(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -8974,7 +9025,8 @@ FSignalWatchStaffEvaluation FStrategicCommandService::EvaluateSignalWatchStaff(
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
-	if (!ValidateProjectStaffingForCategory(
+	if (!ValidateResearchProjects(State, Rules, Validation)
+		|| !ValidateProjectStaffingForCategory(
 			State, Base->BaseId, EPersonnelRoleCategory::Scientist, Validation))
 	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
@@ -9096,7 +9148,8 @@ FWorksCadreStaffEvaluation FStrategicCommandService::EvaluateWorksCadreStaff(
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
-	if (!ValidateProjectStaffingForCategory(
+	if (!ValidateManufacturingProjects(State, Rules, Validation)
+		|| !ValidateProjectStaffingForCategory(
 			State, Base->BaseId, EPersonnelRoleCategory::Engineer, Validation))
 	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
@@ -10675,6 +10728,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	FResearchProjectState& Project = Transaction.ResearchProjects.AddDefaulted_GetRef();
 	Project.ResearchId = Command.ResearchId;
 	Project.BaseId = Command.BaseId;
+	if (!ValidateResearchProjects(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	SortStateCollections(Transaction);
 	++Transaction.CommandSequence;
 
@@ -10724,6 +10781,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("invalid_research_project"), FString::Printf(
 			TEXT("Research project '%s' has invalid persisted state."),
 			*Project->ResearchId.ToString()));
+		return Result;
+	}
+	if (!ValidateResearchProjects(Transaction, Rules, Result))
+	{
 		return Result;
 	}
 	if (!ValidateProjectStaffingForCategory(
@@ -10940,6 +11001,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	static_cast<void>(ValidatedMonthlyOutgoings);
+	if (!ValidateResearchProjects(State, Rules, Result)
+		|| !ValidateManufacturingProjects(State, Rules, Result))
+	{
+		return Result;
+	}
 	constexpr int32 MaximumResearchRatePercent = 300;
 	constexpr int32 MaximumManufacturingRatePercent = 300;
 	for (const FResearchProjectState& Project : State.ResearchProjects)
@@ -12708,6 +12774,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Project.ItemId = Command.ItemId;
 	Project.BaseId = Command.BaseId;
 	Project.UnitsRemaining = Command.Units;
+	if (!ValidateManufacturingProjects(Transaction, Rules, Result))
+	{
+		return Result;
+	}
 	if (!ValidatePlayerStorageTransition(State, Transaction, Rules, Command.BaseId,
 		TEXT("Starting this production run"), Result))
 	{
@@ -12774,6 +12844,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
 			TEXT("Manufacturing project '%s' has invalid persisted state."),
 			*Project->ProjectId.ToString()));
+		return Result;
+	}
+	if (!ValidateManufacturingProjects(Transaction, Rules, Result))
+	{
 		return Result;
 	}
 	if (!ValidateProjectStaffingForCategory(
@@ -12867,6 +12941,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
 			TEXT("Manufacturing project '%s' has invalid persisted state."),
 			*Project->ProjectId.ToString()));
+		return Result;
+	}
+	if (!ValidateManufacturingProjects(Transaction, Rules, Result))
+	{
 		return Result;
 	}
 	const int64 NewUnits = static_cast<int64>(Project->UnitsRemaining) + static_cast<int64>(Command.DeltaUnits);
@@ -12980,6 +13058,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	if (Item == nullptr || !Item->IsManufacturable() || Item->ManufactureCost < 0)
 	{
 		AddError(Result, TEXT("unknown_item"), TEXT("Manufacturing project references an unavailable item rule."));
+		return Result;
+	}
+	if (!ValidateManufacturingProjects(Transaction, Rules, Result))
+	{
 		return Result;
 	}
 	const int64 RefundableUnits64 = static_cast<int64>(Project->UnitsRemaining)

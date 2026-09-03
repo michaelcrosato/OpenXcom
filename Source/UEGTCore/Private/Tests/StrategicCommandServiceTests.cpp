@@ -13813,6 +13813,28 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Direct research staffing reports the malformed research project"),
 		ResearchStaffResult.HasDiagnostic(TEXT("invalid_research_project")));
 
+	FResolvedRuleSet ResearchStartRules = Rules;
+	FResearchRule ResearchProbe = ResearchStartRules.Research.FindChecked(
+		TEXT("research.signal-analysis"));
+	ResearchProbe.Identity.RuleId = TEXT("research.malformed-sibling-probe");
+	ResearchProbe.DisplayName = TEXT("Malformed Sibling Probe");
+	ResearchProbe.Prerequisites.Reset();
+	ResearchProbe.RequiredFacilityIds.Reset();
+	ResearchStartRules.Research.Add(ResearchProbe.Identity.RuleId, ResearchProbe);
+	const int64 ResearchStartSequence = ResearchState.CommandSequence;
+	FStartResearchCommand ResearchStart;
+	ResearchStart.ExpectedSequence = ResearchStartSequence;
+	ResearchStart.BaseId = TestBaseId;
+	ResearchStart.ResearchId = ResearchProbe.Identity.RuleId;
+	const FStrategicCommandResult ResearchStartResult = FStrategicCommandService::Execute(
+		ResearchState, ResearchStartRules, ResearchStart);
+	TestTrue(TEXT("Starting research rejects a malformed sibling project atomically"),
+		!ResearchStartResult.bAccepted
+		&& ResearchStartResult.HasDiagnostic(TEXT("invalid_research_project"))
+		&& ResearchState.CommandSequence == ResearchStartSequence
+		&& ResearchState.ResearchProjects.Num() == 1
+		&& ResearchState.ResearchProjects[0].AssignedScientists == MIN_int32);
+
 	const FGuid DestinationBaseId(0x7a110001, 0x7a110002, 0x7a110003, 0x7a110004);
 	FStrategicBaseState& DestinationBase = ResearchState.Bases.AddDefaulted_GetRef();
 	DestinationBase.BaseId = DestinationBaseId;
@@ -13891,6 +13913,31 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 		InvalidManufacturing.AssignedEngineers, MIN_int32);
 	TestTrue(TEXT("Direct manufacturing staffing reports the malformed manufacturing project"),
 		ManufacturingStaffResult.HasDiagnostic(TEXT("invalid_manufacturing_project")));
+
+	FCampaignState ManufacturingStartState = ManufacturingState;
+	FBaseFacilityState& ManufacturingFacility =
+		ManufacturingStartState.Bases[0].Facilities.AddDefaulted_GetRef();
+	ManufacturingFacility.InstanceId = FGuid(0x7a150001, 0x7a150002, 0x7a150003, 0x7a150004);
+	ManufacturingFacility.FacilityId = TEXT("facility.fabrication-bay");
+	ManufacturingFacility.GridX = 1;
+	ManufacturingFacility.GridY = 0;
+	const int64 ManufacturingStartSequence = ManufacturingStartState.CommandSequence;
+	const int64 ManufacturingStartFunds = ManufacturingStartState.Funds;
+	FStartManufacturingCommand ManufacturingStart;
+	ManufacturingStart.ExpectedSequence = ManufacturingStartSequence;
+	ManufacturingStart.ProjectId = FGuid(0x7a160001, 0x7a160002, 0x7a160003, 0x7a160004);
+	ManufacturingStart.BaseId = TestBaseId;
+	ManufacturingStart.ItemId = TEXT("item.service-rifle");
+	ManufacturingStart.Units = 1;
+	const FStrategicCommandResult ManufacturingStartResult = FStrategicCommandService::Execute(
+		ManufacturingStartState, Rules, MakeConfig(), ManufacturingStart);
+	TestTrue(TEXT("Starting manufacturing rejects a malformed sibling project atomically"),
+		!ManufacturingStartResult.bAccepted
+		&& ManufacturingStartResult.HasDiagnostic(TEXT("invalid_manufacturing_project"))
+		&& ManufacturingStartState.CommandSequence == ManufacturingStartSequence
+		&& ManufacturingStartState.Funds == ManufacturingStartFunds
+		&& ManufacturingStartState.ManufacturingProjects.Num() == 1
+		&& ManufacturingStartState.ManufacturingProjects[0].AssignedEngineers == MIN_int32);
 
 	FCampaignState DismantleState = MakeStateWithBase();
 	const FGuid AnnexId(0x7a140001, 0x7a140002, 0x7a140003, 0x7a140004);
