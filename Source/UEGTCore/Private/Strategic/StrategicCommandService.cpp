@@ -183,7 +183,7 @@ namespace StrategicCommandServicePrivate
 
 	bool ValidateSequence(const FCampaignState& State, const int64 ExpectedSequence, FStrategicCommandResult& Result)
 	{
-		if (State.CommandSequence < 0 || State.CommandSequence >= MAX_int64 - 1)
+		if (State.CommandSequence < 0 || State.CommandSequence >= MAX_int64 - 2)
 		{
 			AddError(Result, TEXT("invalid_campaign_sequence"), TEXT("Campaign command sequence cannot accept another command."));
 			return false;
@@ -4011,7 +4011,7 @@ namespace StrategicCommandServicePrivate
 			}
 		}
 		if (SelectedRule == nullptr
-			|| State.NextAdversaryMissionSerial <= 0 || State.NextAdversaryMissionSerial >= MAX_int64 - 1
+			|| State.NextAdversaryMissionSerial <= 0 || State.NextAdversaryMissionSerial >= MAX_int64 - 2
 			|| State.AdversaryMissionsLaunched == MAX_int32)
 		{
 			return false;
@@ -5144,7 +5144,7 @@ namespace StrategicCommandServicePrivate
 			|| State.AdversaryEscalationLevel <= 0 || State.AdversaryEscalationLevel > Config.MaxAdversaryEscalation
 			|| State.NextAdversaryMissionSeconds < 0
 			|| (State.Outcome == ECampaignOutcome::Ongoing && !Rules.AdversaryMissions.IsEmpty() && State.NextAdversaryMissionSeconds <= 0)
-			|| State.NextAdversaryMissionSerial <= 0 || State.NextAdversaryMissionSerial >= MAX_int64 - 1
+			|| State.NextAdversaryMissionSerial <= 0 || State.NextAdversaryMissionSerial >= MAX_int64 - 2
 			|| State.AdversaryMissionsLaunched < 0
 			|| State.AdversaryMissionsEscaped < 0
 			|| State.AdversaryMissionsThwarted < 0

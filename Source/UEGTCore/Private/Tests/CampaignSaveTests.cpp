@@ -1263,6 +1263,10 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	const FCampaignSaveValidationResult LastSequenceValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("A command sequence with no room for another command fails validation"), LastSequenceValidation.bSucceeded);
 	TestTrue(TEXT("A last available command sequence is diagnosed"), LastSequenceValidation.HasDiagnostic(TEXT("invalid_command_sequence")));
+	Invalid.State.CommandSequence = MAX_int64 - 2;
+	const FCampaignSaveValidationResult PreTerminalSequenceValidation = FCampaignSaveCodec::Validate(Invalid);
+	TestFalse(TEXT("A command sequence that would reach the terminal value fails validation"), PreTerminalSequenceValidation.bSucceeded);
+	TestTrue(TEXT("A pre-terminal command sequence is diagnosed"), PreTerminalSequenceValidation.HasDiagnostic(TEXT("invalid_command_sequence")));
 	Invalid.State.CommandSequence = Write.Envelope.State.CommandSequence;
 	Invalid.State.NextAdversaryMissionSerial = MAX_int64;
 	const FCampaignSaveValidationResult ExhaustedMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
@@ -1272,6 +1276,10 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	const FCampaignSaveValidationResult LastMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("A mission serial with no room for another launch fails validation"), LastMissionSerialValidation.bSucceeded);
 	TestTrue(TEXT("A last available mission serial is diagnosed"), LastMissionSerialValidation.HasDiagnostic(TEXT("invalid_adversary_state")));
+	Invalid.State.NextAdversaryMissionSerial = MAX_int64 - 2;
+	const FCampaignSaveValidationResult PreTerminalMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
+	TestFalse(TEXT("A mission serial that would reach the terminal value fails validation"), PreTerminalMissionSerialValidation.bSucceeded);
+	TestTrue(TEXT("A pre-terminal mission serial is diagnosed"), PreTerminalMissionSerialValidation.HasDiagnostic(TEXT("invalid_adversary_state")));
 	Invalid.State.SimulationRandom.DrawCount = MAX_int64;
 	const FCampaignSaveValidationResult ExhaustedRandomValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("Exhausted random draw count fails validation"), ExhaustedRandomValidation.bSucceeded);

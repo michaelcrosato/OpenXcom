@@ -2147,7 +2147,7 @@ namespace CampaignSavePrivate
 		{
 			AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_difficulty"), TEXT("Campaign difficulty is outside the save schema."));
 		}
-		if (State.CommandSequence < 0 || State.CommandSequence >= MAX_int64 - 1)
+		if (State.CommandSequence < 0 || State.CommandSequence >= MAX_int64 - 2)
 		{
 			AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_command_sequence"), TEXT("Command sequence must be non-negative and leave room for another command."));
 		}
@@ -3123,7 +3123,7 @@ namespace CampaignSavePrivate
 				+ State.AdversaryMissionsEscaped + State.AdversaryMissionsThwarted;
 			if (!bKnownOutcome || !bOutcomeMetadataValid
 				|| State.AdversaryEscalationLevel <= 0 || State.AdversaryEscalationLevel > 10
-				|| State.NextAdversaryMissionSerial <= 0 || State.NextAdversaryMissionSerial >= MAX_int64 - 1
+				|| State.NextAdversaryMissionSerial <= 0 || State.NextAdversaryMissionSerial >= MAX_int64 - 2
 				|| State.AdversaryMissionsLaunched < 0
 				|| State.AdversaryMissionsEscaped < 0
 				|| State.AdversaryMissionsThwarted < 0
