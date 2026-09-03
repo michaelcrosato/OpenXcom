@@ -964,6 +964,26 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 				return Diagnostic.Contains(TEXT("Strategic contact"))
 					&& Diagnostic.Contains(TEXT("invalid persisted"));
 			}));
+	FCampaignState InvalidPersonnelReadinessCampaign = Campaign;
+	InvalidPersonnelReadinessCampaign.Craft.Reset();
+	InvalidPersonnelReadinessCampaign.StrategicContacts.Reset();
+	InvalidPersonnelReadinessCampaign.AdversaryMissions.Reset();
+	InvalidPersonnelReadinessCampaign.StrategicSites.Reset();
+	InvalidPersonnelReadinessCampaign.Memorial.Reset();
+	InvalidPersonnelReadinessCampaign.AdversaryMissionsLaunched = 0;
+	InvalidPersonnelReadinessCampaign.Personnel[0].Rank = 0;
+	const FStrategicDashboardSnapshot InvalidPersonnelReadinessSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidPersonnelReadinessCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid personnel state"),
+		InvalidPersonnelReadinessSnapshot.bSucceeded
+		&& !InvalidPersonnelReadinessSnapshot.bCanAdvanceTime
+		&& InvalidPersonnelReadinessSnapshot.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic)
+			{
+				return Diagnostic.Contains(TEXT("Personnel"))
+					&& Diagnostic.Contains(TEXT("invalid persisted"));
+			}));
 	const FStrategicCraftView* InvalidSequenceSalvageCraft =
 		InvalidSequenceSnapshot.Craft.FindByPredicate(
 			[&Craft](const FStrategicCraftView& CraftView)

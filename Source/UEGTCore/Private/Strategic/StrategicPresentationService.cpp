@@ -1172,6 +1172,24 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	if (!Campaign.Bases.IsEmpty())
+	{
+		const FStrategicCommandResult PersonnelStateValidation =
+			FStrategicCommandService::ValidateStrategicPersonnelState(Campaign, Rules);
+		if (!PersonnelStateValidation.bAccepted)
+		{
+			Snapshot.bCanAdvanceTime = false;
+			if (!PersonnelStateValidation.Diagnostics.IsEmpty())
+			{
+				const FString& Diagnostic = PersonnelStateValidation.Diagnostics[0].Message;
+				if (!Snapshot.Diagnostics.ContainsByPredicate(
+					[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+				{
+					Snapshot.Diagnostics.Add(Diagnostic);
+				}
+			}
+		}
+	}
 	const FStrategicCommandResult CraftStateValidation =
 		FStrategicCommandService::ValidateStrategicCraftState(Campaign, Rules);
 	if (!CraftStateValidation.bAccepted)

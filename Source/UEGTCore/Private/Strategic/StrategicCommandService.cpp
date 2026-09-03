@@ -7418,6 +7418,21 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicCraftState(
 	return Result;
 }
 
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicPersonnelState(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (!ValidatePersonnelState(State, Rules, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
 FStrategicCommandResult FStrategicCommandService::ValidateStrategicMutualAidConvoyState(
 	const FCampaignState& State,
 	const FResolvedRuleSet& Rules)

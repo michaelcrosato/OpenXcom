@@ -4063,6 +4063,11 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules);
 
+	/** Read-only validation of persisted personnel, recruitment, memorial, and squad-bond state. */
+	static FStrategicCommandResult ValidateStrategicPersonnelState(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules);
+
 	/** Read-only validation of persisted Mutual Aid Convoy state. */
 	static FStrategicCommandResult ValidateStrategicMutualAidConvoyState(
 		const FCampaignState& State,
