@@ -8011,8 +8011,7 @@ bool FStrategicPersonnelReturnPathTest::RunTest(const FString& Parameters)
 	FCampaignState ExtremeDamage = MakeStateWithBase();
 	const FGuid ExtremeDamagePersonnelId(0x71510011, 0x71510012, 0x71510013, 0x71510014);
 	FPersonnelState& ExtremeDamagePerson = AddTestPersonnel(ExtremeDamage, ExtremeDamagePersonnelId, TEXT("Extreme Damage Probe"));
-	ExtremeDamagePerson.MaxHealth = MIN_int32;
-	ExtremeDamagePerson.CurrentHealth = 10;
+	ExtremeDamagePerson.CurrentHealth = MIN_int32;
 	const int64 ExtremeDamageSequence = ExtremeDamage.CommandSequence;
 	FApplyPersonnelDamageCommand ExtremeDamageCommand;
 	ExtremeDamageCommand.ExpectedSequence = ExtremeDamage.CommandSequence;
@@ -8021,13 +8020,13 @@ bool FStrategicPersonnelReturnPathTest::RunTest(const FString& Parameters)
 	ExtremeDamageCommand.CauseId = TEXT("cause.field-injury");
 	const FStrategicCommandResult ExtremeDamageResult = FStrategicCommandService::Execute(
 		ExtremeDamage, Config, ExtremeDamageCommand);
-	TestTrue(TEXT("Personnel damage rejects a malformed negative missing-health range before recovery pricing"),
+	TestTrue(TEXT("Personnel damage rejects a non-positive health state before fatality bookkeeping"),
 		!ExtremeDamageResult.bAccepted
-		&& ExtremeDamageResult.HasDiagnostic(TEXT("recovery_time_overflow"))
+		&& ExtremeDamageResult.HasDiagnostic(TEXT("invalid_personnel_state"))
 		&& ExtremeDamage.CommandSequence == ExtremeDamageSequence
 		&& ExtremeDamage.Personnel.Num() == 1
-		&& ExtremeDamage.Personnel[0].MaxHealth == MIN_int32
-		&& ExtremeDamage.Personnel[0].CurrentHealth == 10);
+		&& ExtremeDamage.Personnel[0].MaxHealth == 55
+		&& ExtremeDamage.Personnel[0].CurrentHealth == MIN_int32);
 
 	const FPersonnelRecoveryPlanView Projection =
 		FPersonnelRecoveryPlan::Evaluate(Pending, Config, PersonnelId);

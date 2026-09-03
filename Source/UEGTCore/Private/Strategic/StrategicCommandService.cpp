@@ -14647,6 +14647,13 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Personnel member references a missing base."));
 		return Result;
 	}
+	if (Person->MaxHealth <= 0 || Person->MaxHealth > 200
+		|| Person->CurrentHealth <= 0 || Person->CurrentHealth > Person->MaxHealth)
+	{
+		AddError(Result, TEXT("invalid_personnel_state"),
+			TEXT("Personnel health state is outside the supported range."));
+		return Result;
+	}
 	const bool bStewardshipInterrupted = Person->Status == EPersonnelStatus::Stewarding;
 	const EPersonnelStewardshipFocus InterruptedFocus = Person->StewardshipFocus;
 	const int64 InterruptedRemainingSeconds = Person->RemainingStewardshipSeconds;
