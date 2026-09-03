@@ -416,11 +416,20 @@ namespace StrategicCommandServicePrivate
 		return Unit.KineticArmor;
 	}
 
-	int32 CeilTacticalDistance(const int32 DeltaX, const int32 DeltaY, const int32 DeltaZ = 0)
+	int32 CeilTacticalDistance(const int64 DeltaX, const int64 DeltaY, const int64 DeltaZ = 0)
 	{
-		const int64 DistanceSquared = static_cast<int64>(DeltaX) * DeltaX
-			+ static_cast<int64>(DeltaY) * DeltaY
-			+ static_cast<int64>(DeltaZ * 2) * (DeltaZ * 2);
+		if (DeltaX < -128 || DeltaX > 128 || DeltaY < -128 || DeltaY > 128
+			|| DeltaZ < -64 || DeltaZ > 64)
+		{
+			return MAX_int32;
+		}
+		const int64 AbsoluteDeltaX = FMath::Abs(DeltaX);
+		const int64 AbsoluteDeltaY = FMath::Abs(DeltaY);
+		const int64 AbsoluteDeltaZ = FMath::Abs(DeltaZ);
+		const int64 DoubleDeltaZ = AbsoluteDeltaZ * 2;
+		const int64 DistanceSquared = AbsoluteDeltaX * AbsoluteDeltaX
+			+ AbsoluteDeltaY * AbsoluteDeltaY
+			+ DoubleDeltaZ * DoubleDeltaZ;
 		for (int32 Distance = 0; Distance <= 128; ++Distance)
 		{
 			if (static_cast<int64>(Distance) * Distance >= DistanceSquared)
@@ -17664,9 +17673,9 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		for (FTacticalCellState& BlastCell : Battle->Cells)
 		{
 			const int32 Distance = CeilTacticalDistance(
-				BlastCell.X - ImpactX,
-				BlastCell.Y - ImpactY,
-				BlastCell.Z - ImpactZ);
+				static_cast<int64>(BlastCell.X) - ImpactX,
+				static_cast<int64>(BlastCell.Y) - ImpactY,
+				static_cast<int64>(BlastCell.Z) - ImpactZ);
 			if (Distance > Preview.BlastRadius)
 			{
 				continue;
@@ -17730,7 +17739,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			{
 				continue;
 			}
-			const int32 Distance = CeilTacticalDistance(Unit.X - ImpactX, Unit.Y - ImpactY, Unit.Z - ImpactZ);
+			const int32 Distance = CeilTacticalDistance(
+				static_cast<int64>(Unit.X) - ImpactX,
+				static_cast<int64>(Unit.Y) - ImpactY,
+				static_cast<int64>(Unit.Z) - ImpactZ);
 			if (Distance > Preview.BlastRadius)
 			{
 				continue;
