@@ -759,6 +759,16 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			Snapshot.Diagnostics.Add(TimeAdvanceConfigValidation.Diagnostics[0].Message);
 		}
 	}
+	const FStrategicCommandResult CommandSequenceValidation =
+		FStrategicCommandService::ValidateStrategicCommandSequence(Campaign);
+	if (!CommandSequenceValidation.bAccepted)
+	{
+		Snapshot.bCanAdvanceTime = false;
+		if (!CommandSequenceValidation.Diagnostics.IsEmpty())
+		{
+			Snapshot.Diagnostics.Add(CommandSequenceValidation.Diagnostics[0].Message);
+		}
+	}
 	Snapshot.AdversaryResolvedMissions = Adaptation.ResolvedMissions;
 	Snapshot.ResolvedMissionsUntilNextEscalation = Adaptation.ResolvedMissionsUntilNextEscalation;
 	Snapshot.bAtMaximumAdversaryEscalation = Adaptation.bAtMaximumEscalation;

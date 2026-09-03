@@ -4073,6 +4073,10 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules);
 
+	/** Read-only validation of the persisted command sequence before issuing another command. */
+	static FStrategicCommandResult ValidateStrategicCommandSequence(
+		const FCampaignState& State);
+
 	/** Read-only validation of configuration required before strategic time advancement. */
 	static FStrategicCommandResult ValidateStrategicTimeAdvanceConfig(
 		const FCampaignState& State,

@@ -182,12 +182,21 @@ namespace StrategicCommandServicePrivate
 		return Result;
 	}
 
-	bool ValidateSequence(const FCampaignState& State, const int64 ExpectedSequence, FStrategicCommandResult& Result)
+	bool ValidateCampaignSequence(const FCampaignState& State, FStrategicCommandResult& Result)
 	{
 		// MAX_int64 - 2 is a save-invalid terminal value; reject its predecessor before incrementing.
 		if (State.CommandSequence < 0 || State.CommandSequence >= MAX_int64 - 3)
 		{
 			AddError(Result, TEXT("invalid_campaign_sequence"), TEXT("Campaign command sequence cannot accept another command."));
+			return false;
+		}
+		return true;
+	}
+
+	bool ValidateSequence(const FCampaignState& State, const int64 ExpectedSequence, FStrategicCommandResult& Result)
+	{
+		if (!ValidateCampaignSequence(State, Result))
+		{
 			return false;
 		}
 		if (ExpectedSequence != State.CommandSequence)
@@ -7432,6 +7441,20 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicSiteState(
 
 	FStrategicCommandResult Result;
 	if (!ValidateStrategicSites(State, Rules, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicCommandSequence(
+	const FCampaignState& State)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (!ValidateCampaignSequence(State, Result))
 	{
 		return Result;
 	}

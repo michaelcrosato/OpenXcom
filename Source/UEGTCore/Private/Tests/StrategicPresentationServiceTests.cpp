@@ -893,6 +893,16 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	Config.ResilienceCharterCost = 250;
 	const FStrategicDashboardSnapshot Snapshot = FStrategicPresentationService::BuildDashboard(Campaign, Rules, Config);
 	TestTrue(TEXT("Valid strategic state produces a dashboard"), Snapshot.bSucceeded);
+	FCampaignState InvalidSequenceCampaign = Campaign;
+	InvalidSequenceCampaign.CommandSequence = -1;
+	const FStrategicDashboardSnapshot InvalidSequenceSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidSequenceCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for an invalid command sequence"),
+		InvalidSequenceSnapshot.bSucceeded
+		&& !InvalidSequenceSnapshot.bCanAdvanceTime
+		&& InvalidSequenceSnapshot.Diagnostics.Contains(
+			TEXT("Campaign command sequence cannot accept another command.")));
 	FStrategicSimulationConfig InvalidTimeAdvanceConfig = Config;
 	InvalidTimeAdvanceConfig.RecoveryHoursPerHealth = 0;
 	const FStrategicDashboardSnapshot InvalidTimeAdvanceConfigSnapshot =
