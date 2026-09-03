@@ -1672,6 +1672,41 @@ bool FStrategicManufacturingMaterialsTest::RunTest(const FString& Parameters)
 		&& State.ManufacturingProjects.IsEmpty() && MaterialQuantity() == 4
 		&& Output != nullptr && Output->Quantity == 1);
 
+	FCampaignState MalformedAdjustment = MakeStateWithBase();
+	FBaseFacilityState& MalformedFabrication = MalformedAdjustment.Bases[0].Facilities.AddDefaulted_GetRef();
+	MalformedFabrication.InstanceId = FGuid(0x913, 0x914, 0x915, 0x916);
+	MalformedFabrication.FacilityId = Config.ManufacturingFacilityId;
+	MalformedFabrication.GridX = 1;
+	MalformedFabrication.GridY = 0;
+	FInventoryStack& MalformedMaterial = MalformedAdjustment.Bases[0].Inventory.AddDefaulted_GetRef();
+	MalformedMaterial.ItemId = TEXT("item.sky-lance-rounds");
+	MalformedMaterial.Quantity = 2;
+	FStartManufacturingCommand MalformedStart;
+	MalformedStart.ExpectedSequence = MalformedAdjustment.CommandSequence;
+	MalformedStart.ProjectId = FGuid(0x917, 0x918, 0x919, 0x920);
+	MalformedStart.BaseId = TestBaseId;
+	MalformedStart.ItemId = TEXT("item.service-rifle");
+	MalformedStart.Units = 1;
+	TestTrue(TEXT("Malformed adjustment fixture starts production"),
+		FStrategicCommandService::Execute(MalformedAdjustment, Rules, Config, MalformedStart).bAccepted);
+	MalformedAdjustment.ManufacturingProjects[0].AccumulatedWorkSeconds = MIN_int64;
+	const int64 MalformedAdjustmentSequence = MalformedAdjustment.CommandSequence;
+	const int64 MalformedAdjustmentFunds = MalformedAdjustment.Funds;
+	FAdjustManufacturingUnitsCommand MalformedAdjustmentCommand;
+	MalformedAdjustmentCommand.ExpectedSequence = MalformedAdjustment.CommandSequence;
+	MalformedAdjustmentCommand.ProjectId = MalformedStart.ProjectId;
+	MalformedAdjustmentCommand.DeltaUnits = 1;
+	const FStrategicCommandResult MalformedAdjustmentResult = FStrategicCommandService::Execute(
+		MalformedAdjustment, Rules, MalformedAdjustmentCommand);
+	TestTrue(TEXT("Manufacturing quantity changes reject a negative progress counter before charging funds"),
+		!MalformedAdjustmentResult.bAccepted
+		&& MalformedAdjustmentResult.HasDiagnostic(TEXT("invalid_manufacturing_project"))
+		&& MalformedAdjustment.CommandSequence == MalformedAdjustmentSequence
+		&& MalformedAdjustment.Funds == MalformedAdjustmentFunds
+		&& MalformedAdjustment.ManufacturingProjects.Num() == 1
+		&& MalformedAdjustment.ManufacturingProjects[0].UnitsRemaining == 1
+		&& MalformedAdjustment.ManufacturingProjects[0].AccumulatedWorkSeconds == MIN_int64);
+
 	return true;
 }
 

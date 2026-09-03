@@ -12769,6 +12769,14 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Manufacturing project references a missing base."));
 		return Result;
 	}
+	if (Project->AssignedEngineers < 0 || Project->UnitsRemaining <= 0
+		|| Project->AccumulatedWorkSeconds < 0)
+	{
+		AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
+			TEXT("Manufacturing project '%s' has invalid persisted state."),
+			*Project->ProjectId.ToString()));
+		return Result;
+	}
 	const int64 NewUnits = static_cast<int64>(Project->UnitsRemaining) + static_cast<int64>(Command.DeltaUnits);
 	if (NewUnits < 1)
 	{
