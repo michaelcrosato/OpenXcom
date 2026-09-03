@@ -970,6 +970,18 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !AdversarySerialCapacitySnapshot.bCanAdvanceTime
 		&& AdversarySerialCapacitySnapshot.Diagnostics.Contains(
 			TEXT("Strategic simulation exceeded a persisted numeric range.")));
+	FCampaignState AdversaryBranchCapacityCampaign = Campaign;
+	AdversaryBranchCapacityCampaign.AdversaryMissionsLaunched = MAX_int32;
+	AdversaryBranchCapacityCampaign.AdversaryMissionsEscaped = MAX_int32 - 5;
+	AdversaryBranchCapacityCampaign.NextAdversaryMissionSeconds = 2 * 86400;
+	const FStrategicDashboardSnapshot AdversaryBranchCapacitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			AdversaryBranchCapacityCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement before a forced adversary branch can overflow"),
+		AdversaryBranchCapacitySnapshot.bSucceeded
+		&& !AdversaryBranchCapacitySnapshot.bCanAdvanceTime
+		&& AdversaryBranchCapacitySnapshot.Diagnostics.Contains(
+			TEXT("Strategic simulation exceeded a persisted numeric range.")));
 	FCampaignState InvalidContactReadinessCampaign = Campaign;
 	InvalidContactReadinessCampaign.Craft.Reset();
 	InvalidContactReadinessCampaign.Personnel.Reset();

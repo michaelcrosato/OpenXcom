@@ -6212,7 +6212,25 @@ namespace StrategicCommandServicePrivate
 			&& !Rules.AdversaryMissions.IsEmpty()
 			&& State.NextAdversaryMissionSeconds <= RequestedSeconds
 			&& State.AdversaryMissions.Num() < Config.MaxActiveAdversaryMissions;
-		if (bMissionMayLaunch
+		bool bForcedBranchMayLaunch = false;
+		if (State.Outcome == ECampaignOutcome::Ongoing)
+		{
+			for (const FAdversaryMissionState& Mission : State.AdversaryMissions)
+			{
+				const FStrategicContactState* Contact = FindContact(State, Mission.ContactId);
+				const FAdversaryMissionRule* MissionRule =
+					Rules.AdversaryMissions.Find(Mission.MissionRuleId);
+				if (Contact != nullptr && MissionRule != nullptr
+					&& Contact->TotalRouteSeconds - Contact->ElapsedRouteSeconds <= RequestedSeconds
+					&& !MissionRule->PlanId.IsNone()
+					&& !MissionRule->EscapeBranchMissionRuleId.IsNone())
+				{
+					bForcedBranchMayLaunch = true;
+					break;
+				}
+			}
+		}
+		if ((bMissionMayLaunch || bForcedBranchMayLaunch)
 			&& (State.NextAdversaryMissionSerial >= MAX_int64 - 3
 				|| State.AdversaryMissionsLaunched == MAX_int32))
 		{

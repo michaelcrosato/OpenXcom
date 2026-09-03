@@ -12317,6 +12317,26 @@ bool FStrategicAdversaryBranchingPlanTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	PrimeContactForArrival(EscapeState.StrategicContacts[0]);
+	FCampaignState BranchCapacityState = EscapeState;
+	BranchCapacityState.AdversaryMissionsLaunched = MAX_int32;
+	BranchCapacityState.AdversaryMissionsEscaped = MAX_int32 - 1;
+	BranchCapacityState.NextAdversaryMissionSeconds = 3600;
+	const FStrategicCommandResult BranchCapacityValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceAdversaryCapacity(
+			BranchCapacityState, Rules, Config, 5);
+	TestTrue(TEXT("Adversary time-capacity validation rejects a forced branch at the launch-counter limit"),
+		!BranchCapacityValidation.bAccepted
+		&& BranchCapacityValidation.HasDiagnostic(TEXT("simulation_overflow")));
+	const int64 BranchCapacitySequence = BranchCapacityState.CommandSequence;
+	FAdvanceStrategicTimeCommand BranchCapacityAdvance = Advance;
+	BranchCapacityAdvance.ExpectedSequence = BranchCapacitySequence;
+	const FStrategicCommandResult BranchCapacityResult =
+		FStrategicCommandService::Execute(BranchCapacityState, Rules, Config, BranchCapacityAdvance);
+	TestTrue(TEXT("A due planned escape cannot advance into a forced branch counter overflow"),
+		!BranchCapacityResult.bAccepted
+		&& BranchCapacityResult.HasDiagnostic(TEXT("simulation_overflow"))
+		&& BranchCapacityState.CommandSequence == BranchCapacitySequence
+		&& BranchCapacityState.AdversaryMissions.Num() == 1);
 	FCampaignState EscapeReplay = EscapeState;
 	Advance.ExpectedSequence = EscapeState.CommandSequence;
 	const FStrategicCommandResult Escaped =
