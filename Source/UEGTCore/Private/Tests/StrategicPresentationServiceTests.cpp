@@ -974,6 +974,54 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& InvalidInventoryCraftView != nullptr
 		&& !InvalidInventoryCraftView->PendingSalvage[0].bCanRetainAtBase
 		&& InvalidInventoryCraftView->PendingSalvage[0].bCanSell);
+	FCampaignState InvalidSourceStorageDispatchCampaign = Campaign;
+	InvalidSourceStorageDispatchCampaign.Bases[0].Inventory.Add(
+		{ Manufactured.Identity.RuleId, 1 });
+	const FGuid DispatchDestinationBaseId(221, 222, 223, 224);
+	FStrategicBaseState& DispatchDestinationBase =
+		InvalidSourceStorageDispatchCampaign.Bases.AddDefaulted_GetRef();
+	DispatchDestinationBase.BaseId = DispatchDestinationBaseId;
+	DispatchDestinationBase.Name = TEXT("Dispatch Destination");
+	DispatchDestinationBase.RegionId = Mission.TargetRegionId;
+	DispatchDestinationBase.Facilities.Add(
+		{ FGuid(231, 232, 233, 234), Operations.Identity.RuleId, 0, 0 });
+	const FStrategicDashboardSnapshot InvalidSourceStorageDispatchSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidSourceStorageDispatchCampaign, Rules, Config);
+	const FStrategicBaseView* InvalidSourceStorageBaseView =
+		InvalidSourceStorageDispatchSnapshot.Bases.FindByPredicate(
+			[&BaseId](const FStrategicBaseView& BaseView)
+			{
+				return BaseView.BaseId == BaseId;
+			});
+	const FStrategicInventoryView* InvalidSourceStorageItemView =
+		InvalidSourceStorageBaseView != nullptr
+			? InvalidSourceStorageBaseView->Inventory.FindByPredicate(
+				[&Manufactured](const FStrategicInventoryView& ItemView)
+				{
+					return ItemView.ItemId == Manufactured.Identity.RuleId;
+				})
+			: nullptr;
+	const FStrategicMutualAidDispatchOptionView* InvalidSourceStorageDispatchOption =
+		InvalidSourceStorageItemView != nullptr
+			? InvalidSourceStorageItemView->MutualAidOptions.FindByPredicate(
+				[&DispatchDestinationBaseId](const FStrategicMutualAidDispatchOptionView& Option)
+				{
+					return Option.DestinationBaseId == DispatchDestinationBaseId;
+				})
+			: nullptr;
+	TestTrue(TEXT("Dashboard disables Mutual Aid dispatch from invalid source storage state"),
+		InvalidSourceStorageDispatchSnapshot.bSucceeded
+		&& !InvalidSourceStorageDispatchSnapshot.bCanAdvanceTime
+		&& InvalidSourceStorageBaseView != nullptr
+		&& !InvalidSourceStorageBaseView->bStorageStateValid
+		&& InvalidSourceStorageItemView != nullptr
+		&& InvalidSourceStorageDispatchOption != nullptr
+		&& !InvalidSourceStorageDispatchOption->bEnabled
+		&& InvalidSourceStorageDispatchOption->UnavailableReasonCode
+			== FName(TEXT("invalid_storage_inventory"))
+		&& InvalidSourceStorageDispatchOption->UnavailableReason.Contains(
+			TEXT("invalid or overflowing inventory storage data")));
 	FCampaignState InvalidCraftReadinessCampaign = Campaign;
 	InvalidCraftReadinessCampaign.Craft[0].AssignedPilotId.Invalidate();
 	InvalidCraftReadinessCampaign.Craft[0].AssignedAgentIds.Reset();

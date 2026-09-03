@@ -1616,12 +1616,28 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				Option.DestinationBaseName = Destination.Name;
 				Option.TransitSeconds =
 					static_cast<int64>(Config.MutualAidConvoyTransitHours) * 3600LL;
-				if (!bInfrastructureValid || !BasesWithValidInfrastructure.Contains(&Destination))
+				if (!bInfrastructureValid || !View.bStorageStateValid
+					|| !BasesWithValidInfrastructure.Contains(&Destination))
 				{
-					Option.UnavailableReasonCode = TEXT("invalid_facility_state");
-					Option.UnavailableReason = !bInfrastructureValid
-						? TEXT("The source base has invalid facility state.")
-						: TEXT("The destination base has invalid facility state.");
+					if (!bInfrastructureValid)
+					{
+						Option.UnavailableReasonCode = TEXT("invalid_facility_state");
+						Option.UnavailableReason = TEXT("The source base has invalid facility state.");
+					}
+					else if (!View.bStorageStateValid)
+					{
+						Option.UnavailableReasonCode = Storage.Diagnostics.IsEmpty()
+							? FName(TEXT("invalid_storage_state"))
+							: Storage.Diagnostics[0].Code;
+						Option.UnavailableReason = Storage.Diagnostics.IsEmpty()
+							? TEXT("Source storage is unavailable.")
+							: Storage.Diagnostics[0].Message;
+					}
+					else
+					{
+						Option.UnavailableReasonCode = TEXT("invalid_facility_state");
+						Option.UnavailableReason = TEXT("The destination base has invalid facility state.");
+					}
 					continue;
 				}
 				for (const EMutualAidRoutePolicy Policy :
