@@ -835,6 +835,21 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			Snapshot.Diagnostics.Add(CommandSequenceValidation.Diagnostics[0].Message);
 		}
 	}
+	const FStrategicCommandResult RandomStateValidation =
+		FStrategicCommandService::ValidateStrategicRandomState(Campaign);
+	if (!RandomStateValidation.bAccepted)
+	{
+		Snapshot.bCanAdvanceTime = false;
+		if (!RandomStateValidation.Diagnostics.IsEmpty())
+		{
+			const FString& Diagnostic = RandomStateValidation.Diagnostics[0].Message;
+			if (!Snapshot.Diagnostics.ContainsByPredicate(
+				[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+			{
+				Snapshot.Diagnostics.Add(Diagnostic);
+			}
+		}
+	}
 	Snapshot.AdversaryResolvedMissions = Adaptation.ResolvedMissions;
 	Snapshot.ResolvedMissionsUntilNextEscalation = Adaptation.ResolvedMissionsUntilNextEscalation;
 	Snapshot.bAtMaximumAdversaryEscalation = Adaptation.bAtMaximumEscalation;

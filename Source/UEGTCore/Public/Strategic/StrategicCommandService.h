@@ -4073,6 +4073,10 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules);
 
+	/** Read-only validation of the persisted strategic deterministic random stream. */
+	static FStrategicCommandResult ValidateStrategicRandomState(
+		const FCampaignState& State);
+
 	/** Read-only validation of persisted Mutual Aid Convoy state. */
 	static FStrategicCommandResult ValidateStrategicMutualAidConvoyState(
 		const FCampaignState& State,

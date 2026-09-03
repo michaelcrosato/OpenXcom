@@ -7487,6 +7487,21 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicFinancialStat
 	return Result;
 }
 
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicRandomState(
+	const FCampaignState& State)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (!State.SimulationRandom.IsValid())
+	{
+		AddError(Result, TEXT("invalid_random_state"), TEXT("Deterministic random state is invalid."));
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
 FStrategicCommandResult FStrategicCommandService::ValidateStrategicMutualAidConvoyState(
 	const FCampaignState& State,
 	const FResolvedRuleSet& Rules)

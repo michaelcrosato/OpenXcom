@@ -1016,6 +1016,16 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 			{
 				return Diagnostic.Contains(TEXT("Monthly campaign finances"));
 			}));
+	InvalidFinancialCampaign.MonthlyFunding = 100;
+	InvalidFinancialCampaign.SimulationRandom.DrawCount = MAX_int64;
+	const FStrategicDashboardSnapshot InvalidRandomSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidFinancialCampaign, InvalidFinancialRules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid strategic random state"),
+		InvalidRandomSnapshot.bSucceeded
+		&& !InvalidRandomSnapshot.bCanAdvanceTime
+		&& InvalidRandomSnapshot.Diagnostics.Contains(
+			TEXT("Deterministic random state is invalid.")));
 	const FStrategicCraftView* InvalidSequenceSalvageCraft =
 		InvalidSequenceSnapshot.Craft.FindByPredicate(
 			[&Craft](const FStrategicCraftView& CraftView)
