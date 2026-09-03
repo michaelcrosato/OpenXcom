@@ -54,12 +54,13 @@ namespace UEGTLocalizationPrivate
 		return !Value.EndsWith(TEXT(".")) && !Value.Contains(TEXT(".."));
 	}
 
-	TArray<int32> ExtractIndexedPlaceholders(const FString& Value)
+	TArray<int32> ExtractIndexedPlaceholders(const FString& Value, bool& bOutValid)
 	{
+		bOutValid = true;
 		TArray<int32> Placeholders;
 		for (int32 Index = 0; Index < Value.Len(); ++Index)
 		{
-			if (Value[Index] != TEXT('{') || Index + 2 >= Value.Len()
+			if (Value[Index] != TEXT('{') || Value.Len() - Index < 3
 				|| !FChar::IsDigit(Value[Index + 1]))
 			{
 				continue;
@@ -68,7 +69,13 @@ namespace UEGTLocalizationPrivate
 			int32 PlaceholderIndex = 0;
 			while (Cursor < Value.Len() && FChar::IsDigit(Value[Cursor]))
 			{
-				PlaceholderIndex = PlaceholderIndex * 10 + (Value[Cursor] - TEXT('0'));
+				const int32 Digit = Value[Cursor] - TEXT('0');
+				if (PlaceholderIndex > (MAX_int32 - Digit) / 10)
+				{
+					bOutValid = false;
+					return Placeholders;
+				}
+				PlaceholderIndex = PlaceholderIndex * 10 + Digit;
 				++Cursor;
 			}
 			if (Cursor < Value.Len() && Value[Cursor] == TEXT('}'))
@@ -254,11 +261,22 @@ FUEGTLocalizationLoadResult FUEGTLocalizationService::ParseCatalog(const FString
 			}
 			Entry.Translations.Add(Culture, MoveTemp(Translation));
 		}
-		const TArray<int32> SourcePlaceholders = ExtractIndexedPlaceholders(Entry.Source);
+		bool bSourcePlaceholdersValid = true;
+		const TArray<int32> SourcePlaceholders = ExtractIndexedPlaceholders(
+			Entry.Source, bSourcePlaceholdersValid);
+		if (!bSourcePlaceholdersValid)
+		{
+			AddDiagnostic(Result, FString::Printf(
+				TEXT("Localization entry '%s' contains an indexed format placeholder outside the 32-bit range."),
+				*Key));
+			return Result;
+		}
 		for (const FString& Culture : RequiredCultures)
 		{
-			if (ExtractIndexedPlaceholders(Entry.Translations.FindChecked(Culture))
-				!= SourcePlaceholders)
+			bool bTranslationPlaceholdersValid = true;
+			const TArray<int32> TranslationPlaceholders = ExtractIndexedPlaceholders(
+			Entry.Translations.FindChecked(Culture), bTranslationPlaceholdersValid);
+			if (!bTranslationPlaceholdersValid || TranslationPlaceholders != SourcePlaceholders)
 			{
 				AddDiagnostic(Result, FString::Printf(
 					TEXT("Localization entry '%s' translation '%s' must preserve every indexed format placeholder."),

@@ -2180,6 +2180,15 @@ bool FUEGTLocalizationCatalogTest::RunTest(const FString& Parameters)
 		&& MissingFormatPlaceholderResult.Diagnostics.ContainsByPredicate(
 			[](const FString& Diagnostic) { return Diagnostic.Contains(TEXT("indexed format placeholder")); }));
 
+	FString OverflowedFormatPlaceholder = Json;
+	OverflowedFormatPlaceholder.ReplaceInline(TEXT("{0}"), TEXT("{9999999999}"));
+	const FUEGTLocalizationLoadResult OverflowedFormatPlaceholderResult =
+		FUEGTLocalizationService::ParseCatalog(OverflowedFormatPlaceholder);
+	TestTrue(TEXT("Indexed format placeholders reject values outside the 32-bit range"),
+		!OverflowedFormatPlaceholderResult.bSucceeded
+		&& OverflowedFormatPlaceholderResult.Diagnostics.ContainsByPredicate(
+			[](const FString& Diagnostic) { return Diagnostic.Contains(TEXT("outside the 32-bit range")); }));
+
 	FString PackagingConfig;
 	const FString DefaultGameConfig = FPaths::Combine(FPaths::ProjectConfigDir(), TEXT("DefaultGame.ini"));
 	TestTrue(TEXT("Project packaging configuration remains readable"),
