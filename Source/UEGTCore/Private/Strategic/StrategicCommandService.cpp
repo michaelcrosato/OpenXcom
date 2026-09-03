@@ -1538,6 +1538,34 @@ namespace StrategicCommandServicePrivate
 		return Count;
 	}
 
+	bool ValidateCraftWeaponStatesForMutation(
+		const FCraftState& Craft,
+		const FResolvedRuleSet& Rules,
+		FStrategicCommandResult& Result)
+	{
+		TSet<FName> SeenWeaponStates;
+		for (const FCraftWeaponState& WeaponState : Craft.WeaponStates)
+		{
+			const FItemRule* Weapon = Rules.Items.Find(WeaponState.WeaponItemId);
+			const int32 MountCount = CountEquippedItem(Craft.EquipmentItems, WeaponState.WeaponItemId);
+			const int64 MaximumAmmunition = Weapon != nullptr
+				? static_cast<int64>(Weapon->MagazineCapacity) * MountCount
+				: -1;
+			if (Weapon == nullptr || !IsValidCraftWeaponRule(*Weapon, Rules) || MountCount <= 0
+				|| SeenWeaponStates.Contains(WeaponState.WeaponItemId)
+				|| WeaponState.Ammunition < 0 || WeaponState.Ammunition > MaximumAmmunition
+				|| WeaponState.RemainingCooldownSeconds < 0
+				|| WeaponState.RemainingCooldownSeconds > Weapon->FireIntervalSeconds)
+			{
+				AddError(Result, TEXT("invalid_craft_weapon_state"),
+					TEXT("Craft has invalid persisted weapon state."));
+				return false;
+			}
+			SeenWeaponStates.Add(WeaponState.WeaponItemId);
+		}
+		return true;
+	}
+
 	bool TryAdd(int64 Left, int64 Right, int64& OutValue);
 	bool TryMultiplyNonNegative(int64 Left, int64 Right, int64& OutValue);
 	bool TryScaleNonNegativeByPercent(int64 BaseValue, int32 Percent, int64& OutValue);
@@ -15605,7 +15633,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Craft references a missing base."));
 		return Result;
 	}
-	TSet<FName> SeenWeaponStates;
+	if (!ValidateCraftWeaponStatesForMutation(*Craft, Rules, Result))
+	{
+		return Result;
+	}
 	TMap<FName, int64> InventoryDeltas;
 	for (const FName ItemId : Craft->EquipmentItems)
 	{
@@ -15614,20 +15645,6 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	for (const FCraftWeaponState& WeaponState : Craft->WeaponStates)
 	{
 		const FItemRule* Weapon = Rules.Items.Find(WeaponState.WeaponItemId);
-		const int32 MountCount = CountEquippedItem(Craft->EquipmentItems, WeaponState.WeaponItemId);
-		const int64 MaximumAmmunition = Weapon != nullptr
-			? static_cast<int64>(Weapon->MagazineCapacity) * MountCount
-			: -1;
-		if (Weapon == nullptr || !IsValidCraftWeaponRule(*Weapon, Rules) || MountCount <= 0
-			|| SeenWeaponStates.Contains(WeaponState.WeaponItemId)
-			|| WeaponState.Ammunition < 0 || WeaponState.Ammunition > MaximumAmmunition
-			|| WeaponState.RemainingCooldownSeconds < 0
-			|| WeaponState.RemainingCooldownSeconds > Weapon->FireIntervalSeconds)
-		{
-			AddError(Result, TEXT("invalid_craft_weapon_state"), TEXT("Craft has invalid ammunition state that cannot be unloaded."));
-			return Result;
-		}
-		SeenWeaponStates.Add(WeaponState.WeaponItemId);
 		InventoryDeltas.FindOrAdd(Weapon->AmmunitionItemId) += WeaponState.Ammunition;
 	}
 	for (const FName ItemId : Command.ItemIds)
@@ -15741,6 +15758,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	if (MountCounts.IsEmpty())
 	{
 		AddError(Result, TEXT("craft_has_no_weapons"), TEXT("Craft has no equipped weapons to rearm."));
+		return Result;
+	}
+	if (!ValidateCraftWeaponStatesForMutation(*ExistingCraft, Rules, Result))
+	{
 		return Result;
 	}
 

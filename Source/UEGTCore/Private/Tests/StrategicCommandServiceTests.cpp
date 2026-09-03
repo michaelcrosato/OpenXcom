@@ -8908,6 +8908,20 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 		WeaponState.WeaponItemId = TEXT("item.sky-lance");
 		WeaponState.Ammunition = 1;
 	}
+	DuplicateWeaponState.Bases[0].Inventory.Add({ TEXT("item.sky-lance-rounds"), 5 });
+	const int64 DuplicateWeaponRearmSequence = DuplicateWeaponState.CommandSequence;
+	FRearmCraftCommand RearmDuplicateWeaponState;
+	RearmDuplicateWeaponState.ExpectedSequence = DuplicateWeaponState.CommandSequence;
+	RearmDuplicateWeaponState.CraftId = DuplicateWeaponCraftId;
+	const FStrategicCommandResult DuplicateWeaponRearmResult = FStrategicCommandService::Execute(
+		DuplicateWeaponState, Rules, RearmDuplicateWeaponState);
+	TestTrue(TEXT("Craft rearming rejects duplicate weapon state before changing ammunition"),
+		!DuplicateWeaponRearmResult.bAccepted
+		&& DuplicateWeaponRearmResult.HasDiagnostic(TEXT("invalid_craft_weapon_state"))
+		&& DuplicateWeaponState.CommandSequence == DuplicateWeaponRearmSequence
+		&& DuplicateWeaponState.Craft[0].WeaponStates.Num() == 2
+		&& DuplicateWeaponState.Bases[0].Inventory.Num() == 1
+		&& DuplicateWeaponState.Bases[0].Inventory[0].Quantity == 5);
 	const int64 DuplicateWeaponSequence = DuplicateWeaponState.CommandSequence;
 	FSetCraftEquipmentCommand ClearDuplicateWeaponState;
 	ClearDuplicateWeaponState.ExpectedSequence = DuplicateWeaponState.CommandSequence;
@@ -8921,7 +8935,8 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 		&& DuplicateWeaponState.Craft.Num() == 1
 		&& DuplicateWeaponState.Craft[0].EquipmentItems.Num() == 1
 		&& DuplicateWeaponState.Craft[0].WeaponStates.Num() == 2
-		&& DuplicateWeaponState.Bases[0].Inventory.IsEmpty());
+		&& DuplicateWeaponState.Bases[0].Inventory.Num() == 1
+		&& DuplicateWeaponState.Bases[0].Inventory[0].Quantity == 5);
 
 	return true;
 }
