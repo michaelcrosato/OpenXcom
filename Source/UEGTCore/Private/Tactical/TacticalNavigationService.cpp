@@ -309,8 +309,32 @@ bool FTacticalVisibilityResult::HasDiagnostic(const FName Code) const
 
 bool FTacticalVisibilityResult::IsCellVisible(const int32 X, const int32 Y, const int32 Z) const
 {
-	return X >= 0 && X < Width && Y >= 0 && Y < Height && Z >= 0 && Z < Levels
-		&& VisibleCellIndices.Contains((Z * Height + Y) * Width + X);
+	if (X < 0 || X >= Width || Y < 0 || Y >= Height || Z < 0 || Z >= Levels)
+	{
+		return false;
+	}
+
+	const int64 Width64 = Width;
+	const int64 Height64 = Height;
+	const int64 PlaneSize = Width64 * Height64;
+	if (Z > 0 && PlaneSize > MAX_int64 / Z)
+	{
+		return false;
+	}
+	const int64 PlaneOffset = static_cast<int64>(Z) * PlaneSize;
+	const int64 RowOffset = static_cast<int64>(Y) * Width64;
+	if (PlaneOffset > MAX_int64 - RowOffset)
+	{
+		return false;
+	}
+	const int64 RowBase = PlaneOffset + RowOffset;
+	if (RowBase > MAX_int64 - X)
+	{
+		return false;
+	}
+	const int64 CellIndex = RowBase + X;
+	return CellIndex <= MAX_int32
+		&& VisibleCellIndices.Contains(static_cast<int32>(CellIndex));
 }
 
 bool FTacticalVisibilityResult::IsUnitVisible(const FGuid UnitId) const

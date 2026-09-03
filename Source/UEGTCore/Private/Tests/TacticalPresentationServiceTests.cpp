@@ -850,6 +850,13 @@ bool FTacticalNavigationGridStateValidationTest::RunTest(const FString& Paramete
 		FTacticalNavigationService::ComputeSmokeObscuration(ExtremeDimensions, 0, 0, 0, 0), 0);
 	TestEqual(TEXT("Blast transmission rejects extreme dimensions without indexing cells"),
 		FTacticalCombatService::ComputeBlastTransmissionPercent(ExtremeDimensions, Fixture.Rules, 0, 0, 0, 0), 0);
+	FTacticalVisibilityResult ExtremeVisibilityAccessor;
+	ExtremeVisibilityAccessor.Width = MAX_int32;
+	ExtremeVisibilityAccessor.Height = 3;
+	ExtremeVisibilityAccessor.Levels = 1;
+	ExtremeVisibilityAccessor.VisibleCellIndices.Add(0);
+	TestFalse(TEXT("Visibility accessors do not treat a wrapped row-major index as visible"),
+		ExtremeVisibilityAccessor.IsCellVisible(2, 2, 0));
 
 	FTacticalBattleState InvalidAttackerBattle = Fixture.Campaign.TacticalBattles[0];
 	FTacticalUnitState* InvalidAttacker = InvalidAttackerBattle.Units.FindByPredicate(
