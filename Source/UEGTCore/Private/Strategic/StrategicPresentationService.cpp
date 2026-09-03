@@ -2986,6 +2986,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.DisplayName = Rule != nullptr ? RuleName(Rule->DisplayName, Project.ResearchId) : HumanizeId(Project.ResearchId);
 		const FStrategicBaseState* ResearchBase = FindBase(Campaign, Project.BaseId);
 		const TArray<FName> OperationalResearchFacilities = ResearchBase != nullptr
+			&& BasesWithValidInfrastructure.Contains(ResearchBase)
 			? OperationalFacilities(*ResearchBase, Rules) : TArray<FName>();
 		if (Rule != nullptr)
 		{

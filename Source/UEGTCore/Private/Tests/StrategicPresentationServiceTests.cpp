@@ -888,6 +888,12 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 			{
 				return Option.Type == EStrategicActionOptionType::Facility;
 			});
+	const FStrategicProjectView* MalformedResearchProject =
+		MalformedFacilitySnapshot.Projects.FindByPredicate(
+			[](const FStrategicProjectView& Project)
+			{
+				return Project.Type == EStrategicProjectType::Research;
+			});
 	TestTrue(TEXT("Dashboard with invalid facility layout does not expose derived relay telemetry"),
 		MalformedFacilitySnapshot.bSucceeded
 		&& !MalformedFacilitySnapshot.Diagnostics.IsEmpty()
@@ -905,7 +911,10 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& MalformedCraftOption->UnavailableReasonCode
 			== FName(TEXT("craft_capacity_full"))
 		&& MalformedFacilityOption != nullptr
-		&& MalformedFacilityOption->ValidFacilityPlacements.IsEmpty());
+		&& MalformedFacilityOption->ValidFacilityPlacements.IsEmpty()
+		&& MalformedResearchProject != nullptr
+		&& MalformedResearchProject->bPaused
+		&& MalformedResearchProject->MissingFacilityIds.Contains(Operations.Identity.RuleId));
 	FCampaignState MalformedServiceCampaign = Campaign;
 	const FBaseFacilityState DuplicateFlightDeck =
 		MalformedServiceCampaign.Bases[0].Facilities[1];
