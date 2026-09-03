@@ -755,6 +755,18 @@ bool FStrategicBaseTransactionTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Insufficient funds are diagnosed"), Insufficient.HasDiagnostic(TEXT("insufficient_funds")));
 	TestEqual(TEXT("Rejected base is not partially inserted"), State.Bases.Num(), 1);
 
+	FCampaignState UnsupportedGridState;
+	UnsupportedGridState.Funds = 20000;
+	FStrategicSimulationConfig UnsupportedGridConfig = MakeConfig();
+	UnsupportedGridConfig.BaseGridWidth = FStrategicSimulationConfig::MaximumBaseGridDimension + 1;
+	const FStrategicCommandResult UnsupportedGrid = FStrategicCommandService::Execute(
+		UnsupportedGridState, MakeRules(), UnsupportedGridConfig, MakeBaseCommand());
+	TestTrue(TEXT("Base establishment rejects an unsupported grid dimension before placement enumeration"),
+		!UnsupportedGrid.bAccepted
+		&& UnsupportedGrid.HasDiagnostic(TEXT("invalid_simulation_config"))
+		&& UnsupportedGridState.Bases.IsEmpty()
+		&& UnsupportedGridState.Funds == 20000);
+
 	return true;
 }
 
@@ -2887,19 +2899,28 @@ bool FStrategicWorksCadreStaffingTest::RunTest(const FString& Parameters)
 	FCampaignState ExtremePlacement = MakeStateWithBase();
 	ExtremePlacement.Bases[0].Facilities.Reset();
 	FStrategicSimulationConfig ExtremePlacementConfig = MakeConfig();
-	ExtremePlacementConfig.BaseGridWidth = MAX_int32;
+	ExtremePlacementConfig.BaseGridWidth = FStrategicSimulationConfig::MaximumBaseGridDimension;
 	FStartFacilityConstructionCommand ExtremePlacementCommand;
 	ExtremePlacementCommand.ExpectedSequence = ExtremePlacement.CommandSequence;
 	ExtremePlacementCommand.ProjectId = FGuid(0xc1100001, 0xc1100002, 0xc1100003, 0xc1100004);
 	ExtremePlacementCommand.FacilityInstanceId = FGuid(0xc1200001, 0xc1200002, 0xc1200003, 0xc1200004);
 	ExtremePlacementCommand.BaseId = TestBaseId;
 	ExtremePlacementCommand.FacilityId = TEXT("facility.compact-store");
-	ExtremePlacementCommand.GridX = MAX_int32;
+	ExtremePlacementCommand.GridX = FStrategicSimulationConfig::MaximumBaseGridDimension;
 	const FStrategicCommandResult ExtremePlacementResult = FStrategicCommandService::Execute(
 		ExtremePlacement, Rules, ExtremePlacementConfig, ExtremePlacementCommand);
 	TestTrue(TEXT("Facility placement rejects a right edge that would overflow 32-bit coordinates"),
 		!ExtremePlacementResult.bAccepted
 		&& ExtremePlacementResult.HasDiagnostic(TEXT("facility_out_of_bounds"))
+		&& ExtremePlacement.FacilityConstructionProjects.IsEmpty());
+
+	FStrategicSimulationConfig UnsupportedGridConfig = MakeConfig();
+	UnsupportedGridConfig.BaseGridWidth = FStrategicSimulationConfig::MaximumBaseGridDimension + 1;
+	const FStrategicCommandResult UnsupportedGridResult = FStrategicCommandService::Execute(
+		ExtremePlacement, Rules, UnsupportedGridConfig, ExtremePlacementCommand);
+	TestTrue(TEXT("Facility construction rejects an unsupported grid dimension before placement validation"),
+		!UnsupportedGridResult.bAccepted
+		&& UnsupportedGridResult.HasDiagnostic(TEXT("invalid_simulation_config"))
 		&& ExtremePlacement.FacilityConstructionProjects.IsEmpty());
 
 	FSetWorksCadreStaffCommand Assign = OverLimit;
@@ -7398,6 +7419,24 @@ bool FStrategicLegacyLayoutUpgradeTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Unknown legacy facility fails upgrade"), FStrategicCommandService::UpgradeLegacyFacilityLayouts(Invalid, Rules, Config, InvalidDiagnostics));
 	TestEqual(TEXT("Failed upgrade is transactional"), Invalid.Bases[0].BuiltFacilities.Num(), BeforeInvalid.Bases[0].BuiltFacilities.Num());
 	TestTrue(TEXT("Failed upgrade emits a diagnostic"), InvalidDiagnostics.ContainsByPredicate([](const FStrategicCommandDiagnostic& Diagnostic) { return Diagnostic.Code == TEXT("legacy_layout_upgrade_failed"); }));
+
+	FCampaignState UnsupportedGrid = MakeStateWithBase();
+	UnsupportedGrid.Bases[0].Facilities.Reset();
+	UnsupportedGrid.Bases[0].BuiltFacilities = { TEXT("facility.operations-hub") };
+	FStrategicSimulationConfig UnsupportedGridConfig = Config;
+	UnsupportedGridConfig.BaseGridHeight = FStrategicSimulationConfig::MaximumBaseGridDimension + 1;
+	TArray<FStrategicCommandDiagnostic> UnsupportedGridDiagnostics;
+	TestFalse(TEXT("Legacy layout migration rejects an unsupported grid dimension before placement enumeration"),
+		FStrategicCommandService::UpgradeLegacyFacilityLayouts(
+			UnsupportedGrid, Rules, UnsupportedGridConfig, UnsupportedGridDiagnostics));
+	TestTrue(TEXT("Unsupported migration dimensions are diagnosed without mutating the legacy layout"),
+		UnsupportedGridDiagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == TEXT("invalid_simulation_config");
+			})
+		&& UnsupportedGrid.Bases[0].Facilities.IsEmpty()
+		&& UnsupportedGrid.Bases[0].BuiltFacilities == TArray<FName>{ FName(TEXT("facility.operations-hub")) });
 
 	return true;
 }

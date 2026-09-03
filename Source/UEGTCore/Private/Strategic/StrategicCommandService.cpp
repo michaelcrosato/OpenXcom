@@ -33,6 +33,14 @@ namespace StrategicCommandServicePrivate
 			|| Charter == EWorksCadreCharter::RestorationCadence;
 	}
 
+	bool HasValidBaseGridDimensions(const FStrategicSimulationConfig& Config)
+	{
+		return Config.BaseGridWidth > 0
+			&& Config.BaseGridWidth <= FStrategicSimulationConfig::MaximumBaseGridDimension
+			&& Config.BaseGridHeight > 0
+			&& Config.BaseGridHeight <= FStrategicSimulationConfig::MaximumBaseGridDimension;
+	}
+
 	void AddError(FStrategicCommandResult& Result, const FName Code, FString Message)
 	{
 		FStrategicCommandDiagnostic& Diagnostic = Result.Diagnostics.AddDefaulted_GetRef();
@@ -2197,7 +2205,8 @@ namespace StrategicCommandServicePrivate
 		const FStrategicSimulationConfig& Config)
 	{
 		const FFacilityRule* Rule = Rules.Facilities.Find(FacilityId);
-		if (Rule == nullptr)
+		if (Rule == nullptr || Rule->GridWidth <= 0 || Rule->GridHeight <= 0
+			|| Rule->GridWidth > Config.BaseGridWidth || Rule->GridHeight > Config.BaseGridHeight)
 		{
 			return false;
 		}
@@ -9104,9 +9113,9 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	if (Config.BaseEstablishmentCost < 0 || Config.DefaultScientistCapacity < 0 || Config.DefaultEngineerCapacity < 0
-		|| Config.BaseGridWidth <= 0 || Config.BaseGridHeight <= 0)
+		|| !HasValidBaseGridDimensions(Config))
 	{
-		AddError(Result, TEXT("invalid_simulation_config"), TEXT("Base cost and staff capacities cannot be negative."));
+		AddError(Result, TEXT("invalid_simulation_config"), TEXT("Base cost and staff capacities cannot be negative, and base grid dimensions must stay within the supported limit."));
 		return Result;
 	}
 	if (!ValidateFacilities(Command.StartingFacilities, Rules, TEXT("duplicate_starting_facility"), Result))
@@ -13955,9 +13964,9 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	{
 		return Result;
 	}
-	if (Config.BaseGridWidth <= 0 || Config.BaseGridHeight <= 0)
+	if (!HasValidBaseGridDimensions(Config))
 	{
-		AddError(Result, TEXT("invalid_simulation_config"), TEXT("Base grid dimensions must be positive."));
+		AddError(Result, TEXT("invalid_simulation_config"), TEXT("Base grid dimensions must be positive and no larger than the supported limit."));
 		return Result;
 	}
 	if (!Command.ProjectId.IsValid() || !Command.FacilityInstanceId.IsValid())
@@ -21179,11 +21188,11 @@ bool FStrategicCommandService::UpgradeLegacyFacilityLayouts(
 {
 	using namespace StrategicCommandServicePrivate;
 
-	if (Config.BaseGridWidth <= 0 || Config.BaseGridHeight <= 0)
+	if (!HasValidBaseGridDimensions(Config))
 	{
 		FStrategicCommandDiagnostic& Diagnostic = OutDiagnostics.AddDefaulted_GetRef();
 		Diagnostic.Code = TEXT("invalid_simulation_config");
-		Diagnostic.Message = TEXT("Base grid dimensions must be positive for layout migration.");
+		Diagnostic.Message = TEXT("Base grid dimensions must be positive and no larger than the supported limit for layout migration.");
 		return false;
 	}
 

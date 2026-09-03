@@ -280,9 +280,17 @@ namespace StrategicPresentationPrivate
 		const FFacilityRule& Candidate)
 	{
 		TArray<FIntPoint> Placements;
-		for (int32 Y = 0; Y <= Config.BaseGridHeight - Candidate.GridHeight; ++Y)
+		if (Candidate.GridWidth <= 0 || Candidate.GridHeight <= 0
+			|| Candidate.GridWidth > Config.BaseGridWidth
+			|| Candidate.GridHeight > Config.BaseGridHeight)
 		{
-			for (int32 X = 0; X <= Config.BaseGridWidth - Candidate.GridWidth; ++X)
+			return Placements;
+		}
+		const int32 MaximumX = Config.BaseGridWidth - Candidate.GridWidth;
+		const int32 MaximumY = Config.BaseGridHeight - Candidate.GridHeight;
+		for (int32 Y = 0; Y <= MaximumY; ++Y)
+		{
+			for (int32 X = 0; X <= MaximumX; ++X)
 			{
 				if (CanPlaceFacility(Base, Campaign, Rules, Config, Candidate, X, Y))
 				{
@@ -620,7 +628,10 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		Snapshot.Diagnostics.Add(TEXT("Campaign time is not usable."));
 		return Snapshot;
 	}
-	if (Config.BaseGridWidth <= 0 || Config.BaseGridHeight <= 0
+	if (Config.BaseGridWidth <= 0
+		|| Config.BaseGridWidth > FStrategicSimulationConfig::MaximumBaseGridDimension
+		|| Config.BaseGridHeight <= 0
+		|| Config.BaseGridHeight > FStrategicSimulationConfig::MaximumBaseGridDimension
 		|| Config.MaxGeneralPersonnelPerBase <= 0
 		|| Config.InterceptionAftershockMinutesPerThreat < 0
 		|| Config.InterceptionAftershockMinutesPerThreat > 360

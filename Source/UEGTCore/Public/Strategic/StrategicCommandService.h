@@ -14,6 +14,9 @@ struct UEGTCORE_API FStrategicSimulationConfig
 {
 	GENERATED_BODY()
 
+	/** Maximum supported base-grid dimension; placement read models enumerate anchor cells. */
+	static constexpr int32 MaximumBaseGridDimension = 64;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Strategic")
 	int64 BaseEstablishmentCost = 500000;
 
@@ -34,10 +37,10 @@ struct UEGTCORE_API FStrategicSimulationConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Strategic", meta = (ClampMin = "0", ClampMax = "100"))
 	int32 FacilityDismantleRefundPercent = 25;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Strategic")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Strategic", meta = (ClampMin = "1", ClampMax = "64"))
 	int32 BaseGridWidth = 8;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Strategic")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Strategic", meta = (ClampMin = "1", ClampMax = "64"))
 	int32 BaseGridHeight = 8;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UEGT|Strategic")
