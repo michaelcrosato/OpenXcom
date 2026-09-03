@@ -1958,12 +1958,16 @@ namespace StrategicCommandServicePrivate
 		const FResolvedRuleSet& Rules,
 		const FName FacilityId)
 	{
-		return Base.Facilities.ContainsByPredicate(
-			[FacilityId, &Rules](const FBaseFacilityState& Facility)
-			{
-				return Facility.FacilityId == FacilityId && IsFacilityOperational(Facility, Rules);
-			})
-			|| Base.BuiltFacilities.Contains(FacilityId);
+		if (!Base.Facilities.IsEmpty())
+		{
+			return Base.Facilities.ContainsByPredicate(
+				[FacilityId, &Rules](const FBaseFacilityState& Facility)
+				{
+					return Facility.FacilityId == FacilityId && IsFacilityOperational(Facility, Rules);
+				});
+		}
+		return Rules.Facilities.Find(FacilityId) != nullptr
+			&& Base.BuiltFacilities.Contains(FacilityId);
 	}
 
 	bool HasOperationalResearchFacilities(

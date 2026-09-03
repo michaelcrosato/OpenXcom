@@ -14198,6 +14198,24 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 		&& MalformedFacilityState.Funds == MalformedFacilityFunds
 		&& MalformedFacilityState.CraftAcquisitionOrders.IsEmpty()
 		&& MalformedFacilityState.CommandSequence == MalformedFacilitySequence);
+
+	FCampaignState MixedLayoutState = MakeStateWithBase();
+	MixedLayoutState.Bases[0].BuiltFacilities.Add(TEXT("facility.fabrication-bay"));
+	MixedLayoutState.CompletedResearch.Add(TEXT("research.signal-analysis"));
+	const int64 MixedLayoutSequence = MixedLayoutState.CommandSequence;
+	FStartResearchCommand MixedLayoutResearch;
+	MixedLayoutResearch.ExpectedSequence = MixedLayoutSequence;
+	MixedLayoutResearch.BaseId = TestBaseId;
+	MixedLayoutResearch.ResearchId = TEXT("research.deep-signals");
+	const FStrategicCommandResult MixedLayoutResearchResult =
+		FStrategicCommandService::Execute(
+			MixedLayoutState, Rules, MixedLayoutResearch);
+	TestTrue(TEXT("Research start ignores stale legacy facility ids once positioned layout exists"),
+		!MixedLayoutResearchResult.bAccepted
+		&& MixedLayoutResearchResult.HasDiagnostic(TEXT("research_facility_missing"))
+		&& MixedLayoutState.ResearchProjects.IsEmpty()
+		&& MixedLayoutState.CommandSequence == MixedLayoutSequence
+		&& MixedLayoutState.Bases[0].BuiltFacilities == TArray<FName>{ FName(TEXT("facility.fabrication-bay")) });
 	return true;
 }
 
