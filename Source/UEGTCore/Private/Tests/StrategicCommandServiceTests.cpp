@@ -22472,6 +22472,40 @@ bool FStrategicRegionalMandateTest::RunTest(const FString& Parameters)
 		FStrategicCommandService::CalculateRegionalFundingContribution(100000, 101, InvalidContribution));
 
 	FStrategicSimulationConfig Config = MakeConfig();
+	FCampaignState MonthlyFinancialCapacityState = Initial;
+	MonthlyFinancialCapacityState.Funds = MAX_int64;
+	MonthlyFinancialCapacityState.MonthlyFunding = 0;
+	MonthlyFinancialCapacityState.RegionalPressure[0].Pressure = 0;
+	MonthlyFinancialCapacityState.RegionalMandates[0].Support = 14;
+	MonthlyFinancialCapacityState.RegionalMandates[0].BaselineMonthlyFunding = MAX_int64;
+	MonthlyFinancialCapacityState.RegionalMandates[0].CurrentMonthlyFunding = 0;
+	for (FRegionalMandateState& Mandate : MonthlyFinancialCapacityState.RegionalMandates)
+	{
+		Mandate.CurrentMonthlyFunding = 0;
+	}
+	const FStrategicCommandResult MonthlyFinancialCapacityValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceFinancialCapacity(
+			MonthlyFinancialCapacityState, RegionRules, Config, 3600);
+	TestTrue(TEXT("Monthly financial-capacity validation rejects a funding increase at the fund limit"),
+		!MonthlyFinancialCapacityValidation.bAccepted
+		&& MonthlyFinancialCapacityValidation.HasDiagnostic(TEXT("financial_overflow")));
+	const int64 MonthlyFinancialCapacitySequence = MonthlyFinancialCapacityState.CommandSequence;
+	const int64 MonthlyFinancialCapacityFunds = MonthlyFinancialCapacityState.Funds;
+	const int64 MonthlyFinancialCapacityFunding = MonthlyFinancialCapacityState.MonthlyFunding;
+	FAdvanceStrategicTimeCommand MonthlyFinancialCapacityAdvance;
+	MonthlyFinancialCapacityAdvance.ExpectedSequence = MonthlyFinancialCapacitySequence;
+	MonthlyFinancialCapacityAdvance.Rate = EStrategicTimeRate::OneHour;
+	const FStrategicCommandResult MonthlyFinancialCapacityResult =
+		FStrategicCommandService::Execute(
+			MonthlyFinancialCapacityState, RegionRules, Config,
+			MonthlyFinancialCapacityAdvance);
+	TestTrue(TEXT("A month-boundary funding increase cannot overflow campaign funds during time advance"),
+		!MonthlyFinancialCapacityResult.bAccepted
+		&& MonthlyFinancialCapacityResult.HasDiagnostic(TEXT("financial_overflow"))
+		&& MonthlyFinancialCapacityState.CommandSequence == MonthlyFinancialCapacitySequence
+		&& MonthlyFinancialCapacityState.Funds == MonthlyFinancialCapacityFunds
+		&& MonthlyFinancialCapacityState.MonthlyFunding == MonthlyFinancialCapacityFunding);
+
 	FRegionalDiplomacyCommand Civic;
 	Civic.ExpectedSequence = Initial.CommandSequence;
 	Civic.RegionId = TEXT("region.cascadia");

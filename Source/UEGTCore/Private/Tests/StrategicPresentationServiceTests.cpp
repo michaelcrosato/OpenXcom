@@ -959,6 +959,36 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !ClockHorizonSnapshot.bCanAdvanceTime
 		&& ClockHorizonSnapshot.Diagnostics.Contains(
 			TEXT("Strategic clock could not execute a simulation slice.")));
+	FResolvedRuleSet MonthlyFinancialCapacityRules = Rules;
+	MonthlyFinancialCapacityRules.Regions.FindChecked(
+		Mission.TargetRegionId).LowPressureSupportRecovery = 2;
+	FCampaignState MonthlyFinancialCapacityCampaign;
+	MonthlyFinancialCapacityCampaign.StrategicTime =
+		FStrategicTimestamp(FDateTime(2035, 1, 31, 23, 30, 0));
+	MonthlyFinancialCapacityCampaign.SimulationRandom.Initialize(0);
+	MonthlyFinancialCapacityCampaign.Funds = MAX_int64;
+	MonthlyFinancialCapacityCampaign.MonthlyFunding = 0;
+	MonthlyFinancialCapacityCampaign.NextAdversaryMissionSerial = 1;
+	MonthlyFinancialCapacityCampaign.NextAdversaryMissionSeconds = 2 * 86400;
+	FRegionalPressureState& MonthlyFinancialCapacityPressure =
+		MonthlyFinancialCapacityCampaign.RegionalPressure.AddDefaulted_GetRef();
+	MonthlyFinancialCapacityPressure.RegionId = Mission.TargetRegionId;
+	MonthlyFinancialCapacityPressure.Pressure = 0;
+	FRegionalMandateState& MonthlyFinancialCapacityMandate =
+		MonthlyFinancialCapacityCampaign.RegionalMandates.AddDefaulted_GetRef();
+	MonthlyFinancialCapacityMandate.RegionId = Mission.TargetRegionId;
+	MonthlyFinancialCapacityMandate.Support = 14;
+	MonthlyFinancialCapacityMandate.BaselineMonthlyFunding = MAX_int64;
+	MonthlyFinancialCapacityMandate.CurrentMonthlyFunding = 0;
+	const FStrategicDashboardSnapshot MonthlyFinancialCapacitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			MonthlyFinancialCapacityCampaign,
+			MonthlyFinancialCapacityRules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement before month-boundary funding can overflow campaign funds"),
+		MonthlyFinancialCapacitySnapshot.bSucceeded
+		&& !MonthlyFinancialCapacitySnapshot.bCanAdvanceTime
+		&& MonthlyFinancialCapacitySnapshot.Diagnostics.Contains(
+			TEXT("Monthly campaign finances exceed the supported numeric range.")));
 	FCampaignState AdversarySerialCapacityCampaign = Campaign;
 	AdversarySerialCapacityCampaign.NextAdversaryMissionSerial = MAX_int64 - 3;
 	AdversarySerialCapacityCampaign.NextAdversaryMissionSeconds = 5;

@@ -5762,6 +5762,59 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateStrategicMonthlyFinancialCapacity(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		const int64 RequestedSeconds,
+		FStrategicCommandResult& Result)
+	{
+		if (!State.StrategicTime.IsUsable())
+		{
+			return true;
+		}
+
+		int64 RequestedTicks = 0;
+		int64 EndTicks = 0;
+		if (!TryMultiplyNonNegative(RequestedSeconds, ETimespan::TicksPerSecond, RequestedTicks)
+			|| !TryAdd(State.StrategicTime.Utc.GetTicks(), RequestedTicks, EndTicks))
+		{
+			return true;
+		}
+		const FDateTime EndUtc(EndTicks);
+		if (State.StrategicTime.Utc.GetYear() == EndUtc.GetYear()
+			&& State.StrategicTime.Utc.GetMonth() == EndUtc.GetMonth())
+		{
+			return true;
+		}
+
+		FCampaignState ProjectedState = State;
+		FStrategicCommandResult ProjectionResult;
+		if (!ReviewRegionalMandates(
+				ProjectedState, Rules, Config, ProjectionResult,
+				ProjectedState.CommandSequence, EndUtc))
+		{
+			AddError(Result, TEXT("financial_overflow"),
+				TEXT("Monthly regional funding review exceeds the supported numeric range."));
+			return false;
+		}
+
+		int64 MonthlyMaintenance = 0;
+		int64 MonthlySalaries = 0;
+		int64 MonthlyCraftMaintenance = 0;
+		if (!ComputeMonthlyMaintenance(ProjectedState, Rules, MonthlyMaintenance, Result)
+			|| !ComputeMonthlyPersonnelSalaries(ProjectedState, Rules, MonthlySalaries, Result)
+			|| !ComputeMonthlyCraftMaintenance(
+				ProjectedState, Rules, MonthlyCraftMaintenance, Result)
+			|| !ValidateMonthlyFinancialTotals(
+				ProjectedState, MonthlyMaintenance, MonthlySalaries,
+				MonthlyCraftMaintenance, Result))
+		{
+			return false;
+		}
+		return true;
+	}
+
 	bool CountPersonnelForCategory(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -7917,6 +7970,30 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicFinancialStat
 	}
 	if (!ValidateMonthlyFinancialTotals(
 		State, MonthlyMaintenance, MonthlySalaries, MonthlyCraftMaintenance, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceFinancialCapacity(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules,
+	const FStrategicSimulationConfig& Config,
+	const int64 RequestedSeconds)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (RequestedSeconds <= 0)
+	{
+		AddError(Result, TEXT("invalid_time_advance"),
+			TEXT("Financial-capacity validation requires a positive strategic time slice."));
+		return Result;
+	}
+	if (!ValidateStrategicMonthlyFinancialCapacity(
+			State, Rules, Config, RequestedSeconds, Result))
 	{
 		return Result;
 	}
@@ -12032,6 +12109,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	if (!ValidateMonthlyFinancialTotals(
 		State, MonthlyMaintenance, MonthlySalaries, MonthlyCraftMaintenance, Result))
+	{
+		return Result;
+	}
+	if (!ValidateStrategicMonthlyFinancialCapacity(
+		State, Rules, Config, RequestedSeconds, Result))
 	{
 		return Result;
 	}

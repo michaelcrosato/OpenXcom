@@ -4097,6 +4097,13 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules);
 
+	/** Read-only validation that a strategic time slice can settle a month without a financial overflow. */
+	static FStrategicCommandResult ValidateStrategicTimeAdvanceFinancialCapacity(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		int64 RequestedSeconds);
+
 	/** Read-only validation of the persisted strategic deterministic random stream. */
 	static FStrategicCommandResult ValidateStrategicRandomState(
 		const FCampaignState& State);

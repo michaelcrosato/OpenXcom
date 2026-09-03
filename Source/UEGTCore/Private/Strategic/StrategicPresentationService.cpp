@@ -1413,6 +1413,25 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	if (TimeAdvanceConfigValidation.bAccepted)
+	{
+		const FStrategicCommandResult MonthlyFinancialCapacityValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceFinancialCapacity(
+				Campaign, Rules, Config, MaximumTimeAdvanceSeconds);
+		if (!MonthlyFinancialCapacityValidation.bAccepted)
+		{
+			Snapshot.bCanAdvanceTime = false;
+			if (!MonthlyFinancialCapacityValidation.Diagnostics.IsEmpty())
+			{
+				const FString& Diagnostic = MonthlyFinancialCapacityValidation.Diagnostics[0].Message;
+				if (!Snapshot.Diagnostics.ContainsByPredicate(
+					[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+				{
+					Snapshot.Diagnostics.Add(Diagnostic);
+				}
+			}
+		}
+	}
 	TSet<const FStrategicBaseState*> BasesWithValidInfrastructure;
 	for (const FStrategicBaseState& Base : Campaign.Bases)
 	{
