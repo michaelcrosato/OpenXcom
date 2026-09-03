@@ -804,6 +804,19 @@ bool FStrategicBaseTransactionTest::RunTest(const FString& Parameters)
 		&& UnsupportedGridState.Bases.IsEmpty()
 		&& UnsupportedGridState.Funds == 20000);
 
+	FResolvedRuleSet NegativeFacilityCostRules = MakeRules();
+	NegativeFacilityCostRules.Facilities.FindChecked(TEXT("facility.operations-hub")).BuildCost = -1;
+	FCampaignState NegativeFacilityCostState;
+	NegativeFacilityCostState.Funds = 20000;
+	const FStrategicCommandResult NegativeFacilityCost = FStrategicCommandService::Execute(
+		NegativeFacilityCostState, NegativeFacilityCostRules, MakeConfig(), MakeBaseCommand());
+	TestTrue(TEXT("Base establishment rejects negative facility costs without minting funds"),
+		!NegativeFacilityCost.bAccepted
+		&& NegativeFacilityCost.HasDiagnostic(TEXT("unknown_facility"))
+		&& NegativeFacilityCostState.Bases.IsEmpty()
+		&& NegativeFacilityCostState.Funds == 20000
+		&& NegativeFacilityCostState.CommandSequence == 0);
+
 	return true;
 }
 
@@ -6980,6 +6993,40 @@ bool FStrategicFacilityConstructionTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Construction stays inside base grid"), BoundsRejected.bAccepted);
 	TestTrue(TEXT("Out-of-bounds placement is diagnosed"), BoundsRejected.HasDiagnostic(TEXT("facility_out_of_bounds")));
 	TestEqual(TEXT("Rejected placements do not spend funds"), State.Funds, int64(8500));
+
+	FResolvedRuleSet NegativeFacilityCostRules = MakeRules();
+	NegativeFacilityCostRules.Facilities.FindChecked(TEXT("facility.compact-store")).BuildCost = -1;
+	FCampaignState NegativeFacilityCostState = MakeStateWithBase();
+	FStartFacilityConstructionCommand NegativeFacilityCostBuild = Build;
+	NegativeFacilityCostBuild.ExpectedSequence = NegativeFacilityCostState.CommandSequence;
+	NegativeFacilityCostBuild.ProjectId = FGuid(119, 120, 121, 122);
+	NegativeFacilityCostBuild.FacilityInstanceId = FGuid(123, 124, 125, 126);
+	const int64 NegativeFacilityFunds = NegativeFacilityCostState.Funds;
+	const FStrategicCommandResult NegativeFacilityCostResult = FStrategicCommandService::Execute(
+		NegativeFacilityCostState, NegativeFacilityCostRules, Config, NegativeFacilityCostBuild);
+	TestTrue(TEXT("Facility construction rejects negative costs without minting funds"),
+		!NegativeFacilityCostResult.bAccepted
+		&& NegativeFacilityCostResult.HasDiagnostic(TEXT("unknown_facility"))
+		&& NegativeFacilityCostState.Funds == NegativeFacilityFunds
+		&& NegativeFacilityCostState.FacilityConstructionProjects.IsEmpty()
+		&& NegativeFacilityCostState.CommandSequence == NegativeFacilityCostBuild.ExpectedSequence);
+
+	FResolvedRuleSet ZeroFacilityHoursRules = MakeRules();
+	ZeroFacilityHoursRules.Facilities.FindChecked(TEXT("facility.compact-store")).BuildHours = 0;
+	FCampaignState ZeroFacilityHoursState = MakeStateWithBase();
+	FStartFacilityConstructionCommand ZeroFacilityHoursBuild = Build;
+	ZeroFacilityHoursBuild.ExpectedSequence = ZeroFacilityHoursState.CommandSequence;
+	ZeroFacilityHoursBuild.ProjectId = FGuid(127, 128, 129, 130);
+	ZeroFacilityHoursBuild.FacilityInstanceId = FGuid(131, 132, 133, 134);
+	const int64 ZeroFacilityHoursFunds = ZeroFacilityHoursState.Funds;
+	const FStrategicCommandResult ZeroFacilityHoursResult = FStrategicCommandService::Execute(
+		ZeroFacilityHoursState, ZeroFacilityHoursRules, Config, ZeroFacilityHoursBuild);
+	TestTrue(TEXT("Facility construction rejects zero-duration rules before creating an uncancellable project"),
+		!ZeroFacilityHoursResult.bAccepted
+		&& ZeroFacilityHoursResult.HasDiagnostic(TEXT("unknown_facility"))
+		&& ZeroFacilityHoursState.Funds == ZeroFacilityHoursFunds
+		&& ZeroFacilityHoursState.FacilityConstructionProjects.IsEmpty()
+		&& ZeroFacilityHoursState.CommandSequence == ZeroFacilityHoursBuild.ExpectedSequence);
 
 	const FCampaignSaveEnvelope ActiveEnvelope = FCampaignSaveCodec::CreateNew(
 		State,

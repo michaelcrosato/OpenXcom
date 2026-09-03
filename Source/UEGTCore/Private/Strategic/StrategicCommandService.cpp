@@ -4196,9 +4196,16 @@ namespace StrategicCommandServicePrivate
 		TSet<FName> Seen;
 		for (const FName FacilityId : FacilityIds)
 		{
-			if (!Rules.Facilities.Contains(FacilityId))
+			const FFacilityRule* Facility = Rules.Facilities.Find(FacilityId);
+			if (Facility == nullptr)
 			{
 				AddError(Result, TEXT("unknown_facility"), FString::Printf(TEXT("Facility rule '%s' is not loaded."), *FacilityId.ToString()));
+				return false;
+			}
+			if (Facility->BuildCost < 0 || Facility->BuildHours <= 0)
+			{
+				AddError(Result, TEXT("unknown_facility"), FString::Printf(
+					TEXT("Facility rule '%s' has invalid construction values."), *FacilityId.ToString()));
 				return false;
 			}
 			if (Seen.Contains(FacilityId))
@@ -14157,9 +14164,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	const FFacilityRule* Facility = Rules.Facilities.Find(Command.FacilityId);
-	if (Facility == nullptr)
+	if (Facility == nullptr || Facility->BuildCost < 0 || Facility->BuildHours <= 0)
 	{
-		AddError(Result, TEXT("unknown_facility"), FString::Printf(TEXT("Facility rule '%s' is not loaded."), *Command.FacilityId.ToString()));
+		AddError(Result, TEXT("unknown_facility"), FString::Printf(
+			TEXT("Facility rule '%s' is not loaded or has invalid construction values."),
+			*Command.FacilityId.ToString()));
 		return Result;
 	}
 	for (const FName Requirement : Facility->RequiredResearch)
