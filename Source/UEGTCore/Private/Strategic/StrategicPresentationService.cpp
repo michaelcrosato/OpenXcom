@@ -1334,7 +1334,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			FacilityView.GridY = Project.GridY;
 			FacilityView.bOperational = false;
 			FacilityView.bConstructing = true;
-			FacilityView.RemainingBuildSeconds = Project.RemainingBuildSeconds;
+			FacilityView.RemainingBuildSeconds = FMath::Max<int64>(0, Project.RemainingBuildSeconds);
 			if (const FFacilityRule* Facility = Rules.Facilities.Find(Project.FacilityId))
 			{
 				FacilityView.DisplayName = RuleName(Facility->DisplayName, Project.FacilityId);
@@ -3004,23 +3004,24 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.ResearchRatePercent = !View.bPaused && ResearchBase != nullptr
 			? FStrategicCommandService::EvaluateBaseResearchRatePercent(*ResearchBase, Rules)
 			: 100;
+		const int32 AssignedScientists = FMath::Max(0, Project.AssignedScientists);
 		const int64 Required = Rule != nullptr ? static_cast<int64>(Rule->Effort) * 3600LL : 0;
 		const int64 RemainingWork = NonNegativeDifference(
 			Required, Project.AccumulatedWorkSeconds);
 		View.Progress = Progress(Project.AccumulatedWorkSeconds, Required);
-		View.RemainingSeconds = !View.bPaused && Project.AssignedScientists > 0
+		View.RemainingSeconds = !View.bPaused && AssignedScientists > 0
 			? CeilScaledWorkSeconds(
-				RemainingWork, Project.AssignedScientists, View.ResearchRatePercent)
+				RemainingWork, AssignedScientists, View.ResearchRatePercent)
 			: 0;
-		View.AssignedStaff = Project.AssignedScientists;
+		View.AssignedStaff = AssignedScientists;
 		const FString RequiredFacilityDetail = View.RequiredFacilityNames.IsEmpty()
 			? FString()
 			: FString::Printf(TEXT(" • lab %s"), *FString::Join(View.RequiredFacilityNames, TEXT(" + ")));
 		View.Detail = View.bPaused
 			? FString::Printf(TEXT("LAB OFFLINE • %s • %d scientists"),
-				*FString::Join(View.MissingFacilityNames, TEXT(" + ")), Project.AssignedScientists)
-			: Project.AssignedScientists > 0
-				? FString::Printf(TEXT("%d scientists • %s%s"), Project.AssignedScientists,
+				*FString::Join(View.MissingFacilityNames, TEXT(" + ")), AssignedScientists)
+			: AssignedScientists > 0
+				? FString::Printf(TEXT("%d scientists • %s%s"), AssignedScientists,
 					*DurationDetail(View.RemainingSeconds), *RequiredFacilityDetail)
 				: FString::Printf(TEXT("Unstaffed%s"), *RequiredFacilityDetail);
 	}
@@ -3032,16 +3033,18 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.BaseId = Project.BaseId;
 		View.RuleId = Project.ItemId;
 		const FItemRule* Rule = Rules.Items.Find(Project.ItemId);
+		const int32 UnitsRemaining = FMath::Max(0, Project.UnitsRemaining);
+		const int32 AssignedEngineers = FMath::Max(0, Project.AssignedEngineers);
 		View.DisplayName = Rule != nullptr ? RuleName(Rule->DisplayName, Project.ItemId) : HumanizeId(Project.ItemId);
 		const int64 RequiredPerUnit = Rule != nullptr ? static_cast<int64>(Rule->ManufactureHours) * 3600LL : 0;
 		const int64 TotalRequiredWork = SafeProduct(
-			RequiredPerUnit, FMath::Max<int64>(0, Project.UnitsRemaining));
+			RequiredPerUnit, UnitsRemaining);
 		const int64 TotalRemainingWork = NonNegativeDifference(
 			TotalRequiredWork, Project.AccumulatedWorkSeconds);
-		const int32 RefundableUnits = Project.UnitsRemaining <= 0
+		const int32 RefundableUnits = UnitsRemaining <= 0
 			? 0
-			: Project.UnitsRemaining - (Project.AccumulatedWorkSeconds > 0 ? 1 : 0);
-		View.UnitsRemaining = Project.UnitsRemaining;
+			: UnitsRemaining - (Project.AccumulatedWorkSeconds > 0 ? 1 : 0);
+		View.UnitsRemaining = UnitsRemaining;
 		View.UnitCost = Rule != nullptr ? FMath::Max(0, Rule->ManufactureCost) : 0;
 		View.CancellationRefund = Rule != nullptr
 			? SafeProduct(View.UnitCost, RefundableUnits)
@@ -3096,13 +3099,13 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 		View.Progress = Progress(Project.AccumulatedWorkSeconds, RequiredPerUnit);
-		View.RemainingSeconds = Project.AssignedEngineers > 0
+		View.RemainingSeconds = AssignedEngineers > 0
 			? CeilScaledWorkSeconds(
-				TotalRemainingWork, Project.AssignedEngineers, View.ManufacturingRatePercent)
+				TotalRemainingWork, AssignedEngineers, View.ManufacturingRatePercent)
 			: 0;
-		View.AssignedStaff = Project.AssignedEngineers;
-		View.Detail = FString::Printf(TEXT("%d units • %d engineers • %s"), Project.UnitsRemaining,
-			Project.AssignedEngineers, Project.AssignedEngineers > 0 ? *DurationDetail(View.RemainingSeconds) : TEXT("unstaffed"));
+		View.AssignedStaff = AssignedEngineers;
+		View.Detail = FString::Printf(TEXT("%d units • %d engineers • %s"), UnitsRemaining,
+			AssignedEngineers, AssignedEngineers > 0 ? *DurationDetail(View.RemainingSeconds) : TEXT("unstaffed"));
 		if (Rule != nullptr)
 		{
 			View.Detail += FString::Printf(TEXT(" • Storage %s%lld/unit"),
@@ -3130,7 +3133,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		const int64 Total = Rule != nullptr ? static_cast<int64>(Rule->BuildHours) * 3600LL : 0;
 		View.Progress = Progress(
 			NonNegativeDifference(Total, Project.RemainingBuildSeconds), Total);
-		View.RemainingSeconds = Project.RemainingBuildSeconds;
+		View.RemainingSeconds = FMath::Max<int64>(0, Project.RemainingBuildSeconds);
 		View.CancellationRefund = Rule != nullptr
 			? ProportionalRefund(Rule->BuildCost, Project.RemainingBuildSeconds, Total)
 			: 0;
@@ -3148,7 +3151,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		const int64 Total = Rule != nullptr ? static_cast<int64>(Rule->RecruitmentHours) * 3600LL : 0;
 		View.Progress = Progress(
 			NonNegativeDifference(Total, Order.RemainingTransitSeconds), Total);
-		View.RemainingSeconds = Order.RemainingTransitSeconds;
+		View.RemainingSeconds = FMath::Max<int64>(0, Order.RemainingTransitSeconds);
 		View.Detail = FString::Printf(TEXT("%s • %s"),
 			Rule != nullptr ? *RuleName(Rule->DisplayName, Order.RoleId) : *HumanizeId(Order.RoleId),
 			*DurationDetail(View.RemainingSeconds));
@@ -3165,7 +3168,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		const int64 Total = Rule != nullptr ? static_cast<int64>(Rule->AcquisitionHours) * 3600LL : 0;
 		View.Progress = Progress(
 			NonNegativeDifference(Total, Order.RemainingTransitSeconds), Total);
-		View.RemainingSeconds = Order.RemainingTransitSeconds;
+		View.RemainingSeconds = FMath::Max<int64>(0, Order.RemainingTransitSeconds);
 		View.Detail = FString::Printf(TEXT("%s • %s"),
 			Rule != nullptr ? *RuleName(Rule->DisplayName, Order.CraftRuleId) : *HumanizeId(Order.CraftRuleId),
 			*DurationDetail(View.RemainingSeconds));
