@@ -944,6 +944,36 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 			{
 				return Diagnostic.Contains(TEXT("invalid or overflowing inventory storage data"));
 			}));
+	const FStrategicBaseView* InvalidInventoryBaseView =
+		InvalidInventoryReadinessSnapshot.Bases.FindByPredicate(
+			[](const FStrategicBaseView& BaseView)
+			{
+				return BaseView.BaseId == FGuid(1, 2, 3, 4);
+			});
+	const FStrategicProjectView* InvalidInventoryProjectView =
+		InvalidInventoryReadinessSnapshot.Projects.FindByPredicate(
+			[](const FStrategicProjectView& Project)
+			{
+				return Project.Type == EStrategicProjectType::Manufacturing;
+			});
+	const FStrategicCraftView* InvalidInventoryCraftView =
+		InvalidInventoryReadinessSnapshot.Craft.FindByPredicate(
+			[](const FStrategicCraftView& CraftView)
+			{
+				return CraftView.PendingSalvage.Num() > 0;
+			});
+	TestTrue(TEXT("Dashboard disables storage-backed controls when base storage evaluation fails"),
+		InvalidInventoryBaseView != nullptr
+		&& InvalidInventoryBaseView->bInfrastructureValid
+		&& !InvalidInventoryBaseView->bStorageStateValid
+		&& InvalidInventoryProjectView != nullptr
+		&& !InvalidInventoryProjectView->bCanRemoveManufacturingUnit
+		&& !InvalidInventoryProjectView->bCanCancel
+		&& InvalidInventoryProjectView->CancellationUnavailableReason.Contains(
+			TEXT("invalid storage state"))
+		&& InvalidInventoryCraftView != nullptr
+		&& !InvalidInventoryCraftView->PendingSalvage[0].bCanRetainAtBase
+		&& InvalidInventoryCraftView->PendingSalvage[0].bCanSell);
 	FCampaignState InvalidCraftReadinessCampaign = Campaign;
 	InvalidCraftReadinessCampaign.Craft[0].AssignedPilotId.Invalidate();
 	InvalidCraftReadinessCampaign.Craft[0].AssignedAgentIds.Reset();

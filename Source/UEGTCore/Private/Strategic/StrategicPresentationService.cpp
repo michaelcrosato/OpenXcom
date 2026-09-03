@@ -483,7 +483,7 @@ namespace StrategicPresentationPrivate
 
 	bool CanApplyStorageDelta(const FStrategicBaseView* Base, const int64 Delta)
 	{
-		if (Base == nullptr || !Base->bInfrastructureValid)
+		if (Base == nullptr || !Base->bInfrastructureValid || !Base->bStorageStateValid)
 		{
 			return false;
 		}
@@ -512,6 +512,10 @@ namespace StrategicPresentationPrivate
 		if (!Base->bInfrastructureValid)
 		{
 			return TEXT("Storage actions are unavailable while the base has invalid facility state.");
+		}
+		if (!Base->bStorageStateValid)
+		{
+			return TEXT("Storage actions are unavailable while the base has invalid storage state.");
 		}
 		const int64 Required = NonNegativeDifference(Delta, Base->StorageAvailable);
 		return FString::Printf(TEXT("This change needs %lld more storage units; sell, equip, or relocate inventory first."),
@@ -1173,7 +1177,8 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		View.GridHeight = Config.BaseGridHeight;
 		const FBaseStorageEvaluation Storage =
 			FStrategicCommandService::EvaluateBaseStorage(Campaign, Rules, Base.BaseId);
-		if (bInfrastructureValid && Storage.bValid)
+		View.bStorageStateValid = bInfrastructureValid && Storage.bValid;
+		if (View.bStorageStateValid)
 		{
 			View.bStorageEnforced = Storage.bEnforced;
 			View.StorageCapacity = Storage.Capacity;

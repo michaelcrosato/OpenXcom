@@ -1260,6 +1260,10 @@ struct UEGTCORE_API FStrategicBaseView
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	bool bInfrastructureValid = false;
 
+	/** True when this base's persisted inventory and storage commitments evaluated successfully. */
+	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
+	bool bStorageStateValid = false;
+
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	bool bStorageEnforced = false;
 
