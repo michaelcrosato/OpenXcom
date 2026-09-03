@@ -1376,6 +1376,25 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 	}
+	if (AdversaryStateValidation.bAccepted)
+	{
+		const FStrategicCommandResult AdversaryCapacityValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceAdversaryCapacity(
+				Campaign, Rules, Config, MaximumTimeAdvanceSeconds);
+		if (!AdversaryCapacityValidation.bAccepted)
+		{
+			Snapshot.bCanAdvanceTime = false;
+			if (!AdversaryCapacityValidation.Diagnostics.IsEmpty())
+			{
+				const FString& Diagnostic = AdversaryCapacityValidation.Diagnostics[0].Message;
+				if (!Snapshot.Diagnostics.ContainsByPredicate(
+					[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+				{
+					Snapshot.Diagnostics.Add(Diagnostic);
+				}
+			}
+		}
+	}
 	if (!Campaign.Bases.IsEmpty())
 	{
 		const FStrategicCommandResult FinancialStateValidation =

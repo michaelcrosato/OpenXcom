@@ -6201,6 +6201,28 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateStrategicAdversaryCapacity(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		const int64 RequestedSeconds,
+		FStrategicCommandResult& Result)
+	{
+		const bool bMissionMayLaunch = State.Outcome == ECampaignOutcome::Ongoing
+			&& !Rules.AdversaryMissions.IsEmpty()
+			&& State.NextAdversaryMissionSeconds <= RequestedSeconds
+			&& State.AdversaryMissions.Num() < Config.MaxActiveAdversaryMissions;
+		if (bMissionMayLaunch
+			&& (State.NextAdversaryMissionSerial >= MAX_int64 - 3
+				|| State.AdversaryMissionsLaunched == MAX_int32))
+		{
+			AddError(Result, TEXT("simulation_overflow"),
+				TEXT("Strategic simulation exceeded a persisted numeric range."));
+			return false;
+		}
+		return true;
+	}
+
 	bool WouldViolateStaffingCommitmentAfterRelease(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -7915,6 +7937,29 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceRa
 		return Result;
 	}
 	if (!ValidateStrategicRandomCapacity(State, Rules, Config, RequestedSeconds, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceAdversaryCapacity(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules,
+	const FStrategicSimulationConfig& Config,
+	const int64 RequestedSeconds)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (RequestedSeconds <= 0)
+	{
+		AddError(Result, TEXT("invalid_time_advance"),
+			TEXT("Adversary-capacity validation requires a positive strategic time slice."));
+		return Result;
+	}
+	if (!ValidateStrategicAdversaryCapacity(State, Rules, Config, RequestedSeconds, Result))
 	{
 		return Result;
 	}
@@ -11950,6 +11995,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	if (!ValidateAdversaryState(State, Rules, Config, Result))
+	{
+		return Result;
+	}
+	if (!ValidateStrategicAdversaryCapacity(State, Rules, Config, RequestedSeconds, Result))
 	{
 		return Result;
 	}

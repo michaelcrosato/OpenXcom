@@ -12163,6 +12163,12 @@ bool FStrategicAdversarySchedulingTest::RunTest(const FString& Parameters)
 	FCampaignState LastUsableSerial = MakeStateWithBase();
 	LastUsableSerial.NextAdversaryMissionSerial = MAX_int64 - 3;
 	LastUsableSerial.NextAdversaryMissionSeconds = 5;
+	const FStrategicCommandResult LastUsableSerialCapacity =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceAdversaryCapacity(
+			LastUsableSerial, Rules, MakeConfig(), 5);
+	TestTrue(TEXT("Adversary time-capacity validation rejects the terminal mission serial before launch"),
+		!LastUsableSerialCapacity.bAccepted
+		&& LastUsableSerialCapacity.HasDiagnostic(TEXT("simulation_overflow")));
 	FAdvanceStrategicTimeCommand LastUsableSerialAdvance;
 	LastUsableSerialAdvance.ExpectedSequence = LastUsableSerial.CommandSequence;
 	LastUsableSerialAdvance.Rate = EStrategicTimeRate::FiveSeconds;

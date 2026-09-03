@@ -959,6 +959,17 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !ClockHorizonSnapshot.bCanAdvanceTime
 		&& ClockHorizonSnapshot.Diagnostics.Contains(
 			TEXT("Strategic clock could not execute a simulation slice.")));
+	FCampaignState AdversarySerialCapacityCampaign = Campaign;
+	AdversarySerialCapacityCampaign.NextAdversaryMissionSerial = MAX_int64 - 3;
+	AdversarySerialCapacityCampaign.NextAdversaryMissionSeconds = 5;
+	const FStrategicDashboardSnapshot AdversarySerialCapacitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			AdversarySerialCapacityCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement before the adversary serial can overflow"),
+		AdversarySerialCapacitySnapshot.bSucceeded
+		&& !AdversarySerialCapacitySnapshot.bCanAdvanceTime
+		&& AdversarySerialCapacitySnapshot.Diagnostics.Contains(
+			TEXT("Strategic simulation exceeded a persisted numeric range.")));
 	FCampaignState InvalidContactReadinessCampaign = Campaign;
 	InvalidContactReadinessCampaign.Craft.Reset();
 	InvalidContactReadinessCampaign.Personnel.Reset();

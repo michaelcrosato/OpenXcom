@@ -4108,6 +4108,13 @@ public:
 		const FStrategicSimulationConfig& Config,
 		int64 RequestedSeconds);
 
+	/** Read-only validation that a strategic time slice can allocate the next adversary mission identity. */
+	static FStrategicCommandResult ValidateStrategicTimeAdvanceAdversaryCapacity(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		int64 RequestedSeconds);
+
 	/** Read-only validation of persisted Mutual Aid Convoy state. */
 	static FStrategicCommandResult ValidateStrategicMutualAidConvoyState(
 		const FCampaignState& State,
