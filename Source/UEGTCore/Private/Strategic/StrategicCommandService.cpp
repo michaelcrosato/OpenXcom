@@ -7674,6 +7674,11 @@ FThreadlineRetuneEvaluation FStrategicCommandService::EvaluateThreadlineRetune(
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
 	if (!ValidateMutualAidConvoyState(State, Rules, Validation))
 	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
@@ -7812,6 +7817,11 @@ FSignalEscortCommissionEvaluation FStrategicCommandService::EvaluateSignalEscort
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
 	if (!ValidateMutualAidConvoyState(State, Rules, Validation))
 	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
@@ -7944,6 +7954,11 @@ FMutualAidReliefPriorityEvaluation FStrategicCommandService::EvaluateMutualAidRe
 	{
 		AddError(Validation, TEXT("campaign_concluded"),
 			TEXT("Mutual Aid convoy priorities cannot change after the campaign has concluded."));
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
@@ -8101,6 +8116,11 @@ FMutualAidReliefStandDownEvaluation FStrategicCommandService::EvaluateMutualAidR
 	{
 		AddError(Validation, TEXT("campaign_concluded"),
 			TEXT("Mutual Aid convoys cannot stand down after the campaign has concluded."));
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
@@ -8309,6 +8329,11 @@ FMutualAidReliefDiversionEvaluation FStrategicCommandService::EvaluateMutualAidR
 	{
 		AddError(Validation, TEXT("campaign_concluded"),
 			TEXT("Mutual Aid convoys cannot be diverted after the campaign has concluded."));
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
@@ -8632,6 +8657,11 @@ FMutualAidRelayWaypointEvaluation FStrategicCommandService::EvaluateMutualAidRel
 	{
 		AddError(Validation, TEXT("campaign_concluded"),
 			TEXT("Mutual Aid Relay Waypoints cannot change after the campaign has concluded."));
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
@@ -8986,6 +9016,11 @@ FStrategicCommandService::EvaluateMutualAidBalancedHandoff(
 	{
 		AddError(Validation, TEXT("campaign_concluded"),
 			TEXT("Balanced Handoffs cannot change after the campaign has concluded."));
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
 		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
 		return Evaluation;
 	}
@@ -13474,6 +13509,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	{
 		AddError(Result, TEXT("mutual_aid_signal_escort_funds"),
 			TEXT("Campaign funds cannot cover this convoy's Signal Escort."));
+		return Result;
+	}
+	if (!ValidateFacilityState(State, Rules, Result))
+	{
 		return Result;
 	}
 	const int64 ProjectedJourneySeconds = Route.bInterdictionExpected && !Command.bSignalEscort

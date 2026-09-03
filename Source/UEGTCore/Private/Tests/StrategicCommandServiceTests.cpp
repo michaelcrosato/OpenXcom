@@ -2106,6 +2106,39 @@ bool FStrategicMutualAidConvoyTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Dispatch consumes no deterministic random draws"),
 		State.SimulationRandom.DrawCount, DrawsBeforeDispatch);
 
+	FCampaignState MalformedFacilityState = State;
+	FStrategicBaseState* MalformedSource = MalformedFacilityState.Bases.FindByPredicate(
+		[](const FStrategicBaseState& Base) { return Base.BaseId == TestBaseId; });
+	check(MalformedSource != nullptr && !MalformedSource->Facilities.IsEmpty());
+	const FBaseFacilityState DuplicateFacility = MalformedSource->Facilities[0];
+	MalformedSource->Facilities.Add(DuplicateFacility);
+	const int64 MalformedFacilitySequence = MalformedFacilityState.CommandSequence;
+	const int32 MalformedFacilityStock = MalformedSource->Inventory[0].Quantity;
+	FRetuneMutualAidConvoyCommand MalformedFacilityRetune;
+	MalformedFacilityRetune.ExpectedSequence = MalformedFacilitySequence;
+	MalformedFacilityRetune.ConvoyId = MalformedFacilityState.MutualAidConvoys[0].ConvoyId;
+	MalformedFacilityRetune.RoutePolicy = EMutualAidRoutePolicy::RapidThread;
+	const FThreadlineRetuneEvaluation MalformedFacilityEvaluation =
+		FStrategicCommandService::EvaluateThreadlineRetune(
+			MalformedFacilityState, Rules, Config, MalformedFacilityRetune);
+	const FStrategicCommandResult MalformedFacilityRejected =
+		FStrategicCommandService::Execute(
+			MalformedFacilityState, Rules, Config, MalformedFacilityRetune);
+	TestTrue(TEXT("Relay-queue evaluators reject malformed facilities before projection or mutation"),
+		!MalformedFacilityEvaluation.bValid
+		&& MalformedFacilityEvaluation.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_facility_state"));
+			})
+		&& !MalformedFacilityRejected.bAccepted
+		&& MalformedFacilityRejected.HasDiagnostic(TEXT("invalid_facility_state"))
+		&& MalformedFacilityState.CommandSequence == MalformedFacilitySequence
+		&& MalformedFacilityState.MutualAidConvoys.Num() == 1
+		&& MalformedFacilityState.Bases.FindByPredicate(
+			[](const FStrategicBaseState& Base) { return Base.BaseId == TestBaseId; })
+			->Inventory[0].Quantity == MalformedFacilityStock);
+
 	if (State.MutualAidConvoys.Num() == 1)
 	{
 		FCampaignState InvalidDirectRouteState = State;
