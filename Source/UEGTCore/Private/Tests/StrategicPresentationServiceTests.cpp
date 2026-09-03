@@ -870,6 +870,24 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	Config.ResilienceCharterCost = 250;
 	const FStrategicDashboardSnapshot Snapshot = FStrategicPresentationService::BuildDashboard(Campaign, Rules, Config);
 	TestTrue(TEXT("Valid strategic state produces a dashboard"), Snapshot.bSucceeded);
+	FCampaignState MalformedFacilityCampaign = Campaign;
+	const FBaseFacilityState DuplicateFacility = MalformedFacilityCampaign.Bases[0].Facilities[0];
+	MalformedFacilityCampaign.Bases[0].Facilities.Add(DuplicateFacility);
+	const FStrategicDashboardSnapshot MalformedFacilitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			MalformedFacilityCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard with invalid facility layout does not expose derived relay telemetry"),
+		MalformedFacilitySnapshot.bSucceeded
+		&& !MalformedFacilitySnapshot.Diagnostics.IsEmpty()
+		&& MalformedFacilitySnapshot.Bases.Num() == 1
+		&& MalformedFacilitySnapshot.Bases[0].RelayChannelCount == 0
+		&& MalformedFacilitySnapshot.Bases[0].FacilityRelayChannelCount == 0
+		&& MalformedFacilitySnapshot.Bases[0].SpecializationRelayChannelBonus == 0
+		&& MalformedFacilitySnapshot.Bases[0].RelayQueueActiveConvoyCount == 0
+		&& MalformedFacilitySnapshot.Bases[0].RelayQueueTotalConvoyCount == 0
+		&& MalformedFacilitySnapshot.Bases[0].RelayQueueWaitingConvoyCount == 0
+		&& MalformedFacilitySnapshot.Bases[0].RelayQueuePressurePercent == 0
+		&& MalformedFacilitySnapshot.Bases[0].RelayQueueTailArrivalSeconds == 0);
 	FResolvedRuleSet ExtremeCoordinateRules = Rules;
 	ExtremeCoordinateRules.Regions.Remove(RegionRule.Identity.RuleId);
 	for (TPair<FName, FAdversaryMissionRule>& Pair : ExtremeCoordinateRules.AdversaryMissions)

@@ -1067,16 +1067,19 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		{
 			Snapshot.Diagnostics.Add(Infrastructure.Diagnostics[0].Message);
 		}
-		if (const FMutualAidRelayQueueBaseView* RelayBase =
-			MutualAidRelayQueue.FindBase(Base.BaseId))
+		if (Infrastructure.bValid)
 		{
-			View.RelayQueueActiveConvoyCount = RelayBase->ActiveConvoyCount;
-			View.RelayQueueTotalConvoyCount = RelayBase->TotalConvoyCount;
-			View.RelayQueueWaitingConvoyCount = RelayBase->WaitingConvoyCount;
-			View.RelayQueuePressurePercent = RelayBase->QueuePressurePercent;
-			View.RelayQueueTailArrivalSeconds = RelayBase->QueueTailArrivalSeconds;
-			View.FacilityRelayChannelCount = RelayBase->FacilityRelayChannelCount;
-			View.SpecializationRelayChannelBonus = RelayBase->SpecializationRelayChannelBonus;
+			if (const FMutualAidRelayQueueBaseView* RelayBase =
+				MutualAidRelayQueue.FindBase(Base.BaseId))
+			{
+				View.RelayQueueActiveConvoyCount = RelayBase->ActiveConvoyCount;
+				View.RelayQueueTotalConvoyCount = RelayBase->TotalConvoyCount;
+				View.RelayQueueWaitingConvoyCount = RelayBase->WaitingConvoyCount;
+				View.RelayQueuePressurePercent = RelayBase->QueuePressurePercent;
+				View.RelayQueueTailArrivalSeconds = RelayBase->QueueTailArrivalSeconds;
+				View.FacilityRelayChannelCount = RelayBase->FacilityRelayChannelCount;
+				View.SpecializationRelayChannelBonus = RelayBase->SpecializationRelayChannelBonus;
+			}
 		}
 		View.CraftOccupied = CraftOccupied(Campaign, Base.BaseId);
 		View.GridWidth = Config.BaseGridWidth;
