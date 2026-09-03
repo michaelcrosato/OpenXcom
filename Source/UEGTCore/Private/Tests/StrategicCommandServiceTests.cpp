@@ -746,6 +746,19 @@ bool FStrategicBaseTransactionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Rejected transaction does not change funds"), State.Funds, FundsBeforeRejectedCommand);
 	TestEqual(TEXT("Rejected transaction does not change sequence"), State.CommandSequence, int64(1));
 
+	FCampaignState LastUsableSequenceState = State;
+	LastUsableSequenceState.CommandSequence = MAX_int64 - 3;
+	FAdvanceStrategicTimeCommand LastUsableSequenceCommand;
+	LastUsableSequenceCommand.ExpectedSequence = LastUsableSequenceState.CommandSequence;
+	LastUsableSequenceCommand.Rate = EStrategicTimeRate::OneHour;
+	const FStrategicCommandResult LastUsableSequence = FStrategicCommandService::Execute(
+		LastUsableSequenceState, MakeRules(), MakeConfig(), LastUsableSequenceCommand);
+	TestFalse(TEXT("A command cannot advance into the save-invalid sequence boundary"), LastUsableSequence.bAccepted);
+	TestTrue(TEXT("The last mutation-capable sequence has a stable diagnostic"),
+		LastUsableSequence.HasDiagnostic(TEXT("invalid_campaign_sequence")));
+	TestEqual(TEXT("Last mutation-capable sequence rejection leaves state unchanged"),
+		LastUsableSequenceState.CommandSequence, MAX_int64 - 3);
+
 	FCampaignState PreTerminalSequenceState = State;
 	PreTerminalSequenceState.CommandSequence = MAX_int64 - 2;
 	FAdvanceStrategicTimeCommand TerminalSequenceCommand;
@@ -10810,6 +10823,22 @@ bool FStrategicAdversarySchedulingTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Active mission round-trips"), Read.Envelope.State.AdversaryMissions.Num(), 1);
 	TestEqual(TEXT("Apex mission-gap countdown round-trips"),
 		Read.Envelope.State.NextAdversaryMissionSeconds, int64(60480));
+
+	FCampaignState LastUsableSerial = MakeStateWithBase();
+	LastUsableSerial.NextAdversaryMissionSerial = MAX_int64 - 3;
+	LastUsableSerial.NextAdversaryMissionSeconds = 5;
+	FAdvanceStrategicTimeCommand LastUsableSerialAdvance;
+	LastUsableSerialAdvance.ExpectedSequence = LastUsableSerial.CommandSequence;
+	LastUsableSerialAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+	const FStrategicCommandResult LastUsableSerialResult = FStrategicCommandService::Execute(
+		LastUsableSerial, Rules, MakeConfig(), LastUsableSerialAdvance);
+	TestFalse(TEXT("The adversary scheduler cannot advance into the save-invalid mission serial"), LastUsableSerialResult.bAccepted);
+	TestTrue(TEXT("The last mutation-capable mission serial has a stable simulation diagnostic"),
+		LastUsableSerialResult.HasDiagnostic(TEXT("simulation_overflow")));
+	TestEqual(TEXT("Last mutation-capable mission serial rejection leaves the serial unchanged"),
+		LastUsableSerial.NextAdversaryMissionSerial, MAX_int64 - 3);
+	TestTrue(TEXT("Last mutation-capable mission serial rejection creates no mission"),
+		LastUsableSerial.AdversaryMissions.IsEmpty() && LastUsableSerial.StrategicContacts.IsEmpty());
 
 	FCampaignState PreTerminalSerial = MakeStateWithBase();
 	PreTerminalSerial.NextAdversaryMissionSerial = MAX_int64 - 2;

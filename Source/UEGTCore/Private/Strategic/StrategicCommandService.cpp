@@ -183,7 +183,8 @@ namespace StrategicCommandServicePrivate
 
 	bool ValidateSequence(const FCampaignState& State, const int64 ExpectedSequence, FStrategicCommandResult& Result)
 	{
-		if (State.CommandSequence < 0 || State.CommandSequence >= MAX_int64 - 2)
+		// MAX_int64 - 2 is a save-invalid terminal value; reject its predecessor before incrementing.
+		if (State.CommandSequence < 0 || State.CommandSequence >= MAX_int64 - 3)
 		{
 			AddError(Result, TEXT("invalid_campaign_sequence"), TEXT("Campaign command sequence cannot accept another command."));
 			return false;
@@ -4011,7 +4012,8 @@ namespace StrategicCommandServicePrivate
 			}
 		}
 		if (SelectedRule == nullptr
-			|| State.NextAdversaryMissionSerial <= 0 || State.NextAdversaryMissionSerial >= MAX_int64 - 2
+			// MAX_int64 - 2 is a save-invalid terminal value; reject its predecessor before incrementing.
+			|| State.NextAdversaryMissionSerial <= 0 || State.NextAdversaryMissionSerial >= MAX_int64 - 3
 			|| State.AdversaryMissionsLaunched == MAX_int32)
 		{
 			return false;

@@ -1285,6 +1285,10 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	const FCampaignSaveValidationResult LastSequenceValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("A command sequence with no room for another command fails validation"), LastSequenceValidation.bSucceeded);
 	TestTrue(TEXT("A last available command sequence is diagnosed"), LastSequenceValidation.HasDiagnostic(TEXT("invalid_command_sequence")));
+	Invalid.State.CommandSequence = MAX_int64 - 3;
+	Invalid.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(Invalid);
+	const FCampaignSaveValidationResult LastUsableSequenceValidation = FCampaignSaveCodec::Validate(Invalid);
+	TestTrue(TEXT("A sequence before the mutation boundary remains save-valid"), LastUsableSequenceValidation.bSucceeded);
 	Invalid.State.CommandSequence = MAX_int64 - 2;
 	const FCampaignSaveValidationResult PreTerminalSequenceValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("A command sequence that would reach the terminal value fails validation"), PreTerminalSequenceValidation.bSucceeded);
@@ -1298,6 +1302,10 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	const FCampaignSaveValidationResult LastMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("A mission serial with no room for another launch fails validation"), LastMissionSerialValidation.bSucceeded);
 	TestTrue(TEXT("A last available mission serial is diagnosed"), LastMissionSerialValidation.HasDiagnostic(TEXT("invalid_adversary_state")));
+	Invalid.State.NextAdversaryMissionSerial = MAX_int64 - 3;
+	Invalid.Header.SaveChecksum = FCampaignSaveCodec::ComputeEnvelopeChecksum(Invalid);
+	const FCampaignSaveValidationResult LastUsableMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
+	TestTrue(TEXT("A mission serial before the mutation boundary remains save-valid"), LastUsableMissionSerialValidation.bSucceeded);
 	Invalid.State.NextAdversaryMissionSerial = MAX_int64 - 2;
 	const FCampaignSaveValidationResult PreTerminalMissionSerialValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("A mission serial that would reach the terminal value fails validation"), PreTerminalMissionSerialValidation.bSucceeded);
