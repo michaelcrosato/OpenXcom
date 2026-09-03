@@ -5952,6 +5952,70 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateStrategicManufacturingOutputCapacity(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		const int64 RequestedSeconds,
+		FStrategicCommandResult& Result)
+	{
+		for (const FManufacturingProjectState& Project : State.ManufacturingProjects)
+		{
+			const FItemRule* Item = Rules.Items.Find(Project.ItemId);
+			const FStrategicBaseState* ManufacturingBase = FindBase(State, Project.BaseId);
+			if (Item == nullptr || !Item->IsManufacturable() || ManufacturingBase == nullptr
+				|| !Project.ProjectId.IsValid() || Project.AssignedEngineers < 0
+				|| Project.UnitsRemaining <= 0 || Project.AccumulatedWorkSeconds < 0)
+			{
+				AddError(Result, TEXT("invalid_manufacturing_project"), FString::Printf(
+					TEXT("Manufacturing project '%s' has invalid persisted state."),
+					*Project.ProjectId.ToString()));
+				return false;
+			}
+			const int64 RequiredWork = static_cast<int64>(Item->ManufactureHours) * 3600LL;
+			if (!HasOperationalFacility(*ManufacturingBase, Rules, Config.ManufacturingFacilityId)
+				|| (Project.AssignedEngineers == 0 && Project.AccumulatedWorkSeconds < RequiredWork))
+			{
+				continue;
+			}
+
+			int64 MaximumAdditionalWork = 0;
+			int64 ScaledMaximumAdditionalWork = 0;
+			int64 ProjectedProgress = 0;
+			const int32 ManufacturingRatePercent =
+				FStrategicCommandService::EvaluateBaseManufacturingRatePercent(
+					*ManufacturingBase, Rules);
+			if (!TryMultiplyNonNegative(Project.AssignedEngineers, RequestedSeconds,
+					MaximumAdditionalWork)
+				|| !TryMultiplyNonNegative(MaximumAdditionalWork, ManufacturingRatePercent,
+					ScaledMaximumAdditionalWork)
+				|| !TryAdd(Project.AccumulatedWorkSeconds,
+					ScaledMaximumAdditionalWork / 100, ProjectedProgress))
+			{
+				AddError(Result, TEXT("simulation_overflow"),
+					TEXT("Strategic simulation exceeded a persisted numeric range."));
+				return false;
+			}
+			if (ProjectedProgress < RequiredWork)
+			{
+				continue;
+			}
+
+			const FInventoryStack* Stack = ManufacturingBase->Inventory.FindByPredicate(
+				[&Project](const FInventoryStack& Entry)
+				{
+					return Entry.ItemId == Project.ItemId;
+				});
+			if (Stack != nullptr && Stack->Quantity == MAX_int32)
+			{
+				AddError(Result, TEXT("simulation_overflow"),
+					TEXT("Strategic simulation exceeded a persisted numeric range."));
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool ValidateStrategicRandomCapacity(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -7542,6 +7606,31 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvancePr
 		{
 			AddError(Result, TEXT("invalid_time_advance"),
 				TEXT("Project progress validation requires a positive strategic time slice."));
+		}
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceProductionCapacity(
+	const FCampaignState& State,
+	const FResolvedRuleSet& Rules,
+	const FStrategicSimulationConfig& Config,
+	const int64 RequestedSeconds)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (RequestedSeconds <= 0
+		|| !ValidateManufacturingProjects(State, Rules, Result)
+		|| !ValidateStrategicManufacturingOutputCapacity(
+			State, Rules, Config, RequestedSeconds, Result))
+	{
+		if (RequestedSeconds <= 0 && Result.Diagnostics.IsEmpty())
+		{
+			AddError(Result, TEXT("invalid_time_advance"),
+				TEXT("Manufacturing output validation requires a positive strategic time slice."));
 		}
 		return Result;
 	}
@@ -11708,6 +11797,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	if (!ValidateStrategicProjectProgress(State, Rules, RequestedSeconds, Result))
+	{
+		return Result;
+	}
+	if (!ValidateStrategicManufacturingOutputCapacity(
+			State, Rules, Config, RequestedSeconds, Result))
 	{
 		return Result;
 	}

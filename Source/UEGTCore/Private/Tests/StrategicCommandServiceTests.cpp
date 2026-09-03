@@ -1686,6 +1686,34 @@ bool FStrategicManufacturingSafetyTest::RunTest(const FString& Parameters)
 	Fabrication.FacilityId = TEXT("facility.fabrication-bay");
 	Fabrication.GridX = 1;
 	Fabrication.GridY = 0;
+	FCampaignState OutputCapacityState = State;
+	FInventoryStack& OutputStack = OutputCapacityState.Bases[0].Inventory.AddDefaulted_GetRef();
+	OutputStack.ItemId = TEXT("item.service-rifle");
+	OutputStack.Quantity = MAX_int32;
+	FManufacturingProjectState& OutputProject =
+		OutputCapacityState.ManufacturingProjects.AddDefaulted_GetRef();
+	OutputProject.ProjectId = FGuid(79, 80, 81, 82);
+	OutputProject.ItemId = TEXT("item.service-rifle");
+	OutputProject.BaseId = TestBaseId;
+	OutputProject.AssignedEngineers = 1;
+	OutputProject.UnitsRemaining = 1;
+	const FStrategicCommandResult OutputCapacityValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceProductionCapacity(
+			OutputCapacityState, Rules, Config, 24 * 3600LL);
+	TestTrue(TEXT("Manufacturing output validation rejects a full persisted stack"),
+		!OutputCapacityValidation.bAccepted
+		&& OutputCapacityValidation.HasDiagnostic(TEXT("simulation_overflow")));
+	FAdvanceStrategicTimeCommand OutputCapacityAdvance;
+	OutputCapacityAdvance.ExpectedSequence = OutputCapacityState.CommandSequence;
+	OutputCapacityAdvance.Rate = EStrategicTimeRate::OneDay;
+	const FStrategicCommandResult OutputCapacityRejected =
+		FStrategicCommandService::Execute(
+			OutputCapacityState, Rules, Config, OutputCapacityAdvance);
+	TestTrue(TEXT("Time advancement rejects manufacturing output inventory overflow before simulation"),
+		!OutputCapacityRejected.bAccepted
+		&& OutputCapacityRejected.HasDiagnostic(TEXT("simulation_overflow"))
+		&& OutputCapacityState.ManufacturingProjects.Num() == 1
+		&& OutputCapacityState.Bases[0].Inventory.Last().Quantity == MAX_int32);
 	Command.ItemId = TEXT("item.signal-probe");
 	const FStrategicCommandResult MissingResearch = FStrategicCommandService::Execute(State, Rules, Config, Command);
 	TestFalse(TEXT("Manufacturing respects research requirements"), MissingResearch.bAccepted);

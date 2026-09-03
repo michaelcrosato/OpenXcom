@@ -1218,6 +1218,22 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 				}
 			}
 		}
+		const FStrategicCommandResult ManufacturingOutputValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceProductionCapacity(
+				Campaign, Rules, Config, MaximumTimeAdvanceSeconds);
+		if (!ManufacturingOutputValidation.bAccepted)
+		{
+			Snapshot.bCanAdvanceTime = false;
+			if (!ManufacturingOutputValidation.Diagnostics.IsEmpty())
+			{
+				const FString& Diagnostic = ManufacturingOutputValidation.Diagnostics[0].Message;
+				if (!Snapshot.Diagnostics.ContainsByPredicate(
+					[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+				{
+					Snapshot.Diagnostics.Add(Diagnostic);
+				}
+			}
+		}
 	}
 	const FStrategicCommandResult InventoryStateValidation =
 		FStrategicCommandService::ValidateStrategicInventoryState(Campaign, Rules);

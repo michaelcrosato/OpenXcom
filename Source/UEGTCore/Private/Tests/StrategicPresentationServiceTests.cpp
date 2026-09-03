@@ -1074,6 +1074,42 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidManufacturingProgressSnapshot.bCanAdvanceTime
 		&& InvalidManufacturingProgressSnapshot.Diagnostics.Contains(
 			TEXT("Manufacturing progress would exceed the campaign numeric range.")));
+	FCampaignState InvalidManufacturingOutputCampaign = InvalidFinancialCampaign;
+	InvalidManufacturingOutputCampaign.SimulationRandom.Initialize(0);
+	InvalidManufacturingOutputCampaign.MonthlyFunding = 100;
+	FStrategicBaseState* ManufacturingOutputBase =
+		InvalidManufacturingOutputCampaign.Bases.FindByPredicate(
+			[&BaseId](const FStrategicBaseState& BaseState)
+			{
+				return BaseState.BaseId == BaseId;
+			});
+	FInventoryStack* ManufacturingOutputStack = ManufacturingOutputBase != nullptr
+		? ManufacturingOutputBase->Inventory.FindByPredicate(
+			[&Manufactured](const FInventoryStack& Stack)
+			{
+				return Stack.ItemId == Manufactured.Identity.RuleId;
+			})
+		: nullptr;
+	if (ManufacturingOutputStack != nullptr)
+	{
+		ManufacturingOutputStack->Quantity = MAX_int32;
+	}
+	FManufacturingProjectState& ManufacturingOutputProject =
+		InvalidManufacturingOutputCampaign.ManufacturingProjects.AddDefaulted_GetRef();
+	ManufacturingOutputProject.ProjectId = FGuid(917, 918, 919, 920);
+	ManufacturingOutputProject.ItemId = Manufactured.Identity.RuleId;
+	ManufacturingOutputProject.BaseId = BaseId;
+	ManufacturingOutputProject.AssignedEngineers = 1;
+	ManufacturingOutputProject.UnitsRemaining = 1;
+	const FStrategicDashboardSnapshot InvalidManufacturingOutputSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidManufacturingOutputCampaign, InvalidFinancialRules, ProgressConfig);
+	TestTrue(TEXT("Dashboard disables time advancement before manufacturing output overflows inventory"),
+		ManufacturingOutputStack != nullptr
+		&& InvalidManufacturingOutputSnapshot.bSucceeded
+		&& !InvalidManufacturingOutputSnapshot.bCanAdvanceTime
+		&& InvalidManufacturingOutputSnapshot.Diagnostics.Contains(
+			TEXT("Strategic simulation exceeded a persisted numeric range.")));
 	FCampaignState InvalidNoBaseLayoutCampaign = InvalidFinancialCampaign;
 	InvalidNoBaseLayoutCampaign.SimulationRandom.Initialize(0);
 	InvalidNoBaseLayoutCampaign.Bases.Reset();

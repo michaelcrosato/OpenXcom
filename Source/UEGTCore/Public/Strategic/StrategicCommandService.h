@@ -4059,6 +4059,13 @@ public:
 		const FResolvedRuleSet& Rules,
 		int64 RequestedSeconds);
 
+	/** Read-only validation that a strategic time slice cannot overflow manufacturing output inventory. */
+	static FStrategicCommandResult ValidateStrategicTimeAdvanceProductionCapacity(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		int64 RequestedSeconds);
+
 	/** Read-only validation of persisted base inventory stacks. */
 	static FStrategicCommandResult ValidateStrategicInventoryState(
 		const FCampaignState& State,
