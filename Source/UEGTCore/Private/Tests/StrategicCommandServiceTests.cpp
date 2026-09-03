@@ -4703,6 +4703,16 @@ bool FStrategicMutualAidReliefStandDownTest::RunTest(const FString& Parameters)
 	OverflowStock->Quantity = MAX_int32;
 	const FStrategicCommandResult InventoryOverflowRejected =
 		FStrategicCommandService::Execute(InventoryOverflow, Rules, StandDown);
+	FCampaignState InvalidSourceInventory = State;
+	FStrategicBaseState* InvalidSourceBase = InvalidSourceInventory.Bases.FindByPredicate(
+		[](const FStrategicBaseState& Base) { return Base.BaseId == TestBaseId; });
+	check(InvalidSourceBase != nullptr);
+	FInventoryStack* InvalidSourceStock = InvalidSourceBase->Inventory.FindByPredicate(
+		[ItemId](const FInventoryStack& Stack) { return Stack.ItemId == ItemId; });
+	check(InvalidSourceStock != nullptr);
+	InvalidSourceStock->Quantity = MIN_int32;
+	const FStrategicCommandResult InvalidSourceInventoryRejected =
+		FStrategicCommandService::Execute(InvalidSourceInventory, Rules, StandDown);
 	FResolvedRuleSet StorageRules = Rules;
 	StorageRules.Facilities.FindChecked(
 		TEXT("facility.operations-hub")).StorageCapacity = 30;
@@ -4715,6 +4725,10 @@ bool FStrategicMutualAidReliefStandDownTest::RunTest(const FString& Parameters)
 			TEXT("mutual_aid_relief_stand_down_inventory_overflow"))
 		&& InventoryOverflow.CommandSequence == SequenceBefore
 		&& InventoryOverflow.MutualAidConvoys.Num() == 4
+		&& !InvalidSourceInventoryRejected.bAccepted
+		&& InvalidSourceInventoryRejected.HasDiagnostic(TEXT("invalid_mutual_aid_convoy"))
+		&& InvalidSourceInventory.CommandSequence == SequenceBefore
+		&& InvalidSourceInventory.MutualAidConvoys.Num() == 4
 		&& !StorageRejected.bAccepted
 		&& StorageRejected.HasDiagnostic(
 			TEXT("mutual_aid_relief_stand_down_source_storage"))

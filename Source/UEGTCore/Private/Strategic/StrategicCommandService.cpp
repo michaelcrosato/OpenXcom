@@ -7792,8 +7792,16 @@ FMutualAidReliefStandDownEvaluation FStrategicCommandService::EvaluateMutualAidR
 
 	const FInventoryStack* ExistingSourceStock = Source->Inventory.FindByPredicate(
 		[Convoy](const FInventoryStack& Stack) { return Stack.ItemId == Convoy->ItemId; });
+	if (ExistingSourceStock != nullptr && ExistingSourceStock->Quantity < 0)
+	{
+		AddError(Validation, TEXT("invalid_mutual_aid_convoy"),
+			TEXT("The source base has invalid inventory data for the returning convoy cargo."));
+		Evaluation.Diagnostics = MoveTemp(Validation.Diagnostics);
+		return Evaluation;
+	}
 	if (ExistingSourceStock != nullptr
-		&& Convoy->Quantity > MAX_int32 - ExistingSourceStock->Quantity)
+		&& static_cast<int64>(Convoy->Quantity)
+			> static_cast<int64>(MAX_int32) - static_cast<int64>(ExistingSourceStock->Quantity))
 	{
 		AddError(Validation, TEXT("mutual_aid_relief_stand_down_inventory_overflow"),
 			TEXT("Returning this convoy would exceed the source inventory quantity range."));
