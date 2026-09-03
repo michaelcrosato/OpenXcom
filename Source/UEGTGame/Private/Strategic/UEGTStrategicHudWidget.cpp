@@ -1091,17 +1091,17 @@ namespace UEGTStrategicHudPrivate
 			: static_cast<int64>(Requirement.PerUnitQuantity) * Units;
 	}
 
-	int64 StorageDeltaForUnits(const int64 PerUnitDelta, const int32 Units)
+	int64 SaturatingProductForUnits(const int64 PerUnitValue, const int32 Units)
 	{
-		if (PerUnitDelta == 0 || Units <= 0)
+		if (PerUnitValue == 0 || Units <= 0)
 		{
 			return 0;
 		}
-		if (PerUnitDelta > 0)
+		if (PerUnitValue > 0)
 		{
-			return PerUnitDelta > MAX_int64 / Units ? MAX_int64 : PerUnitDelta * Units;
+			return PerUnitValue > MAX_int64 / Units ? MAX_int64 : PerUnitValue * Units;
 		}
-		return PerUnitDelta < MIN_int64 / Units ? MIN_int64 : PerUnitDelta * Units;
+		return PerUnitValue < MIN_int64 / Units ? MIN_int64 : PerUnitValue * Units;
 	}
 
 	int64 AdditionalStorageOverflow(const FStrategicBaseView* Base, const int64 Delta)
@@ -6767,12 +6767,12 @@ void UUEGTStrategicHudWidget::BuildDashboard()
 			const FString OptionDisplayName = LocalizedContentName(Option.RuleId, Option.DisplayName);
 			int32& Quantity = ManufacturingQuantities.FindOrAdd(Option.RuleId);
 			Quantity = FMath::Clamp(Quantity <= 0 ? 1 : Quantity, 1, 99);
-			const int64 TotalCost = Option.Cost * Quantity;
+			const int64 TotalCost = SaturatingProductForUnits(Option.Cost, Quantity);
 			const bool bBatchAffordable = Option.Cost <= 0 || TotalCost <= CurrentSnapshot.Funds;
 			const bool bBatchHasMaterials = HasManufacturingMaterials(Option.MaterialRequirements, Quantity);
 			const FStrategicBaseView* Base = CurrentSnapshot.Bases.FindByPredicate(
 				[this](const FStrategicBaseView& Entry) { return Entry.BaseId == CurrentSnapshot.PrimaryBaseId; });
-			const int64 BatchStorageDelta = StorageDeltaForUnits(Option.StorageDeltaPerUnit, Quantity);
+			const int64 BatchStorageDelta = SaturatingProductForUnits(Option.StorageDeltaPerUnit, Quantity);
 			const bool bBatchHasStorage = HasStorageForChange(Base, BatchStorageDelta);
 			const bool bCanOrder = Option.bAvailable && bBatchAffordable && bBatchHasMaterials && bBatchHasStorage;
 			const FString OptionDetail = LocalizedManufacturingOptionDetail(Option, Quantity > 1);
