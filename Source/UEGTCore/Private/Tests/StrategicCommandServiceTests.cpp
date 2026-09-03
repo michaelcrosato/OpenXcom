@@ -7263,6 +7263,23 @@ bool FStrategicFacilityConstructionTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Installed and pending facility origin collisions are diagnosed"), DuplicateProjectValidation.HasDiagnostic(TEXT("invalid_construction_project")));
 	}
 
+	FCampaignState MalformedAdvanceState = State;
+	MalformedAdvanceState.FacilityConstructionProjects[0].GridX = -1;
+	const int64 MalformedAdvanceSequence = MalformedAdvanceState.CommandSequence;
+	const int64 MalformedAdvanceFunds = MalformedAdvanceState.Funds;
+	FAdvanceStrategicTimeCommand MalformedAdvance;
+	MalformedAdvance.ExpectedSequence = MalformedAdvanceSequence;
+	MalformedAdvance.Rate = EStrategicTimeRate::OneHour;
+	const FStrategicCommandResult MalformedAdvanceResult =
+		FStrategicCommandService::Execute(MalformedAdvanceState, Rules, MalformedAdvance);
+	TestTrue(TEXT("Strategic time rejects a construction project with invalid placement"),
+		!MalformedAdvanceResult.bAccepted
+		&& MalformedAdvanceResult.HasDiagnostic(TEXT("invalid_construction_project"))
+		&& MalformedAdvanceState.CommandSequence == MalformedAdvanceSequence
+		&& MalformedAdvanceState.Funds == MalformedAdvanceFunds
+		&& MalformedAdvanceState.FacilityConstructionProjects.Num() == 1
+		&& MalformedAdvanceState.FacilityConstructionProjects[0].GridX == -1);
+
 	FAdvanceStrategicTimeCommand Advance;
 	Advance.ExpectedSequence = State.CommandSequence;
 	Advance.Rate = EStrategicTimeRate::OneHour;

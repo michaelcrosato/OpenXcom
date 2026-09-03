@@ -10987,12 +10987,23 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	for (const FFacilityConstructionProjectState& Project : State.FacilityConstructionProjects)
 	{
+		const FFacilityRule* Facility = Rules.Facilities.Find(Project.FacilityId);
+		const int64 TotalBuildSeconds = Facility != nullptr
+			? static_cast<int64>(Facility->BuildHours) * 3600LL
+			: 0;
 		if (!Project.ProjectId.IsValid() || !Project.FacilityInstanceId.IsValid()
-			|| Rules.Facilities.Find(Project.FacilityId) == nullptr
+			|| Facility == nullptr || Facility->BuildHours <= 0
+			|| Facility->GridWidth <= 0 || Facility->GridHeight <= 0
 			|| FindBase(State, Project.BaseId) == nullptr
-			|| Project.RemainingBuildSeconds <= 0)
+			|| Project.GridX < 0 || Project.GridY < 0
+			|| static_cast<int64>(Project.GridX) + Facility->GridWidth > Config.BaseGridWidth
+			|| static_cast<int64>(Project.GridY) + Facility->GridHeight > Config.BaseGridHeight
+			|| Project.RemainingBuildSeconds <= 0
+			|| Project.RemainingBuildSeconds > TotalBuildSeconds)
 		{
-			AddError(Result, TEXT("invalid_construction_project"), FString::Printf(TEXT("Facility construction project '%s' has invalid persisted state."), *Project.ProjectId.ToString()));
+			AddError(Result, TEXT("invalid_construction_project"), FString::Printf(
+				TEXT("Facility construction project '%s' has invalid persisted state."),
+				*Project.ProjectId.ToString()));
 			return Result;
 		}
 	}
