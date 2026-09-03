@@ -920,6 +920,7 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Dashboard with invalid facility layout does not expose derived relay telemetry"),
 		MalformedFacilitySnapshot.bSucceeded
 		&& !MalformedFacilitySnapshot.Diagnostics.IsEmpty()
+		&& !MalformedFacilitySnapshot.bCanAdvanceTime
 		&& MalformedFacilitySnapshot.Bases.Num() == 1
 		&& MalformedFacilitySnapshot.Bases[0].RelayChannelCount == 0
 		&& MalformedFacilitySnapshot.Bases[0].FacilityRelayChannelCount == 0
@@ -989,6 +990,7 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& OutOfGridFacilitySnapshot.Bases[0].CraftCapacity == 0
 		&& OutOfGridFacilitySnapshot.Bases[0].StorageCapacity == 0
 		&& OutOfGridFacilitySnapshot.Bases[0].StorageCommitted == 0
+		&& !OutOfGridFacilitySnapshot.bCanAdvanceTime
 		&& OutOfGridFacilitySnapshot.Bases[0].RelayChannelCount == 0
 		&& OutOfGridFacilitySnapshot.Bases[0].SpecializationRelayChannelBonus == 0
 		&& !OutOfGridFacilitySnapshot.Bases[0].Specialization.bSpecialized

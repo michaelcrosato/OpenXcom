@@ -1076,6 +1076,10 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			BasesWithValidInfrastructure.Add(&Base);
 		}
 	}
+	if (BasesWithValidInfrastructure.Num() != Campaign.Bases.Num())
+	{
+		Snapshot.bCanAdvanceTime = false;
+	}
 	for (const FStrategicBaseState& Base : Campaign.Bases)
 	{
 		FStrategicBaseView& View = Snapshot.Bases.AddDefaulted_GetRef();
