@@ -7745,6 +7745,27 @@ bool FStrategicFacilityDurabilityAndRepairTest::RunTest(const FString& Parameter
 			})
 		&& InvalidRepairStartSibling.Damage == -1);
 
+	FCampaignState DuplicateFacilityState = State;
+	FBaseFacilityState& DuplicateFacility = DuplicateFacilityState.Bases[0].Facilities.AddDefaulted_GetRef();
+	DuplicateFacility.InstanceId = FacilityInstanceId;
+	DuplicateFacility.FacilityId = TEXT("facility.fabrication-bay");
+	DuplicateFacility.GridX = 2;
+	DuplicateFacility.GridY = 0;
+	const int64 DuplicateFacilitySequence = DuplicateFacilityState.CommandSequence;
+	FApplyFacilityDamageCommand DuplicateFacilityDamage;
+	DuplicateFacilityDamage.ExpectedSequence = DuplicateFacilitySequence;
+	DuplicateFacilityDamage.BaseId = TestBaseId;
+	DuplicateFacilityDamage.FacilityInstanceId = FacilityInstanceId;
+	DuplicateFacilityDamage.Damage = 1;
+	const FStrategicCommandResult DuplicateFacilityResult = FStrategicCommandService::Execute(
+		DuplicateFacilityState, Rules, DuplicateFacilityDamage);
+	TestTrue(TEXT("Facility mutation rejects duplicate installed facility identities atomically"),
+		!DuplicateFacilityResult.bAccepted
+		&& DuplicateFacilityResult.HasDiagnostic(TEXT("invalid_facility_state"))
+		&& DuplicateFacilityState.CommandSequence == DuplicateFacilitySequence
+		&& DuplicateFacilityState.Bases[0].Facilities.Num() == 3
+		&& DuplicateFacilityState.Bases[0].Facilities[1].Damage == 0);
+
 	const FStrategicCommandResult RepairStarted = FStrategicCommandService::Execute(State, Rules, Repair);
 	TestTrue(TEXT("All-or-nothing facility repair starts atomically"), RepairStarted.bAccepted);
 	TestTrue(TEXT("Repair start emits a typed event"),

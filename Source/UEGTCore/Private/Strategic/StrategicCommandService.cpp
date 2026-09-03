@@ -4314,6 +4314,8 @@ namespace StrategicCommandServicePrivate
 		const FResolvedRuleSet& Rules,
 		FStrategicCommandResult& Result)
 	{
+		TSet<FGuid> SeenFacilityInstances;
+		TSet<FString> SeenFacilityOrigins;
 		for (const FStrategicBaseState& Base : State.Bases)
 		{
 			if (!IsKnownWorksCadreCharter(Base.WorksCadreCharter))
@@ -4332,6 +4334,33 @@ namespace StrategicCommandServicePrivate
 			for (const FBaseFacilityState& Facility : Base.Facilities)
 			{
 				const FFacilityRule* Rule = Rules.Facilities.Find(Facility.FacilityId);
+				const FString FacilityOrigin = FString::Printf(
+					TEXT("%s|%d|%d"), *Base.BaseId.ToString(EGuidFormats::Digits),
+					Facility.GridX, Facility.GridY);
+				bool bValidPlacement = Facility.InstanceId.IsValid()
+					&& !SeenFacilityInstances.Contains(Facility.InstanceId)
+					&& !SeenFacilityOrigins.Contains(FacilityOrigin)
+					&& Facility.GridX >= 0 && Facility.GridY >= 0
+					&& Rule != nullptr && Rule->GridWidth > 0 && Rule->GridHeight > 0;
+				if (bValidPlacement)
+				{
+					for (const FBaseFacilityState& Existing : Base.Facilities)
+					{
+						if (&Existing == &Facility)
+						{
+							continue;
+						}
+						const FFacilityRule* ExistingRule = Rules.Facilities.Find(Existing.FacilityId);
+						if (ExistingRule != nullptr && ExistingRule->GridWidth > 0 && ExistingRule->GridHeight > 0
+							&& RectanglesOverlap(
+								Facility.GridX, Facility.GridY, Rule->GridWidth, Rule->GridHeight,
+								Existing.GridX, Existing.GridY, ExistingRule->GridWidth, ExistingRule->GridHeight))
+						{
+							bValidPlacement = false;
+							break;
+						}
+					}
+				}
 				if (Rule == nullptr)
 				{
 					AddError(Result, TEXT("unknown_facility"), FString::Printf(
@@ -4339,7 +4368,8 @@ namespace StrategicCommandServicePrivate
 						*Base.Name, *Facility.FacilityId.ToString()));
 					return false;
 				}
-				if (Rule->MaxIntegrity <= 0 || Rule->RepairCostPerIntegrity < 0
+				if (!bValidPlacement
+					|| Rule->MaxIntegrity <= 0 || Rule->RepairCostPerIntegrity < 0
 					|| Rule->RepairHoursPerIntegrity <= 0
 					|| Facility.Damage < 0 || Facility.Damage > Rule->MaxIntegrity
 					|| Facility.ReservedRepairDamage < 0 || Facility.ReservedRepairDamage > Facility.Damage
@@ -4351,6 +4381,8 @@ namespace StrategicCommandServicePrivate
 						*Facility.FacilityId.ToString(), *Base.Name));
 					return false;
 				}
+				SeenFacilityInstances.Add(Facility.InstanceId);
+				SeenFacilityOrigins.Add(FacilityOrigin);
 			}
 		}
 		return true;
@@ -13661,6 +13693,10 @@ FFacilityDismantleEvaluation FStrategicCommandService::EvaluateFacilityDismantle
 			TEXT("Cancel or complete this facility's active repair before dismantling it."));
 		return Reject();
 	}
+	if (!ValidateFacilityState(State, Rules, Validation))
+	{
+		return Reject();
+	}
 	if (!ValidateResearchProjects(State, Rules, Validation)
 		|| !ValidateManufacturingProjects(State, Rules, Validation))
 	{
@@ -14495,7 +14531,8 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	Project.GridX = Command.GridX;
 	Project.GridY = Command.GridY;
 	Project.RemainingBuildSeconds = CommittedBuildSeconds;
-	if (!ValidateFacilityConstructionProjects(Transaction, Rules, Config, Result))
+	if (!ValidateFacilityState(Transaction, Rules, Result)
+		|| !ValidateFacilityConstructionProjects(Transaction, Rules, Config, Result))
 	{
 		return Result;
 	}
