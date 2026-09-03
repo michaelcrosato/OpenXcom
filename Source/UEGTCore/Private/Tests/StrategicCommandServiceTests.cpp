@@ -7936,6 +7936,54 @@ bool FStrategicPersonnelCareTest::RunTest(const FString& Parameters)
 		InvalidCraftItemRejected.HasDiagnostic(TEXT("invalid_personnel_equipment")));
 	TestEqual(TEXT("Rejected loadout preserves equipped items"), State.Personnel[0].EquippedItems.Num(), 1);
 
+	FCampaignState InvalidExistingPersonnelEquipmentState = MakeStateWithBase();
+	const FGuid InvalidExistingPersonnelId(0xAB1, 0xAB2, 0xAB3, 0xAB4);
+	FPersonnelState& InvalidExistingPerson = AddTestPersonnel(
+		InvalidExistingPersonnelEquipmentState, InvalidExistingPersonnelId);
+	InvalidExistingPerson.EquippedItems.Add(TEXT("item.sky-lance"));
+	const int64 InvalidExistingPersonnelSequence =
+		InvalidExistingPersonnelEquipmentState.CommandSequence;
+	FSetPersonnelEquipmentCommand ClearInvalidExistingPersonnelEquipment;
+	ClearInvalidExistingPersonnelEquipment.ExpectedSequence =
+		InvalidExistingPersonnelEquipmentState.CommandSequence;
+	ClearInvalidExistingPersonnelEquipment.PersonnelId = InvalidExistingPersonnelId;
+	const FStrategicCommandResult InvalidExistingPersonnelEquipmentResult =
+		FStrategicCommandService::Execute(
+			InvalidExistingPersonnelEquipmentState, Rules,
+			ClearInvalidExistingPersonnelEquipment);
+	TestTrue(TEXT("Personnel equipment changes reject malformed persisted equipment before refunding it"),
+		!InvalidExistingPersonnelEquipmentResult.bAccepted
+		&& InvalidExistingPersonnelEquipmentResult.HasDiagnostic(TEXT("invalid_personnel_equipment"))
+		&& InvalidExistingPersonnelEquipmentState.CommandSequence == InvalidExistingPersonnelSequence
+		&& InvalidExistingPersonnelEquipmentState.Personnel.Num() == 1
+		&& InvalidExistingPersonnelEquipmentState.Personnel[0].EquippedItems.Num() == 1
+		&& InvalidExistingPersonnelEquipmentState.Bases[0].Inventory.IsEmpty());
+
+	FCampaignState OversizedPersonnelEquipmentState = MakeStateWithBase();
+	const FGuid OversizedPersonnelId(0xAB5, 0xAB6, 0xAB7, 0xAB8);
+	FPersonnelState& OversizedPerson = AddTestPersonnel(
+		OversizedPersonnelEquipmentState, OversizedPersonnelId);
+	for (int32 Index = 0; Index < 17; ++Index)
+	{
+		OversizedPerson.EquippedItems.Add(TEXT("item.service-rifle"));
+	}
+	const int64 OversizedPersonnelSequence = OversizedPersonnelEquipmentState.CommandSequence;
+	FSetPersonnelEquipmentCommand ClearOversizedPersonnelEquipment;
+	ClearOversizedPersonnelEquipment.ExpectedSequence =
+		OversizedPersonnelEquipmentState.CommandSequence;
+	ClearOversizedPersonnelEquipment.PersonnelId = OversizedPersonnelId;
+	const FStrategicCommandResult OversizedPersonnelEquipmentResult =
+		FStrategicCommandService::Execute(
+			OversizedPersonnelEquipmentState, Rules,
+			ClearOversizedPersonnelEquipment);
+	TestTrue(TEXT("Personnel equipment changes reject an oversized persisted loadout before refunding it"),
+		!OversizedPersonnelEquipmentResult.bAccepted
+		&& OversizedPersonnelEquipmentResult.HasDiagnostic(TEXT("invalid_personnel_equipment"))
+		&& OversizedPersonnelEquipmentState.CommandSequence == OversizedPersonnelSequence
+		&& OversizedPersonnelEquipmentState.Personnel.Num() == 1
+		&& OversizedPersonnelEquipmentState.Personnel[0].EquippedItems.Num() == 17
+		&& OversizedPersonnelEquipmentState.Bases[0].Inventory.IsEmpty());
+
 	FApplyPersonnelDamageCommand Damage;
 	Damage.ExpectedSequence = State.CommandSequence;
 	Damage.PersonnelId = PersonnelId;
@@ -9038,6 +9086,51 @@ bool FStrategicCraftOperationsTest::RunTest(const FString& Parameters)
 		&& NegativeCargoState.Craft[0].Cargo.Num() == 1
 		&& NegativeCargoState.Craft[0].Cargo[0].Quantity == -1
 		&& NegativeCargoState.Bases[0].Inventory.IsEmpty());
+
+	FCampaignState InvalidExistingCraftEquipmentState = MakeStateWithBase();
+	const FGuid InvalidExistingCraftId(0x691, 0x692, 0x693, 0x694);
+	FCraftState& InvalidExistingCraft = AddTestCraft(
+		InvalidExistingCraftEquipmentState, InvalidExistingCraftId);
+	InvalidExistingCraft.EquipmentItems.Add(TEXT("item.sky-lance-rounds"));
+	const int64 InvalidExistingCraftSequence = InvalidExistingCraftEquipmentState.CommandSequence;
+	FSetCraftEquipmentCommand ClearInvalidExistingCraftEquipment;
+	ClearInvalidExistingCraftEquipment.ExpectedSequence =
+		InvalidExistingCraftEquipmentState.CommandSequence;
+	ClearInvalidExistingCraftEquipment.CraftId = InvalidExistingCraftId;
+	const FStrategicCommandResult InvalidExistingCraftEquipmentResult =
+		FStrategicCommandService::Execute(
+			InvalidExistingCraftEquipmentState, Rules,
+			ClearInvalidExistingCraftEquipment);
+	TestTrue(TEXT("Craft equipment changes reject malformed persisted equipment before refunding it"),
+		!InvalidExistingCraftEquipmentResult.bAccepted
+		&& InvalidExistingCraftEquipmentResult.HasDiagnostic(TEXT("invalid_craft_equipment"))
+		&& InvalidExistingCraftEquipmentState.CommandSequence == InvalidExistingCraftSequence
+		&& InvalidExistingCraftEquipmentState.Craft.Num() == 1
+		&& InvalidExistingCraftEquipmentState.Craft[0].EquipmentItems.Num() == 1
+		&& InvalidExistingCraftEquipmentState.Bases[0].Inventory.IsEmpty());
+
+	FCampaignState OversizedCraftEquipmentState = MakeStateWithBase();
+	const FGuid OversizedCraftId(0x695, 0x696, 0x697, 0x698);
+	FCraftState& OversizedCraft = AddTestCraft(
+		OversizedCraftEquipmentState, OversizedCraftId);
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		OversizedCraft.EquipmentItems.Add(TEXT("item.sky-lance"));
+	}
+	const int64 OversizedCraftSequence = OversizedCraftEquipmentState.CommandSequence;
+	FSetCraftEquipmentCommand ClearOversizedCraftEquipment;
+	ClearOversizedCraftEquipment.ExpectedSequence = OversizedCraftEquipmentState.CommandSequence;
+	ClearOversizedCraftEquipment.CraftId = OversizedCraftId;
+	const FStrategicCommandResult OversizedCraftEquipmentResult =
+		FStrategicCommandService::Execute(
+			OversizedCraftEquipmentState, Rules, ClearOversizedCraftEquipment);
+	TestTrue(TEXT("Craft equipment changes reject an oversized persisted loadout before refunding it"),
+		!OversizedCraftEquipmentResult.bAccepted
+		&& OversizedCraftEquipmentResult.HasDiagnostic(TEXT("invalid_craft_equipment"))
+		&& OversizedCraftEquipmentState.CommandSequence == OversizedCraftSequence
+		&& OversizedCraftEquipmentState.Craft.Num() == 1
+		&& OversizedCraftEquipmentState.Craft[0].EquipmentItems.Num() == 3
+		&& OversizedCraftEquipmentState.Bases[0].Inventory.IsEmpty());
 
 	return true;
 }

@@ -1516,6 +1516,32 @@ namespace StrategicCommandServicePrivate
 			|| Item.Category == FName(TEXT("device"));
 	}
 
+	bool ValidatePersonnelEquipmentForMutation(
+		const FPersonnelState& Person,
+		const FResolvedRuleSet& Rules,
+		FStrategicCommandResult& Result)
+	{
+		if (Person.EquippedItems.Num() > 16)
+		{
+			AddError(Result, TEXT("invalid_personnel_equipment"), FString::Printf(
+				TEXT("Personnel '%s' exceeds the 16-item equipment capacity."),
+				*Person.DisplayName));
+			return false;
+		}
+		for (const FName ItemId : Person.EquippedItems)
+		{
+			const FItemRule* Item = Rules.Items.Find(ItemId);
+			if (Item == nullptr || !IsEquippablePersonnelItem(*Item))
+			{
+				AddError(Result, TEXT("invalid_personnel_equipment"), FString::Printf(
+					TEXT("Personnel '%s' references invalid equipped item '%s'."),
+					*Person.DisplayName, *ItemId.ToString()));
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool IsValidCraftWeaponRule(const FItemRule& Weapon, const FResolvedRuleSet& Rules)
 	{
 		const FItemRule* Ammunition = Rules.Items.Find(Weapon.AmmunitionItemId);
@@ -1526,6 +1552,32 @@ namespace StrategicCommandServicePrivate
 			&& Weapon.InterceptionAccuracy > 0 && Weapon.InterceptionAccuracy <= 100
 			&& Weapon.InterceptionDamage > 0
 			&& Weapon.FireIntervalSeconds > 0;
+	}
+
+	bool ValidateCraftEquipmentForMutation(
+		const FCraftState& Craft,
+		const FCraftRule& Rule,
+		const FResolvedRuleSet& Rules,
+		FStrategicCommandResult& Result)
+	{
+		if (Craft.EquipmentItems.Num() > Rule.EquipmentSlots)
+		{
+			AddError(Result, TEXT("invalid_craft_equipment"),
+				TEXT("Craft has invalid persisted equipment capacity."));
+			return false;
+		}
+		for (const FName ItemId : Craft.EquipmentItems)
+		{
+			const FItemRule* Item = Rules.Items.Find(ItemId);
+			if (Item == nullptr || !IsEquippableCraftItem(*Item)
+				|| (Item->IsCraftWeapon() && !IsValidCraftWeaponRule(*Item, Rules)))
+			{
+				AddError(Result, TEXT("invalid_craft_equipment"), FString::Printf(
+					TEXT("Craft references invalid equipment item '%s'."), *ItemId.ToString()));
+				return false;
+			}
+		}
+		return true;
 	}
 
 	int32 CountEquippedItem(const TArray<FName>& EquipmentItems, const FName ItemId)
@@ -4610,6 +4662,7 @@ namespace StrategicCommandServicePrivate
 				|| Person.Resolve <= 0 || Person.Resolve > 100
 				|| Person.Mobility <= 0 || Person.Mobility > 100
 				|| Person.Strength <= 0 || Person.Strength > 100
+				|| Person.EquippedItems.Num() > 16
 				|| !bStatusTimersValid || !bRecoveryPlanValid || !bStewardshipValid)
 			{
 				AddError(Result, TEXT("invalid_personnel_state"), FString::Printf(TEXT("Personnel '%s' has invalid persisted identity, role, base, attributes, status, or timers."), *Person.DisplayName));
@@ -14602,6 +14655,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Personnel member references a missing base."));
 		return Result;
 	}
+	if (!ValidatePersonnelEquipmentForMutation(*DismissedPerson, Rules, Result))
+	{
+		return Result;
+	}
 	const FGuid BaseId = DismissedPerson->BaseId;
 	const FName RoleId = DismissedPerson->RoleId;
 	const int32 ReturnedEquipment = DismissedPerson->EquippedItems.Num();
@@ -15288,6 +15345,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("unknown_base"), TEXT("Personnel member references a missing base."));
 		return Result;
 	}
+	if (!ValidatePersonnelEquipmentForMutation(*Person, Rules, Result))
+	{
+		return Result;
+	}
 
 	TMap<FName, int64> InventoryDeltas;
 	for (const FName ItemId : Person->EquippedItems)
@@ -15648,6 +15709,10 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	if (Base == nullptr)
 	{
 		AddError(Result, TEXT("unknown_base"), TEXT("Craft references a missing base."));
+		return Result;
+	}
+	if (!ValidateCraftEquipmentForMutation(*Craft, *Rule, Rules, Result))
+	{
 		return Result;
 	}
 	if (!ValidateCraftWeaponStatesForMutation(*Craft, Rules, Result))
