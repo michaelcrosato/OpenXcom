@@ -9507,6 +9507,34 @@ bool FStrategicInterceptionRouteTest::RunTest(const FString& Parameters)
 	Advance.ExpectedSequence = State.CommandSequence;
 	Advance.Rate = EStrategicTimeRate::FiveSeconds;
 	TestTrue(TEXT("Sensor pass reveals interception target"), FStrategicCommandService::Execute(State, Rules, Advance).bAccepted);
+	FCampaignState InvalidHullDispatchState = State;
+	InvalidHullDispatchState.Craft[0].CurrentHull = 0;
+	const int64 InvalidHullDispatchSequence = InvalidHullDispatchState.CommandSequence;
+	Dispatch.ExpectedSequence = InvalidHullDispatchState.CommandSequence;
+	const FStrategicCommandResult InvalidHullDispatchResult = FStrategicCommandService::Execute(
+		InvalidHullDispatchState, Rules, Dispatch);
+	TestTrue(TEXT("Interception dispatch rejects non-positive persisted hull before consuming fuel"),
+		!InvalidHullDispatchResult.bAccepted
+		&& InvalidHullDispatchResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidHullDispatchState.CommandSequence == InvalidHullDispatchSequence
+		&& InvalidHullDispatchState.Craft[0].Status == ECraftStatus::Grounded
+		&& InvalidHullDispatchState.Craft[0].CurrentHull == 0
+		&& InvalidHullDispatchState.Craft[0].CurrentFuel == 500
+		&& InvalidHullDispatchState.Personnel[0].Status == EPersonnelStatus::Available);
+	FCampaignState InvalidFuelDispatchState = State;
+	InvalidFuelDispatchState.Craft[0].CurrentFuel = 501;
+	const int64 InvalidFuelDispatchSequence = InvalidFuelDispatchState.CommandSequence;
+	Dispatch.ExpectedSequence = InvalidFuelDispatchState.CommandSequence;
+	const FStrategicCommandResult InvalidFuelDispatchResult = FStrategicCommandService::Execute(
+		InvalidFuelDispatchState, Rules, Dispatch);
+	TestTrue(TEXT("Interception dispatch rejects fuel above the persisted rule capacity before consuming it"),
+		!InvalidFuelDispatchResult.bAccepted
+		&& InvalidFuelDispatchResult.HasDiagnostic(TEXT("invalid_craft_state"))
+		&& InvalidFuelDispatchState.CommandSequence == InvalidFuelDispatchSequence
+		&& InvalidFuelDispatchState.Craft[0].Status == ECraftStatus::Grounded
+		&& InvalidFuelDispatchState.Craft[0].CurrentHull == 100
+		&& InvalidFuelDispatchState.Craft[0].CurrentFuel == 501
+		&& InvalidFuelDispatchState.Personnel[0].Status == EPersonnelStatus::Available);
 	FCampaignState LowFuelState = State;
 	LowFuelState.Craft[0].CurrentFuel = 0;
 	Dispatch.ExpectedSequence = LowFuelState.CommandSequence;

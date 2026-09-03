@@ -20513,6 +20513,14 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		AddError(Result, TEXT("salvage_disposition_required"), TEXT("Retain or sell all recovered salvage before dispatching this craft."));
 		return Result;
 	}
+	if (CraftRule->MaxHull <= 0 || CraftRule->FuelCapacity <= 0
+		|| ExistingCraft->CurrentHull <= 0 || ExistingCraft->CurrentHull > CraftRule->MaxHull
+		|| ExistingCraft->CurrentFuel < 0 || ExistingCraft->CurrentFuel > CraftRule->FuelCapacity)
+	{
+		AddError(Result, TEXT("invalid_craft_state"),
+			TEXT("Craft hull or fuel state is outside its rule limits."));
+		return Result;
+	}
 	if (!ExistingCraft->AssignedPilotId.IsValid())
 	{
 		AddError(Result, TEXT("craft_pilot_missing"), TEXT("Craft requires an assigned available pilot before dispatch."));
