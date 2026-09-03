@@ -4053,6 +4053,11 @@ public:
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules);
 
+	/** Read-only validation of configuration required before strategic time advancement. */
+	static FStrategicCommandResult ValidateStrategicTimeAdvanceConfig(
+		const FCampaignState& State,
+		const FStrategicSimulationConfig& Config);
+
 	static FBaseInfrastructureEvaluation EvaluateBaseInfrastructure(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,

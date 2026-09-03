@@ -745,6 +745,16 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 		Snapshot.Diagnostics.Add(TEXT("Strategic presentation requires valid adversary adaptation, campaign-outcome, regional-policy, and base-defense economy settings."));
 		return Snapshot;
 	}
+	const FStrategicCommandResult TimeAdvanceConfigValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceConfig(Campaign, Config);
+	if (!TimeAdvanceConfigValidation.bAccepted)
+	{
+		Snapshot.bCanAdvanceTime = false;
+		if (!TimeAdvanceConfigValidation.Diagnostics.IsEmpty())
+		{
+			Snapshot.Diagnostics.Add(TimeAdvanceConfigValidation.Diagnostics[0].Message);
+		}
+	}
 	Snapshot.AdversaryResolvedMissions = Adaptation.ResolvedMissions;
 	Snapshot.ResolvedMissionsUntilNextEscalation = Adaptation.ResolvedMissionsUntilNextEscalation;
 	Snapshot.bAtMaximumAdversaryEscalation = Adaptation.bAtMaximumEscalation;

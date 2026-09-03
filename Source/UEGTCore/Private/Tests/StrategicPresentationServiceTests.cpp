@@ -893,6 +893,16 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	Config.ResilienceCharterCost = 250;
 	const FStrategicDashboardSnapshot Snapshot = FStrategicPresentationService::BuildDashboard(Campaign, Rules, Config);
 	TestTrue(TEXT("Valid strategic state produces a dashboard"), Snapshot.bSucceeded);
+	FStrategicSimulationConfig InvalidTimeAdvanceConfig = Config;
+	InvalidTimeAdvanceConfig.RecoveryHoursPerHealth = 0;
+	const FStrategicDashboardSnapshot InvalidTimeAdvanceConfigSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			Campaign, Rules, InvalidTimeAdvanceConfig);
+	TestTrue(TEXT("Dashboard disables time advancement for invalid recovery configuration"),
+		InvalidTimeAdvanceConfigSnapshot.bSucceeded
+		&& !InvalidTimeAdvanceConfigSnapshot.bCanAdvanceTime
+		&& InvalidTimeAdvanceConfigSnapshot.Diagnostics.Contains(
+			TEXT("Personnel recovery plans, training, stewardship, logistics, and general base-capacity settings must remain within supported positive bounds.")));
 	FCampaignState InvalidResearchReadinessCampaign = Campaign;
 	InvalidResearchReadinessCampaign.ResearchProjects[0].AssignedScientists = -5;
 	const FStrategicDashboardSnapshot InvalidResearchReadinessSnapshot =

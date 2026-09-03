@@ -7353,6 +7353,41 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicProjectState(
 	return Result;
 }
 
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceConfig(
+	const FCampaignState& State,
+	const FStrategicSimulationConfig& Config)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (Config.RecoveryHoursPerHealth <= 0
+		|| Config.RecoverySurgeCostPerMissingHealth <= 0
+		|| Config.RecoverySurgeDurationPercent <= 0 || Config.RecoverySurgeDurationPercent > 100
+		|| Config.RecoveryReflectionDurationPercent < 100 || Config.RecoveryReflectionDurationPercent > 1000
+		|| Config.RecoveryReflectionResolveBonus <= 0 || Config.RecoveryReflectionResolveBonus > 100
+		|| Config.TrainingHours <= 0 || Config.MaxGeneralPersonnelPerBase <= 0
+		|| !IsMutualAidRoutingConfigValid(Config)
+		|| !FPersonnelStewardship::IsConfigValid(Config))
+	{
+		AddError(Result, TEXT("invalid_simulation_config"),
+			TEXT("Personnel recovery plans, training, stewardship, logistics, and general base-capacity settings must remain within supported positive bounds."));
+		return Result;
+	}
+	if (!ValidateAdversaryConfig(Config, Result))
+	{
+		return Result;
+	}
+	if (!State.ManufacturingProjects.IsEmpty()
+		&& !FContentPackageResolver::IsValidPackageId(Config.ManufacturingFacilityId))
+	{
+		AddError(Result, TEXT("invalid_simulation_config"),
+			TEXT("Active manufacturing requires a valid fabrication facility id."));
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
 FBaseInfrastructureEvaluation FStrategicCommandService::EvaluateBaseInfrastructure(
 	const FCampaignState& State,
 	const FResolvedRuleSet& Rules,
@@ -11206,29 +11241,11 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	const int64 RequestedSeconds = RequestedAdvance.GetTicks() / ETimespan::TicksPerSecond;
-	if (Config.RecoveryHoursPerHealth <= 0
-		|| Config.RecoverySurgeCostPerMissingHealth <= 0
-		|| Config.RecoverySurgeDurationPercent <= 0 || Config.RecoverySurgeDurationPercent > 100
-		|| Config.RecoveryReflectionDurationPercent < 100 || Config.RecoveryReflectionDurationPercent > 1000
-		|| Config.RecoveryReflectionResolveBonus <= 0 || Config.RecoveryReflectionResolveBonus > 100
-		|| Config.TrainingHours <= 0 || Config.MaxGeneralPersonnelPerBase <= 0
-		|| !IsMutualAidRoutingConfigValid(Config)
-		|| !FPersonnelStewardship::IsConfigValid(Config))
+	const FStrategicCommandResult TimeAdvanceConfigValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceConfig(State, Config);
+	if (!TimeAdvanceConfigValidation.bAccepted)
 	{
-		AddError(Result, TEXT("invalid_simulation_config"),
-			TEXT("Personnel recovery plans, training, stewardship, logistics, and general base-capacity settings must remain within supported positive bounds."));
-		return Result;
-	}
-	if (!ValidateAdversaryConfig(Config, Result))
-	{
-		return Result;
-	}
-	if (!State.ManufacturingProjects.IsEmpty()
-		&& !FContentPackageResolver::IsValidPackageId(Config.ManufacturingFacilityId))
-	{
-		AddError(Result, TEXT("invalid_simulation_config"),
-			TEXT("Active manufacturing requires a valid fabrication facility id."));
-		return Result;
+		return TimeAdvanceConfigValidation;
 	}
 
 	if (!ValidateFacilityState(State, Rules, Result))
