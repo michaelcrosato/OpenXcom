@@ -3059,9 +3059,31 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			? SafeProduct(View.UnitCost, RefundableUnits)
 			: 0;
 		const FStrategicBaseState* ProjectBase = FindBase(Campaign, Project.BaseId);
+		const TArray<FName> OperationalManufacturingFacilities = ProjectBase != nullptr
+			&& BasesWithValidInfrastructure.Contains(ProjectBase)
+			? OperationalFacilities(*ProjectBase, Rules) : TArray<FName>();
+		const bool bManufacturingFacilityOperational =
+			!Config.ManufacturingFacilityId.IsNone()
+			&& OperationalManufacturingFacilities.Contains(Config.ManufacturingFacilityId);
+		View.bPaused = !bManufacturingFacilityOperational;
+		if (View.bPaused)
+		{
+			if (!Config.ManufacturingFacilityId.IsNone())
+			{
+				View.MissingFacilityIds.Add(Config.ManufacturingFacilityId);
+				const FFacilityRule* Facility = Rules.Facilities.Find(Config.ManufacturingFacilityId);
+				View.MissingFacilityNames.Add(Facility != nullptr
+					? RuleName(Facility->DisplayName, Config.ManufacturingFacilityId)
+					: HumanizeId(Config.ManufacturingFacilityId));
+			}
+			View.PauseReason = View.MissingFacilityNames.IsEmpty()
+				? TEXT("Manufacturing requires a configured operational fabrication facility.")
+				: FString::Printf(TEXT("Requires operational facility: %s."),
+					*FString::Join(View.MissingFacilityNames, TEXT(", ")));
+		}
 		const FStrategicBaseView* ProjectBaseView = Snapshot.Bases.FindByPredicate(
 			[&Project](const FStrategicBaseView& BaseView) { return BaseView.BaseId == Project.BaseId; });
-		View.ManufacturingRatePercent = ProjectBase != nullptr
+		View.ManufacturingRatePercent = !View.bPaused && ProjectBase != nullptr
 			? FStrategicCommandService::EvaluateBaseManufacturingRatePercent(*ProjectBase, Rules)
 			: 100;
 		if (Rule != nullptr)
@@ -3108,13 +3130,25 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			}
 		}
 		View.Progress = Progress(Project.AccumulatedWorkSeconds, RequiredPerUnit);
-		View.RemainingSeconds = AssignedEngineers > 0
+		View.RemainingSeconds = !View.bPaused && AssignedEngineers > 0
 			? CeilScaledWorkSeconds(
 				TotalRemainingWork, AssignedEngineers, View.ManufacturingRatePercent)
 			: 0;
 		View.AssignedStaff = AssignedEngineers;
-		View.Detail = FString::Printf(TEXT("%d units • %d engineers • %s"), UnitsRemaining,
-			AssignedEngineers, AssignedEngineers > 0 ? *DurationDetail(View.RemainingSeconds) : TEXT("unstaffed"));
+		if (View.bPaused)
+		{
+			const FString MissingFacilityDetail = View.MissingFacilityNames.IsEmpty()
+				? View.PauseReason
+				: FString::Join(View.MissingFacilityNames, TEXT(" + "));
+			View.Detail = FString::Printf(TEXT("FABRICATION OFFLINE • %s • %d engineers"),
+				*MissingFacilityDetail, AssignedEngineers);
+		}
+		else
+		{
+			View.Detail = FString::Printf(TEXT("%d units • %d engineers • %s"), UnitsRemaining,
+				AssignedEngineers,
+				AssignedEngineers > 0 ? *DurationDetail(View.RemainingSeconds) : TEXT("unstaffed"));
+		}
 		if (Rule != nullptr)
 		{
 			View.Detail += FString::Printf(TEXT(" • Storage %s%lld/unit"),

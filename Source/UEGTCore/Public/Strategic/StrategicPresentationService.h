@@ -2267,7 +2267,7 @@ struct UEGTCORE_API FStrategicProjectView
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	int32 ManufacturingRatePercent = 100;
 
-	/** Facility requirements are populated for research projects in authored stable order. */
+	/** Facility requirements are populated for facility-dependent projects in authored stable order. */
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	TArray<FName> RequiredFacilityIds;
 
@@ -2280,7 +2280,7 @@ struct UEGTCORE_API FStrategicProjectView
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	TArray<FString> MissingFacilityNames;
 
-	/** True when an active research project cannot advance because a required facility is absent or offline. */
+	/** True when an active research or manufacturing project cannot advance because its required facility is absent or offline. */
 	UPROPERTY(BlueprintReadOnly, Category = "UEGT|Strategic|Presentation")
 	bool bPaused = false;
 

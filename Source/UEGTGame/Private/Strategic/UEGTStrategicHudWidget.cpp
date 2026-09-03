@@ -1211,6 +1211,12 @@ namespace UEGTStrategicHudPrivate
 
 	FString LocalizedManufacturingProjectDetail(const FStrategicProjectView& Project)
 	{
+		if (Project.bPaused)
+		{
+			return Localized(
+				TEXT("strategic.manufacturing-facility-missing"),
+				TEXT("An operational fabrication facility is required."));
+		}
 		const FString WorkState = Project.AssignedStaff > 0
 			? LocalizedDuration(Project.RemainingSeconds)
 			: Localized(TEXT("strategic.manufacturing-unstaffed"), TEXT("Unstaffed"));

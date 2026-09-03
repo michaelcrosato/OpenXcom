@@ -428,8 +428,11 @@ bool FStrategicBaseSpecializationProjectionTest::RunTest(const FString& Paramete
 	ManufacturingProject.BaseId = ManufacturingBase.BaseId;
 	ManufacturingProject.AssignedEngineers = 1;
 	ManufacturingProject.UnitsRemaining = 1;
+	FStrategicSimulationConfig ManufacturingConfig;
+	ManufacturingConfig.ManufacturingFacilityId = ManufacturingFacility.FacilityId;
 	const FStrategicDashboardSnapshot ManufacturingSnapshot =
-		FStrategicPresentationService::BuildDashboard(ManufacturingCampaign, Rules, {});
+		FStrategicPresentationService::BuildDashboard(
+			ManufacturingCampaign, Rules, ManufacturingConfig);
 	const FStrategicProjectView* ManufacturingProjectView = ManufacturingSnapshot.Projects.FindByPredicate(
 		[](const FStrategicProjectView& Project)
 		{
@@ -444,6 +447,26 @@ bool FStrategicBaseSpecializationProjectionTest::RunTest(const FString& Paramete
 		&& ManufacturingSnapshot.Bases[0].Specialization.OperationalBenefitValue == 20
 		&& ManufacturingProjectView->ManufacturingRatePercent == 120
 		&& ManufacturingProjectView->RemainingSeconds == 6000);
+	FCampaignState OfflineManufacturingCampaign = ManufacturingCampaign;
+	OfflineManufacturingCampaign.Bases[0].Facilities[0].Damage =
+		Rules.Facilities.FindChecked(ManufacturingFacility.FacilityId).MaxIntegrity;
+	const FStrategicDashboardSnapshot OfflineManufacturingSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			OfflineManufacturingCampaign, Rules, ManufacturingConfig);
+	const FStrategicProjectView* OfflineManufacturingProjectView =
+		OfflineManufacturingSnapshot.Projects.FindByPredicate(
+			[](const FStrategicProjectView& Project)
+			{
+				return Project.Type == EStrategicProjectType::Manufacturing;
+			});
+	TestTrue(TEXT("Manufacturing pauses when its configured facility is offline"),
+		OfflineManufacturingProjectView != nullptr
+		&& OfflineManufacturingProjectView->bPaused
+		&& OfflineManufacturingProjectView->RemainingSeconds == 0
+		&& OfflineManufacturingProjectView->MissingFacilityIds
+			== TArray<FName>{ ManufacturingFacility.FacilityId }
+		&& OfflineManufacturingProjectView->MissingFacilityNames
+			== TArray<FString>{ FString(ManufacturingFacility.FacilityId.ToString()) });
 	return true;
 }
 
@@ -2082,6 +2105,10 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& Snapshot.Projects[0].Detail.Contains(TEXT("lab Operations Node")));
 	TestTrue(TEXT("Production view exposes assigned staff and its current cancellation refund"),
 		Snapshot.Projects[1].Type == EStrategicProjectType::Manufacturing
+		&& Snapshot.Projects[1].bPaused
+		&& Snapshot.Projects[1].RemainingSeconds == 0
+		&& Snapshot.Projects[1].MissingFacilityIds
+			== TArray<FName>{ Config.ManufacturingFacilityId }
 		&& Snapshot.Projects[1].AssignedStaff == 2
 		&& Snapshot.Projects[1].UnitsRemaining == 3
 		&& Snapshot.Projects[1].UnitCost == Manufactured.ManufactureCost
@@ -2101,9 +2128,11 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	ExtremeProjectCampaign.ManufacturingProjects[0].UnitsRemaining = MAX_int32;
 	ExtremeProjectCampaign.ManufacturingProjects[0].AssignedEngineers = 1;
 	ExtremeProjectCampaign.ManufacturingProjects[0].AccumulatedWorkSeconds = MIN_int64;
+	FStrategicSimulationConfig ExtremeProjectConfig = Config;
+	ExtremeProjectConfig.ManufacturingFacilityId = Operations.Identity.RuleId;
 	const FStrategicDashboardSnapshot ExtremeProjectSnapshot =
 		FStrategicPresentationService::BuildDashboard(
-			ExtremeProjectCampaign, ExtremeProjectRules, Config);
+			ExtremeProjectCampaign, ExtremeProjectRules, ExtremeProjectConfig);
 	const FStrategicProjectView* ExtremeProjectView = ExtremeProjectSnapshot.Projects.FindByPredicate(
 		[](const FStrategicProjectView& Project)
 		{
