@@ -99,6 +99,12 @@ int32 FStrategicClock::AdvanceBy(
 
 	const int64 QuantumTicks = GetSimulationQuantum().GetTicks();
 	int64 RemainingTicks = Amount.GetTicks();
+	const int64 MaximumSlices = RemainingTicks / QuantumTicks
+		+ (RemainingTicks % QuantumTicks == 0 ? 0 : 1);
+	if (MaximumSlices > MAX_int32)
+	{
+		return 0;
+	}
 	int32 ExecutedSlices = 0;
 
 	while (RemainingTicks > 0 && !ShouldStop())

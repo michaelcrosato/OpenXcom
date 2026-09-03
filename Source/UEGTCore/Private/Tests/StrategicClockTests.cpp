@@ -137,4 +137,29 @@ bool FStrategicClockStopTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicClockSliceCountBoundaryTest,
+	"UEGT.Core.StrategicClock.SliceCountBoundary",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicClockSliceCountBoundaryTest::RunTest(const FString& Parameters)
+{
+	FStrategicTimestamp Timestamp(FDateTime(2035, 1, 1, 12, 0, 0));
+	const FDateTime InitialTimestamp = Timestamp.Utc;
+	const int64 QuantumTicks = FStrategicClock::GetSimulationQuantum().GetTicks();
+	const FTimespan TooManySlices(static_cast<int64>(MAX_int32) * QuantumTicks + 1);
+	int32 ObservedSlices = 0;
+
+	const int32 ExecutedSlices = FStrategicClock::AdvanceBy(
+		Timestamp,
+		TooManySlices,
+		[&ObservedSlices](const FStrategicTimeSlice&) { ++ObservedSlices; });
+
+	TestEqual(TEXT("An unrepresentable slice count is rejected before simulation"), ExecutedSlices, 0);
+	TestEqual(TEXT("An oversized clock request preserves the timestamp"), Timestamp.Utc, InitialTimestamp);
+	TestEqual(TEXT("An oversized clock request does not invoke the slice handler"), ObservedSlices, 0);
+
+	return true;
+}
+
 #endif
