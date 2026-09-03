@@ -13413,6 +13413,12 @@ bool FStrategicTacticalBaseDefenseTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Operational base facilities deterministically contribute battlefield cover"),
 		FacilityLayout.bSucceeded && BareLayout.bSucceeded
 		&& MakeTacticalLayoutFingerprint(FacilityLayout.Battle) != MakeTacticalLayoutFingerprint(BareLayout.Battle));
+	FCampaignState ExtremeFacilityHashState = State;
+	ExtremeFacilityHashState.Bases[0].Facilities[0].GridX = MAX_int32;
+	const FTacticalGenerationResult ExtremeFacilityHashLayout =
+		FTacticalMissionGenerator::Generate(ExtremeFacilityHashState, Rules, OperationId);
+	TestTrue(TEXT("Tactical generation hashes extreme facility coordinates without signed overflow"),
+		ExtremeFacilityHashLayout.bSucceeded);
 
 	FGenerateTacticalBattleCommand Generate;
 	Generate.ExpectedSequence = State.CommandSequence;

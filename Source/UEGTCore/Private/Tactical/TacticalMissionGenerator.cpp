@@ -498,7 +498,8 @@ FTacticalGenerationResult FTacticalMissionGenerator::Generate(
 		{
 			const uint32 FacilityHash = Facility->InstanceId.A ^ Facility->InstanceId.B
 				^ Facility->InstanceId.C ^ Facility->InstanceId.D
-				^ static_cast<uint32>(Facility->GridX * 73856093) ^ static_cast<uint32>(Facility->GridY * 19349663);
+				^ static_cast<uint32>(static_cast<int64>(Facility->GridX) * 73856093LL)
+				^ static_cast<uint32>(static_cast<int64>(Facility->GridY) * 19349663LL);
 			const int32 CandidateCount = Battle.Width * FriendlyRows;
 			for (int32 Offset = 0; Offset < CandidateCount; ++Offset)
 			{
