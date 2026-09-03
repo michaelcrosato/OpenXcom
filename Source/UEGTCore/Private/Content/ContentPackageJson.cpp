@@ -1407,7 +1407,8 @@ namespace ContentPackageJsonPrivate
 			|| OutRule.MapWidth < 8 || OutRule.MapWidth > 64
 			|| OutRule.MapHeight < 12 || OutRule.MapHeight > 96 || OutRule.MapLevels < 1 || OutRule.MapLevels > 4 || MapCells > 8192
 			|| OutRule.DeploymentDepth < 2 || OutRule.DeploymentDepth > 8
-			|| OutRule.MapHeight <= OutRule.DeploymentDepth * 2 + 4
+			|| static_cast<int64>(OutRule.MapHeight)
+				<= static_cast<int64>(OutRule.DeploymentDepth) * 2 + 4
 			|| OutRule.ObstaclePercent > 60 || OutRule.BaseEnemyCount > 32 || OutRule.EnemiesPerThreat > 8
 			|| MaximumEnemies >= static_cast<int64>(OutRule.MapWidth) * OutRule.DeploymentDepth
 			|| OutRule.TurnLimit > 500 || OutRule.ObjectiveActionPointCost > 20

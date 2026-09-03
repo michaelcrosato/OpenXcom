@@ -498,7 +498,8 @@ namespace RuleSetBuilderPrivate
 				|| Rule.MapWidth < 8 || Rule.MapWidth > 64
 				|| Rule.MapHeight < 12 || Rule.MapHeight > 96 || Rule.MapLevels < 1 || Rule.MapLevels > 4 || MapCells > 8192
 				|| Rule.DeploymentDepth < 2 || Rule.DeploymentDepth > 8
-				|| Rule.MapHeight <= Rule.DeploymentDepth * 2 + 4
+				|| static_cast<int64>(Rule.MapHeight)
+					<= static_cast<int64>(Rule.DeploymentDepth) * 2 + 4
 				|| Rule.ObstaclePercent < 0 || Rule.ObstaclePercent > 60
 				|| Rule.BaseEnemyCount <= 0 || Rule.BaseEnemyCount > 32
 				|| Rule.EnemiesPerThreat < 0 || Rule.EnemiesPerThreat > 8

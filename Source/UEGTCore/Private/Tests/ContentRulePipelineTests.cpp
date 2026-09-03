@@ -792,6 +792,14 @@ bool FContentJsonTacticalRulesTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("JSON parsing rejects extreme tactical map dimensions without overflowing"), ExtremeDimensionsResult.bSucceeded);
 	TestTrue(TEXT("Extreme JSON tactical map dimensions have a field-value diagnostic"),
 		ExtremeDimensionsResult.HasDiagnostic(TEXT("invalid_field_value")));
+	const FString ExtremeDeploymentDepth = TacticalJson.Replace(
+		TEXT("\"deploymentDepth\": 2"), TEXT("\"deploymentDepth\": 2147483647"));
+	const FContentPackageParseResult ExtremeDeploymentDepthResult = FContentPackageJson::ParseString(
+		ExtremeDeploymentDepth, TEXT("tactical-extreme-deployment-depth.json"));
+	TestFalse(TEXT("JSON parsing rejects extreme tactical deployment depth without overflowing"),
+		ExtremeDeploymentDepthResult.bSucceeded);
+	TestTrue(TEXT("Extreme tactical deployment depth has a field-value diagnostic"),
+		ExtremeDeploymentDepthResult.HasDiagnostic(TEXT("invalid_field_value")));
 	const FString UnknownObjectiveType = TacticalJson.Replace(TEXT("\"objectiveType\": \"control\""), TEXT("\"objectiveType\": \"capture\""));
 	const FContentPackageParseResult UnknownObjectiveTypeResult = FContentPackageJson::ParseString(UnknownObjectiveType, TEXT("tactical-unknown-objective.json"));
 	TestFalse(TEXT("Unknown tactical objective types are rejected"), UnknownObjectiveTypeResult.bSucceeded);
