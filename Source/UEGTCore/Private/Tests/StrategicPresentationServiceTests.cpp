@@ -948,6 +948,17 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !InvalidTimestampSnapshot.bCanAdvanceTime
 		&& InvalidTimestampSnapshot.Diagnostics.Contains(
 			TEXT("Campaign time is not usable.")));
+	FCampaignState ClockHorizonCampaign = Campaign;
+	ClockHorizonCampaign.StrategicTime.Utc = FDateTime(
+		FDateTime::MaxValue().GetTicks() - 5 * ETimespan::TicksPerSecond + 1);
+	const FStrategicDashboardSnapshot ClockHorizonSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			ClockHorizonCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement when no complete clock quantum remains"),
+		ClockHorizonSnapshot.bSucceeded
+		&& !ClockHorizonSnapshot.bCanAdvanceTime
+		&& ClockHorizonSnapshot.Diagnostics.Contains(
+			TEXT("Strategic clock could not execute a simulation slice.")));
 	FCampaignState InvalidContactReadinessCampaign = Campaign;
 	InvalidContactReadinessCampaign.Craft.Reset();
 	InvalidContactReadinessCampaign.Personnel.Reset();

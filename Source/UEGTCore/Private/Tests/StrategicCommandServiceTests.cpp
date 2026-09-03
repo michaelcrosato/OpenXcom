@@ -840,6 +840,25 @@ bool FStrategicTimeAdvanceInventoryValidationTest::RunTest(const FString& Parame
 		FStrategicCommandService::Execute(State, Rules, Config, Advance);
 	TestTrue(TEXT("Time advancement rejects invalid base inventory before simulation"),
 		!Result.bAccepted && Result.HasDiagnostic(TEXT("invalid_storage_inventory")));
+
+	FCampaignState BoundaryState = MakeStateWithBase();
+	BoundaryState.StrategicTime.Utc = FDateTime(
+		FDateTime::MaxValue().GetTicks() - 5 * ETimespan::TicksPerSecond + 1);
+	const FStrategicCommandResult ClockValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceClock(BoundaryState, 86400);
+	TestTrue(TEXT("Clock-capacity validation rejects a usable timestamp with no complete simulation quantum remaining"),
+		!ClockValidation.bAccepted && ClockValidation.HasDiagnostic(TEXT("time_advance_failed")));
+	const int64 BoundarySequence = BoundaryState.CommandSequence;
+	const FDateTime BoundaryTime = BoundaryState.StrategicTime.Utc;
+	Advance.ExpectedSequence = BoundarySequence;
+	Advance.Rate = EStrategicTimeRate::OneDay;
+	const FStrategicCommandResult BoundaryResult =
+		FStrategicCommandService::Execute(BoundaryState, Rules, Config, Advance);
+	TestTrue(TEXT("Time advancement rejects a clock horizon before attempting simulation"),
+		!BoundaryResult.bAccepted
+		&& BoundaryResult.HasDiagnostic(TEXT("time_advance_failed"))
+		&& BoundaryState.CommandSequence == BoundarySequence
+		&& BoundaryState.StrategicTime.Utc == BoundaryTime);
 	return true;
 }
 

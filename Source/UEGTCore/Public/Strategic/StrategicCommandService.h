@@ -4082,6 +4082,11 @@ public:
 		const FResolvedRuleSet& Rules,
 		int64 RequestedSeconds);
 
+	/** Read-only validation that a strategic time slice can execute at least one clock quantum. */
+	static FStrategicCommandResult ValidateStrategicTimeAdvanceClock(
+		const FCampaignState& State,
+		int64 RequestedSeconds);
+
 	/** Read-only validation of persisted personnel, recruitment, memorial, and squad-bond state. */
 	static FStrategicCommandResult ValidateStrategicPersonnelState(
 		const FCampaignState& State,

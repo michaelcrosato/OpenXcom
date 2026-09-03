@@ -6035,6 +6035,40 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool ValidateStrategicClockCapacity(
+		const FCampaignState& State,
+		const int64 RequestedSeconds,
+		FStrategicCommandResult& Result)
+	{
+		int64 RequestedTicks = 0;
+		if (RequestedSeconds <= 0
+			|| !TryMultiplyNonNegative(
+				RequestedSeconds, ETimespan::TicksPerSecond, RequestedTicks))
+		{
+			AddError(Result, TEXT("invalid_time_advance"),
+				TEXT("Time-advance clock validation requires a positive supported rate."));
+			return false;
+		}
+		if (!State.StrategicTime.IsUsable())
+		{
+			AddError(Result, TEXT("invalid_time_advance"),
+				TEXT("Time command must request a positive supported rate from a usable timestamp."));
+			return false;
+		}
+
+		const int64 QuantumTicks = FStrategicClock::GetSimulationQuantum().GetTicks();
+		const int64 FirstSliceTicks = FMath::Min(RequestedTicks, QuantumTicks);
+		if (FirstSliceTicks <= 0
+			|| State.StrategicTime.Utc.GetTicks()
+				> FDateTime::MaxValue().GetTicks() - FirstSliceTicks)
+		{
+			AddError(Result, TEXT("time_advance_failed"),
+				TEXT("Strategic clock could not execute a simulation slice."));
+			return false;
+		}
+		return true;
+	}
+
 	bool ValidateStrategicRandomCapacity(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -7706,6 +7740,21 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceCr
 	}
 	if (!ValidateCraftState(State, Rules, Result)
 		|| !ValidateStrategicCraftCapacity(State, RequestedSeconds, Result))
+	{
+		return Result;
+	}
+	Result.bAccepted = true;
+	return Result;
+}
+
+FStrategicCommandResult FStrategicCommandService::ValidateStrategicTimeAdvanceClock(
+	const FCampaignState& State,
+	const int64 RequestedSeconds)
+{
+	using namespace StrategicCommandServicePrivate;
+
+	FStrategicCommandResult Result;
+	if (!ValidateStrategicClockCapacity(State, RequestedSeconds, Result))
 	{
 		return Result;
 	}
@@ -11760,6 +11809,12 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		return Result;
 	}
 	const int64 RequestedSeconds = RequestedAdvance.GetTicks() / ETimespan::TicksPerSecond;
+	const FStrategicCommandResult TimeAdvanceClockValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceClock(State, RequestedSeconds);
+	if (!TimeAdvanceClockValidation.bAccepted)
+	{
+		return TimeAdvanceClockValidation;
+	}
 	const FStrategicCommandResult TimeAdvanceConfigValidation =
 		FStrategicCommandService::ValidateStrategicTimeAdvanceConfig(State, Config);
 	if (!TimeAdvanceConfigValidation.bAccepted)

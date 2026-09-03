@@ -825,6 +825,25 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 			Snapshot.Diagnostics.Add(TimeAdvanceConfigValidation.Diagnostics[0].Message);
 		}
 	}
+	const int64 MaximumTimeAdvanceSeconds =
+		FStrategicClock::GetAdvanceForRate(EStrategicTimeRate::OneDay).GetTicks()
+		/ ETimespan::TicksPerSecond;
+	const FStrategicCommandResult TimeAdvanceClockValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceClock(
+			Campaign, MaximumTimeAdvanceSeconds);
+	if (!TimeAdvanceClockValidation.bAccepted)
+	{
+		Snapshot.bCanAdvanceTime = false;
+		if (!TimeAdvanceClockValidation.Diagnostics.IsEmpty())
+		{
+			const FString& Diagnostic = TimeAdvanceClockValidation.Diagnostics[0].Message;
+			if (!Snapshot.Diagnostics.ContainsByPredicate(
+				[&Diagnostic](const FString& Existing) { return Existing == Diagnostic; }))
+			{
+				Snapshot.Diagnostics.Add(Diagnostic);
+			}
+		}
+	}
 	const FStrategicCommandResult CommandSequenceValidation =
 		FStrategicCommandService::ValidateStrategicCommandSequence(Campaign);
 	if (!CommandSequenceValidation.bAccepted)
@@ -852,9 +871,6 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 	}
 	if (RandomStateValidation.bAccepted)
 	{
-		const int64 MaximumTimeAdvanceSeconds =
-			FStrategicClock::GetAdvanceForRate(EStrategicTimeRate::OneDay).GetTicks()
-			/ ETimespan::TicksPerSecond;
 		const FStrategicCommandResult RandomCapacityValidation =
 			FStrategicCommandService::ValidateStrategicTimeAdvanceRandomCapacity(
 				Campaign, Rules, Config, MaximumTimeAdvanceSeconds);
@@ -1199,9 +1215,6 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 	}
 	if (ProjectStateValidation.bAccepted)
 	{
-		const int64 MaximumTimeAdvanceSeconds =
-			FStrategicClock::GetAdvanceForRate(EStrategicTimeRate::OneDay).GetTicks()
-			/ ETimespan::TicksPerSecond;
 		const FStrategicCommandResult ProjectProgressValidation =
 			FStrategicCommandService::ValidateStrategicTimeAdvanceProgress(
 				Campaign, Rules, MaximumTimeAdvanceSeconds);
