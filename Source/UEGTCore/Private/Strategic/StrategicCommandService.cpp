@@ -13314,11 +13314,12 @@ FFacilityDismantleEvaluation FStrategicCommandService::EvaluateFacilityDismantle
 		return Reject();
 	}
 	if (!FContentPackageResolver::IsValidPackageId(Config.OperationsFacilityId)
+		|| !FContentPackageResolver::IsValidPackageId(Config.ManufacturingFacilityId)
 		|| Config.FacilityDismantleRefundPercent < 0
 		|| Config.FacilityDismantleRefundPercent > 100)
 	{
 		AddError(Validation, TEXT("invalid_simulation_config"),
-			TEXT("Facility dismantling requires a valid operations facility id and a salvage percentage from 0 to 100."));
+			TEXT("Facility dismantling requires valid operations and manufacturing facility ids and a salvage percentage from 0 to 100."));
 		return Reject();
 	}
 	const FStrategicBaseState* Base = FindBase(State, Command.BaseId);

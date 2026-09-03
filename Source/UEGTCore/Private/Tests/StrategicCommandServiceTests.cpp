@@ -12927,6 +12927,60 @@ bool FStrategicMalformedProjectStaffingTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicFacilityDismantleConfigValidationTest,
+	"UEGT.Core.StrategicCommands.FacilityDismantleConfigValidation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicFacilityDismantleConfigValidationTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	FResolvedRuleSet Rules = MakeRules();
+	FFacilityRule CapacityAnnex;
+	CapacityAnnex.Identity.RuleId = TEXT("facility.capacity-annex");
+	CapacityAnnex.DisplayName = TEXT("Capacity Annex");
+	CapacityAnnex.BuildCost = 700;
+	CapacityAnnex.BuildHours = 12;
+	CapacityAnnex.MaxIntegrity = 100;
+	CapacityAnnex.GridWidth = 1;
+	CapacityAnnex.GridHeight = 1;
+	Rules.Facilities.Add(CapacityAnnex.Identity.RuleId, CapacityAnnex);
+
+	FCampaignState State = MakeStateWithBase();
+	const FGuid AnnexId(0x7a150001, 0x7a150002, 0x7a150003, 0x7a150004);
+	FBaseFacilityState& Annex = State.Bases[0].Facilities.AddDefaulted_GetRef();
+	Annex.InstanceId = AnnexId;
+	Annex.FacilityId = CapacityAnnex.Identity.RuleId;
+	Annex.GridX = 1;
+	Annex.GridY = 0;
+	FDismantleFacilityCommand Dismantle;
+	Dismantle.ExpectedSequence = State.CommandSequence;
+	Dismantle.BaseId = TestBaseId;
+	Dismantle.FacilityInstanceId = AnnexId;
+	FStrategicSimulationConfig InvalidConfig = MakeConfig();
+	InvalidConfig.ManufacturingFacilityId = NAME_None;
+	const FFacilityDismantleEvaluation Evaluation =
+		FStrategicCommandService::EvaluateFacilityDismantle(
+			State, Rules, InvalidConfig, Dismantle);
+	const FStrategicCommandResult Result =
+		FStrategicCommandService::Execute(State, Rules, InvalidConfig, Dismantle);
+	TestFalse(TEXT("Facility dismantling rejects an invalid manufacturing facility id"),
+		Evaluation.bAllowed);
+	TestFalse(TEXT("Facility dismantling execution rejects an invalid manufacturing facility id"),
+		Result.bAccepted);
+	TestTrue(TEXT("Invalid dismantle configuration has a stable diagnostic"),
+		Evaluation.Diagnostics.ContainsByPredicate(
+			[](const FStrategicCommandDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == FName(TEXT("invalid_simulation_config"));
+			})
+		&& Result.HasDiagnostic(TEXT("invalid_simulation_config")));
+	TestEqual(TEXT("Invalid dismantle configuration leaves facilities unchanged"),
+		State.Bases[0].Facilities.Num(), 2);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicBaseAssaultDefenseTest,
 	"UEGT.Core.StrategicCommands.BaseAssaultDefense",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
