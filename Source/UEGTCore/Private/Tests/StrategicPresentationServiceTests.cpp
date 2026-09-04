@@ -1113,6 +1113,11 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 				TEXT("Monthly campaign finances exceed the supported numeric range.")));
 	}
 	FCampaignState AdversarySerialCapacityCampaign = Campaign;
+	AdversarySerialCapacityCampaign.StrategicContacts.Reset();
+	AdversarySerialCapacityCampaign.AdversaryMissions.Reset();
+	AdversarySerialCapacityCampaign.AdversaryMissionsLaunched = 0;
+	AdversarySerialCapacityCampaign.AdversaryMissionsEscaped = 0;
+	AdversarySerialCapacityCampaign.AdversaryMissionsThwarted = 0;
 	AdversarySerialCapacityCampaign.NextAdversaryMissionSerial = MAX_int64 - 3;
 	AdversarySerialCapacityCampaign.NextAdversaryMissionSeconds = 5;
 	const FStrategicDashboardSnapshot AdversarySerialCapacitySnapshot =
@@ -1130,6 +1135,11 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		Pair.Value.OriginLatitudeMilliDegrees = MAX_int32;
 	}
 	FCampaignState AdversaryLaunchCoordinateCampaign = Campaign;
+	AdversaryLaunchCoordinateCampaign.StrategicContacts.Reset();
+	AdversaryLaunchCoordinateCampaign.AdversaryMissions.Reset();
+	AdversaryLaunchCoordinateCampaign.AdversaryMissionsLaunched = 0;
+	AdversaryLaunchCoordinateCampaign.AdversaryMissionsEscaped = 0;
+	AdversaryLaunchCoordinateCampaign.AdversaryMissionsThwarted = 0;
 	AdversaryLaunchCoordinateCampaign.NextAdversaryMissionSeconds = 5;
 	const FStrategicDashboardSnapshot AdversaryLaunchCoordinateSnapshot =
 		FStrategicPresentationService::BuildDashboard(
@@ -1175,9 +1185,12 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& AdversaryEscapeCapacitySnapshot.Diagnostics.Contains(
 			TEXT("Strategic simulation exceeded a persisted numeric range.")));
 	FCampaignState AdversaryBranchCapacityCampaign = Campaign;
+	AdversaryBranchCapacityCampaign.StrategicContacts.Reset();
+	AdversaryBranchCapacityCampaign.AdversaryMissions.Reset();
 	AdversaryBranchCapacityCampaign.AdversaryMissionsLaunched = MAX_int32;
-	AdversaryBranchCapacityCampaign.AdversaryMissionsEscaped = MAX_int32 - 5;
-	AdversaryBranchCapacityCampaign.NextAdversaryMissionSeconds = 2 * 86400;
+	AdversaryBranchCapacityCampaign.AdversaryMissionsEscaped = MAX_int32 - 3;
+	AdversaryBranchCapacityCampaign.AdversaryMissionsThwarted = 3;
+	AdversaryBranchCapacityCampaign.NextAdversaryMissionSeconds = 5;
 	const FStrategicDashboardSnapshot AdversaryBranchCapacitySnapshot =
 		FStrategicPresentationService::BuildDashboard(
 			AdversaryBranchCapacityCampaign, Rules, Config);
@@ -3240,6 +3253,12 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& Snapshot.Projects[1].MaterialRequirements[0].RefundableQuantity == 4
 		&& Snapshot.Projects[1].StorageDeltaPerUnit == 1
 		&& Snapshot.Projects[1].CancellationStorageDelta == -7
+		&& FMath::IsNearlyEqual(
+			Snapshot.Projects[1].Progress,
+			static_cast<float>(static_cast<double>(Production.AccumulatedWorkSeconds)
+				/ (static_cast<double>(Manufactured.ManufactureHours) * 3600.0
+					* static_cast<double>(Production.UnitsRemaining))),
+			1.0e-8f)
 		&& Snapshot.Projects[1].bCanRemoveManufacturingUnit
 		&& Snapshot.Projects[1].bCanCancel);
 	FResolvedRuleSet ExtremeProjectRules = Rules;
