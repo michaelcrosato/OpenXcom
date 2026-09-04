@@ -1880,6 +1880,56 @@ bool FStrategicManufacturingSafetyTest::RunTest(const FString& Parameters)
 		AddError(TEXT("Repair-reactivation fixture could not resolve its facility or project."));
 	}
 
+	FResolvedRuleSet RepairRateRules = Rules;
+	RepairRateRules.Facilities.FindChecked(TEXT("facility.operations-hub")).StorageCapacity = 0;
+	RepairRateRules.Facilities.FindChecked(TEXT("facility.operations-hub")).SensorRangeKilometers = 0;
+	RepairRateRules.Facilities.FindChecked(TEXT("facility.operations-hub")).DetectionStrength = 0;
+	RepairRateRules.Facilities.FindChecked(TEXT("facility.fabrication-bay")).EngineerCapacity = 5;
+	RepairRateRules.Facilities.FindChecked(TEXT("facility.fabrication-bay")).MaxIntegrity = 5;
+	FCampaignState RepairRateState = OutputCapacityState;
+	FBaseFacilityState* RepairRateFabrication =
+		RepairRateState.Bases[0].Facilities.FindByPredicate(
+			[](const FBaseFacilityState& Facility)
+			{
+				return Facility.FacilityId == TEXT("facility.fabrication-bay");
+			});
+	FManufacturingProjectState* RepairRateProject =
+		RepairRateState.ManufacturingProjects.FindByPredicate(
+			[](const FManufacturingProjectState& Project)
+			{
+				return Project.ItemId == TEXT("item.service-rifle");
+			});
+	if (RepairRateFabrication != nullptr && RepairRateProject != nullptr)
+	{
+		RepairRateFabrication->Damage = 1;
+		RepairRateFabrication->ReservedRepairDamage = 1;
+		RepairRateFabrication->RemainingRepairSeconds = 5;
+		RepairRateProject->AccumulatedWorkSeconds = 3594;
+		const int64 RepairRateSequence = RepairRateState.CommandSequence;
+		const FStrategicCommandResult RepairRateValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceProductionCapacity(
+				RepairRateState, RepairRateRules, Config, 5);
+		FAdvanceStrategicTimeCommand RepairRateAdvance;
+		RepairRateAdvance.ExpectedSequence = RepairRateSequence;
+		RepairRateAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+		const FStrategicCommandResult RepairRateRejected =
+			FStrategicCommandService::Execute(
+				RepairRateState, RepairRateRules, Config, RepairRateAdvance);
+		TestTrue(TEXT("Manufacturing capacity validation includes specialization activated by same-slice repair"),
+			!RepairRateValidation.bAccepted
+			&& RepairRateValidation.HasDiagnostic(TEXT("simulation_overflow")));
+		TestTrue(TEXT("Time advancement rejects output after a repair activates manufacturing specialization"),
+			!RepairRateRejected.bAccepted
+			&& RepairRateRejected.HasDiagnostic(TEXT("simulation_overflow"))
+			&& RepairRateState.CommandSequence == RepairRateSequence
+			&& RepairRateState.Bases[0].Inventory.Last().Quantity == MAX_int32
+			&& RepairRateState.ManufacturingProjects.Num() == 1);
+	}
+	else
+	{
+		AddError(TEXT("Repair-rate fixture could not resolve its facility or project."));
+	}
+
 	FResolvedRuleSet CombinedCapacityRules = Rules;
 	CombinedCapacityRules.AdversaryMissions.Reset();
 	FStrategicSimulationConfig CombinedCapacityConfig = Config;

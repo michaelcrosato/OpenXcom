@@ -2014,6 +2014,35 @@ namespace StrategicCommandServicePrivate
 			});
 	}
 
+	FStrategicBaseState ProjectBaseAfterRepairs(
+		const FStrategicBaseState& Base,
+		const FResolvedRuleSet& Rules,
+		const int64 RequestedSeconds)
+	{
+		FStrategicBaseState Projection = Base;
+		if (RequestedSeconds <= 0)
+		{
+			return Projection;
+		}
+		for (FBaseFacilityState& Facility : Projection.Facilities)
+		{
+			const FFacilityRule* Rule = Rules.Facilities.Find(Facility.FacilityId);
+			if (Rule == nullptr
+				|| Facility.RemainingRepairSeconds <= 0
+				|| Facility.RemainingRepairSeconds > RequestedSeconds
+				|| Facility.ReservedRepairDamage <= 0
+				|| Facility.Damage < Facility.ReservedRepairDamage
+				|| Facility.Damage - Facility.ReservedRepairDamage >= Rule->MaxIntegrity)
+			{
+				continue;
+			}
+			Facility.Damage -= Facility.ReservedRepairDamage;
+			Facility.ReservedRepairDamage = 0;
+			Facility.RemainingRepairSeconds = 0;
+		}
+		return Projection;
+	}
+
 	bool HasOperationalResearchFacilities(
 		const FStrategicBaseState& Base,
 		const FResolvedRuleSet& Rules,
@@ -6218,9 +6247,11 @@ namespace StrategicCommandServicePrivate
 			int64 MaximumAdditionalWork = 0;
 			int64 ScaledMaximumAdditionalWork = 0;
 			int64 ProjectedProgress = 0;
+			const FStrategicBaseState ManufacturingRateBase =
+				ProjectBaseAfterRepairs(*ManufacturingBase, Rules, RequestedSeconds);
 			const int32 ManufacturingRatePercent =
 				FStrategicCommandService::EvaluateBaseManufacturingRatePercent(
-					*ManufacturingBase, Rules);
+					ManufacturingRateBase, Rules);
 			if (!TryMultiplyNonNegative(Project.AssignedEngineers, RequestedSeconds,
 					MaximumAdditionalWork)
 				|| !TryMultiplyNonNegative(MaximumAdditionalWork, ManufacturingRatePercent,
