@@ -3141,6 +3141,11 @@ namespace CampaignSavePrivate
 			{
 				AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_adversary_state"), TEXT("Adversary escalation, cadence, counters, or campaign outcome metadata is invalid."));
 			}
+			if (State.MonthlyFunding < 0)
+			{
+				AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_regional_mandate"),
+					TEXT("Recurring campaign funding cannot be negative."));
+			}
 
 			TSet<FName> SeenPressureRegions;
 			for (const FRegionalPressureState& Pressure : State.RegionalPressure)

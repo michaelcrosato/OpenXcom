@@ -5617,6 +5617,7 @@ namespace StrategicCommandServicePrivate
 		FStrategicCommandResult& Result)
 	{
 		if (!IsValidCampaignOutcome(State.Outcome)
+			|| State.MonthlyFunding < 0
 			|| State.AdversaryEscalationLevel <= 0 || State.AdversaryEscalationLevel > Config.MaxAdversaryEscalation
 			|| State.NextAdversaryMissionSeconds < 0
 			|| (State.Outcome == ECampaignOutcome::Ongoing && !Rules.AdversaryMissions.IsEmpty() && State.NextAdversaryMissionSeconds <= 0)
@@ -8203,6 +8204,7 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicPersonnelStat
 	return Result;
 }
 
+
 FStrategicCommandResult FStrategicCommandService::ValidateStrategicFinancialState(
 	const FCampaignState& State,
 	const FResolvedRuleSet& Rules)
@@ -8210,6 +8212,11 @@ FStrategicCommandResult FStrategicCommandService::ValidateStrategicFinancialStat
 	using namespace StrategicCommandServicePrivate;
 
 	FStrategicCommandResult Result;
+	if (State.MonthlyFunding < 0)
+	{
+		AddError(Result, TEXT("invalid_regional_mandate"), TEXT("Recurring campaign funding cannot be negative."));
+		return Result;
+	}
 	int64 MonthlyMaintenance = 0;
 	if (!ComputeMonthlyMaintenance(State, Rules, MonthlyMaintenance, Result))
 	{

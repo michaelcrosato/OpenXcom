@@ -1411,6 +1411,13 @@ bool FCampaignSaveCompatibilityTest::RunTest(const FString& Parameters)
 	const FCampaignSaveValidationResult ExhaustedRandomValidation = FCampaignSaveCodec::Validate(Invalid);
 	TestFalse(TEXT("Exhausted random draw count fails validation"), ExhaustedRandomValidation.bSucceeded);
 	TestTrue(TEXT("Exhausted random draw count is diagnosed"), ExhaustedRandomValidation.HasDiagnostic(TEXT("invalid_random_state")));
+	Invalid.State.SimulationRandom.DrawCount = Write.Envelope.State.SimulationRandom.DrawCount;
+	Invalid.State.RegionalPressure.Reset();
+	Invalid.State.RegionalMandates.Reset();
+	Invalid.State.MonthlyFunding = -1;
+	const FCampaignSaveValidationResult NegativeFundingValidation = FCampaignSaveCodec::Validate(Invalid);
+	TestFalse(TEXT("Negative recurring funding fails validation even without regional rows"), NegativeFundingValidation.bSucceeded);
+	TestTrue(TEXT("Negative recurring funding is diagnosed"), NegativeFundingValidation.HasDiagnostic(TEXT("invalid_regional_mandate")));
 
 	FTacticalBattleState ExtremeBattle;
 	ExtremeBattle.Width = MAX_int32;

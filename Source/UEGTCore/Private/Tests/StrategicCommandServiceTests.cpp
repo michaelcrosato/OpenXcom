@@ -1407,6 +1407,16 @@ bool FStrategicMonthlyFinanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Month boundary advances exactly one slice"), Result.ExecutedSlices, 1);
 	TestEqual(TEXT("Timestamp reaches February"), State.StrategicTime.Utc, FDateTime(2035, 2, 1, 0, 0, 0));
 
+	FCampaignState NegativeFundingState = MakeStateWithBase();
+	NegativeFundingState.RegionalPressure.Reset();
+	NegativeFundingState.RegionalMandates.Reset();
+	NegativeFundingState.MonthlyFunding = -1;
+	const FStrategicCommandResult NegativeFundingValidation =
+		FStrategicCommandService::ValidateStrategicFinancialState(NegativeFundingState, Rules);
+	TestTrue(TEXT("Negative recurring funding is rejected without regional rows"),
+		!NegativeFundingValidation.bAccepted
+		&& NegativeFundingValidation.HasDiagnostic(TEXT("invalid_regional_mandate")));
+
 	FCampaignState CompletionState = MakeStateWithBase();
 	CompletionState.StrategicTime = FStrategicTimestamp(FDateTime(2035, 1, 31, 23, 59, 55));
 	CompletionState.Funds = MIN_int64;
