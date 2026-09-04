@@ -120,6 +120,26 @@ bool FDeterministicRandomBoundaryTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FDeterministicRandomRejectionBoundaryTest,
+	"UEGT.Core.Determinism.RejectionBoundary",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FDeterministicRandomRejectionBoundaryTest::RunTest(const FString& Parameters)
+{
+	FDeterministicRandomStream Stream;
+	TestTrue(TEXT("A near-terminal rejection fixture restores"),
+		Stream.RestoreFromSave(0, MAX_int64 - 2, 0x098D76A164D99A710ULL));
+	int32 Value = 77;
+	TestFalse(TEXT("A rejected retry refuses the terminal raw draw"),
+		Stream.TryNextIntInclusive(1, 100, Value));
+	TestEqual(TEXT("A rejected retry consumes only the safe rejected draw"),
+		Stream.DrawCount, MAX_int64 - 1);
+	TestTrue(TEXT("A rejected retry leaves the stream save-valid"), Stream.IsValid());
+	TestEqual(TEXT("A failed draw leaves the output untouched"), Value, 77);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FDeterministicRandomProbabilityTest,
 	"UEGT.Core.Determinism.Probability",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

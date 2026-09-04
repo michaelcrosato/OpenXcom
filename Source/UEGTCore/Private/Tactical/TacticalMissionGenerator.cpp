@@ -468,7 +468,15 @@ FTacticalGenerationResult FTacticalMissionGenerator::Generate(
 		(static_cast<int64>(ObstacleCandidates.Num()) * Mission->ObstaclePercent) / 100);
 	for (int32 Index = 0; Index < ObstacleCount; ++Index)
 	{
-		const int32 SwapIndex = Battle.TacticalRandom.NextIntInclusive(Index, ObstacleCandidates.Num() - 1);
+		int32 SwapIndex = 0;
+		if (!Battle.TacticalRandom.TryNextIntInclusive(
+				Index, ObstacleCandidates.Num() - 1, SwapIndex))
+		{
+			AddError(Result.Diagnostics, TEXT("random_draw_overflow"),
+				TEXT("Tactical battlefield generation exceeded the deterministic random-stream draw range."));
+			Result.Battle = FTacticalBattleState();
+			return Result;
+		}
 		ObstacleCandidates.Swap(Index, SwapIndex);
 		FTacticalCellState& Cell = Battle.Cells[ObstacleCandidates[Index]];
 		Cell.TerrainRuleId = Obstacle->Identity.RuleId;
@@ -630,7 +638,15 @@ FTacticalGenerationResult FTacticalMissionGenerator::Generate(
 	}
 	for (int32 Index = 0; Index < EnemyCount; ++Index)
 	{
-		const int32 SwapIndex = Battle.TacticalRandom.NextIntInclusive(Index, EnemyCells.Num() - 1);
+		int32 SwapIndex = 0;
+		if (!Battle.TacticalRandom.TryNextIntInclusive(
+				Index, EnemyCells.Num() - 1, SwapIndex))
+		{
+			AddError(Result.Diagnostics, TEXT("random_draw_overflow"),
+				TEXT("Tactical battlefield generation exceeded the deterministic random-stream draw range."));
+			Result.Battle = FTacticalBattleState();
+			return Result;
+		}
 		EnemyCells.Swap(Index, SwapIndex);
 		const int32 Position = EnemyCells[Index];
 		FTacticalUnitState& Unit = Battle.Units.AddDefaulted_GetRef();

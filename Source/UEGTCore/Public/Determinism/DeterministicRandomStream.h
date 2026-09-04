@@ -41,6 +41,8 @@ struct UEGTCORE_API FDeterministicRandomStream
 	uint64 NextUInt64();
 	uint32 NextUInt32();
 	double NextUnitDouble();
+	/** Attempts an inclusive integer draw without consuming past the save-safe boundary. */
+	bool TryNextIntInclusive(int32 Minimum, int32 Maximum, int32& OutValue);
 	int32 NextIntInclusive(int32 Minimum, int32 Maximum);
 	bool Chance(double Probability);
 

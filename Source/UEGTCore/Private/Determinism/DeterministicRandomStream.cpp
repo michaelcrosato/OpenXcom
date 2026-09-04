@@ -88,17 +88,41 @@ int32 FDeterministicRandomStream::NextIntInclusive(int32 Minimum, int32 Maximum)
 		Swap(Minimum, Maximum);
 	}
 
+	int32 Result = Minimum;
+	TryNextIntInclusive(Minimum, Maximum, Result);
+	return Result;
+}
+
+bool FDeterministicRandomStream::TryNextIntInclusive(
+	int32 Minimum,
+	int32 Maximum,
+	int32& OutValue)
+{
+	if (Minimum > Maximum)
+	{
+		Swap(Minimum, Maximum);
+	}
+	if (!IsValid() || DrawCount >= MAX_int64 - 1)
+	{
+		return false;
+	}
+
 	const uint64 Width = static_cast<uint64>(static_cast<int64>(Maximum) - static_cast<int64>(Minimum)) + 1ULL;
 	const uint64 RejectionThreshold = (0ULL - Width) % Width;
 	uint64 Draw;
 	do
 	{
+		if (DrawCount >= MAX_int64 - 1)
+		{
+			return false;
+		}
 		Draw = NextUInt64();
 	}
 	while (Draw < RejectionThreshold);
 
 	const int64 Result = static_cast<int64>(Minimum) + static_cast<int64>(Draw % Width);
-	return static_cast<int32>(Result);
+	OutValue = static_cast<int32>(Result);
+	return true;
 }
 
 bool FDeterministicRandomStream::Chance(const double Probability)

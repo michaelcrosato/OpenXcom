@@ -12666,6 +12666,61 @@ bool FStrategicRandomMissionSelectionCapacityTest::RunTest(const FString& Parame
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicRandomRejectionCapacityTest,
+	"UEGT.Core.StrategicCommands.RandomRejectionCapacity",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicRandomRejectionCapacityTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	const FResolvedRuleSet Rules = MakeRules();
+	FCampaignState State = MakeStateWithBase();
+	State.StrategicTime = FStrategicTimestamp(FDateTime(2035, 1, 1, 12, 59, 55));
+	const FGuid ContactId(311, 312, 313, 314);
+	FCreateStrategicContactCommand Create;
+	Create.ExpectedSequence = State.CommandSequence;
+	Create.ContactId = ContactId;
+	Create.ContactRuleId = TEXT("contact.skimmer");
+	Create.OriginLongitudeMilliDegrees = State.Bases[0].LongitudeMilliDegrees;
+	Create.OriginLatitudeMilliDegrees = State.Bases[0].LatitudeMilliDegrees;
+	Create.DestinationLongitudeMilliDegrees = -100000;
+	Create.DestinationLatitudeMilliDegrees = State.Bases[0].LatitudeMilliDegrees;
+	const FStrategicCommandResult Created = FStrategicCommandService::Execute(State, Rules, Create);
+	TestTrue(TEXT("Rejection-capacity fixture creates its hidden contact"), Created.bAccepted);
+	if (!Created.bAccepted || State.StrategicContacts.Num() != 1)
+	{
+		AddError(TEXT("Rejection-capacity fixture could not create its contact."));
+		return false;
+	}
+
+	const int64 InitialSequence = State.CommandSequence;
+	const int64 InitialDrawCount = MAX_int64 - 2;
+	TestTrue(TEXT("Rejection-capacity fixture restores a valid near-terminal stream"),
+		State.SimulationRandom.RestoreFromSave(
+			State.SimulationRandom.InitialSeed,
+			InitialDrawCount,
+			0x098D76A164D99A710ULL));
+	const int64 InitialElapsedRouteSeconds = State.StrategicContacts[0].ElapsedRouteSeconds;
+
+	FAdvanceStrategicTimeCommand Advance;
+	Advance.ExpectedSequence = InitialSequence;
+	Advance.Rate = EStrategicTimeRate::FiveSeconds;
+	const FStrategicCommandResult Result = FStrategicCommandService::Execute(
+		State, Rules, MakeConfig(), Advance);
+	TestTrue(TEXT("A rejected sensor retry fails closed before exhausting the stream"),
+		!Result.bAccepted
+		&& Result.HasDiagnostic(TEXT("simulation_overflow"))
+		&& State.CommandSequence == InitialSequence
+		&& State.SimulationRandom.DrawCount == InitialDrawCount
+		&& State.SimulationRandom.IsValid()
+		&& State.StrategicContacts.Num() == 1
+		&& State.StrategicContacts[0].ElapsedRouteSeconds == InitialElapsedRouteSeconds
+		&& State.StrategicContacts[0].Status == EStrategicContactStatus::Hidden);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicAdversaryCoordinateBoundaryTest,
 	"UEGT.Core.StrategicCommands.AdversaryCoordinateBoundary",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

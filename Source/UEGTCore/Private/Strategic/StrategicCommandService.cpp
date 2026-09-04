@@ -65,16 +65,23 @@ namespace StrategicCommandServicePrivate
 			100));
 	}
 
-	int32 RollPersonnelStat(
+	bool TryRollPersonnelStat(
 		const int32 BaseValue,
 		const int32 Minimum,
 		const int32 Maximum,
-		FDeterministicRandomStream& Random)
+		FDeterministicRandomStream& Random,
+		int32& OutValue)
 	{
-		return static_cast<int32>(FMath::Clamp<int64>(
-			static_cast<int64>(BaseValue) + Random.NextIntInclusive(-5, 5),
+		int32 RandomOffset = 0;
+		if (!Random.TryNextIntInclusive(-5, 5, RandomOffset))
+		{
+			return false;
+		}
+		OutValue = static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(BaseValue) + RandomOffset,
 			Minimum,
 			Maximum));
+		return true;
 	}
 
 	int32 GetEffectiveLandingSiteThreatRating(
@@ -4228,7 +4235,12 @@ namespace StrategicCommandServicePrivate
 			{
 				return false;
 			}
-			const int32 Selection = State.SimulationRandom.NextIntInclusive(1, static_cast<int32>(TotalWeight));
+			int32 Selection = 0;
+			if (!State.SimulationRandom.TryNextIntInclusive(
+					1, static_cast<int32>(TotalWeight), Selection))
+			{
+				return false;
+			}
 			int32 AccumulatedWeight = 0;
 			SelectedRule = Eligible.Last().Rule;
 			for (const FWeightedMissionCandidate& Candidate : Eligible)
@@ -4267,9 +4279,13 @@ namespace StrategicCommandServicePrivate
 			{
 				return false;
 			}
-			const int32 TargetIndex = CandidateBases.Num() == 1
-				? 0
-				: State.SimulationRandom.NextIntInclusive(0, CandidateBases.Num() - 1);
+			int32 TargetIndex = 0;
+			if (CandidateBases.Num() > 1
+				&& !State.SimulationRandom.TryNextIntInclusive(
+						0, CandidateBases.Num() - 1, TargetIndex))
+			{
+				return false;
+			}
 			TargetBase = CandidateBases[TargetIndex];
 		}
 		const int32 DestinationLongitude = TargetBase != nullptr
@@ -12811,22 +12827,37 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 				if (Order.RemainingTransitSeconds == 0)
 				{
 					const FPersonnelRoleRule& Role = Rules.PersonnelRoles.FindChecked(Order.RoleId);
+					int32 MaxHealth = 0;
+					int32 Accuracy = 0;
+					int32 Resolve = 0;
+					int32 Mobility = 0;
+					int32 Strength = 0;
+					if (!TryRollPersonnelStat(
+							Role.BaseHealth, 1, 200, Transaction.SimulationRandom, MaxHealth)
+						|| !TryRollPersonnelStat(
+							Role.BaseAccuracy, 1, 100, Transaction.SimulationRandom, Accuracy)
+						|| !TryRollPersonnelStat(
+							Role.BaseResolve, 1, 100, Transaction.SimulationRandom, Resolve)
+						|| !TryRollPersonnelStat(
+							Role.BaseMobility, 1, 100, Transaction.SimulationRandom, Mobility)
+						|| !TryRollPersonnelStat(
+							Role.BaseStrength, 1, 100, Transaction.SimulationRandom, Strength))
+					{
+						bSimulationFailed = true;
+						bStopRequested = true;
+						return;
+					}
 					FPersonnelState& Person = Transaction.Personnel.AddDefaulted_GetRef();
 					Person.PersonnelId = Order.PersonnelId;
 					Person.DisplayName = Order.DisplayName;
 					Person.RoleId = Order.RoleId;
 					Person.BaseId = Order.BaseId;
-					Person.MaxHealth = RollPersonnelStat(
-						Role.BaseHealth, 1, 200, Transaction.SimulationRandom);
+					Person.MaxHealth = MaxHealth;
 					Person.CurrentHealth = Person.MaxHealth;
-					Person.Accuracy = RollPersonnelStat(
-						Role.BaseAccuracy, 1, 100, Transaction.SimulationRandom);
-					Person.Resolve = RollPersonnelStat(
-						Role.BaseResolve, 1, 100, Transaction.SimulationRandom);
-					Person.Mobility = RollPersonnelStat(
-						Role.BaseMobility, 1, 100, Transaction.SimulationRandom);
-					Person.Strength = RollPersonnelStat(
-						Role.BaseStrength, 1, 100, Transaction.SimulationRandom);
+					Person.Accuracy = Accuracy;
+					Person.Resolve = Resolve;
+					Person.Mobility = Mobility;
+					Person.Strength = Strength;
 					FStrategicEvent& Arrived = AddEvent(Result, EStrategicEventType::PersonnelArrived, NextSequence, Slice.CurrentUtc);
 					Arrived.BaseId = Order.BaseId;
 					Arrived.ProjectId = Order.OrderId;
@@ -13332,9 +13363,19 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 							BestDetectionChance,
 							FMath::Clamp(SensorStrength + ContactRule.Signature - DistancePenalty, 1, 100));
 					}
-					if (BestDetectionChance > 0
-						&& Transaction.SimulationRandom.NextIntInclusive(1, 100) <= BestDetectionChance)
+					if (BestDetectionChance > 0)
 					{
+						int32 DetectionRoll = 0;
+						if (!Transaction.SimulationRandom.TryNextIntInclusive(1, 100, DetectionRoll))
+						{
+							bSimulationFailed = true;
+							bStopRequested = true;
+							return;
+						}
+						if (DetectionRoll > BestDetectionChance)
+						{
+							continue;
+						}
 						Contact.Status = EStrategicContactStatus::Detected;
 						FStrategicEvent& Detected = AddEvent(Result, EStrategicEventType::StrategicContactDetected, NextSequence, Slice.CurrentUtc);
 						Detected.ContactId = Contact.ContactId;
@@ -21361,7 +21402,15 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			int32 FacilitiesHit = 0;
 			for (int32 Target = 0; Target < MaximumFacilityTargets; ++Target)
 			{
-				const int32 SelectedIndex = Transaction.SimulationRandom.NextIntInclusive(0, DamageCandidateIds.Num() - 1);
+				int32 SelectedIndex = 0;
+				if (!Transaction.SimulationRandom.TryNextIntInclusive(
+						0, DamageCandidateIds.Num() - 1, SelectedIndex))
+				{
+					Result.Events.Reset();
+					AddError(Result, TEXT("random_draw_overflow"),
+						TEXT("Tactical base-defense breach exceeds the deterministic random-stream draw range."));
+					return Result;
+				}
 				const FGuid FacilityInstanceId = DamageCandidateIds[SelectedIndex];
 				DamageCandidateIds.RemoveAt(SelectedIndex, EAllowShrinking::No);
 				FBaseFacilityState* Facility = FindFacility(*Base, FacilityInstanceId);
@@ -22399,7 +22448,15 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			int32 Hits = 0;
 			for (int32 Shot = 0; Shot < Shots; ++Shot)
 			{
-				Hits += Transaction.SimulationRandom.NextIntInclusive(1, 100) <= HitChance ? 1 : 0;
+				int32 HitRoll = 0;
+				if (!Transaction.SimulationRandom.TryNextIntInclusive(1, 100, HitRoll))
+				{
+					Result.Events.Reset();
+					AddError(Result, TEXT("random_draw_overflow"),
+						TEXT("Interception round exceeds the deterministic random-stream draw range."));
+					return Result;
+				}
+				Hits += HitRoll <= HitChance ? 1 : 0;
 			}
 			WeaponState.Ammunition -= Shots;
 			WeaponState.RemainingCooldownSeconds = Weapon.FireIntervalSeconds;
@@ -22543,7 +22600,15 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	}
 	else if (Contact->RemainingAttackCooldownSeconds == 0)
 	{
-		const int32 TargetIndex = Transaction.SimulationRandom.NextIntInclusive(0, ParticipantIds.Num() - 1);
+		int32 TargetIndex = 0;
+		if (!Transaction.SimulationRandom.TryNextIntInclusive(
+				0, ParticipantIds.Num() - 1, TargetIndex))
+		{
+			Result.Events.Reset();
+			AddError(Result, TEXT("random_draw_overflow"),
+				TEXT("Interception round exceeds the deterministic random-stream draw range."));
+			return Result;
+		}
 		const FGuid TargetCraftId = ParticipantIds[TargetIndex];
 		FCraftState* TargetCraft = FindCraft(Transaction, TargetCraftId);
 		check(TargetCraft != nullptr);
@@ -22563,7 +22628,14 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 				+ ContactManeuver.IncomingAccuracyModifier,
 			5,
 			100);
-		const int32 AttackRoll = Transaction.SimulationRandom.NextIntInclusive(1, 100);
+		int32 AttackRoll = 0;
+		if (!Transaction.SimulationRandom.TryNextIntInclusive(1, 100, AttackRoll))
+		{
+			Result.Events.Reset();
+			AddError(Result, TEXT("random_draw_overflow"),
+				TEXT("Interception round exceeds the deterministic random-stream draw range."));
+			return Result;
+		}
 		const bool bHit = AttackRoll <= HitChance;
 		Contact->RemainingAttackCooldownSeconds = ContactRule->AttackIntervalSeconds;
 		const int32 AppliedDamage = bHit
@@ -22838,7 +22910,14 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			Consumed.Amount = -Shot.SupplyQuantity;
 			Consumed.Quantity = Shot.SupplyQuantity;
 		}
-		const int32 Roll = Transaction.SimulationRandom.NextIntInclusive(1, 100);
+		int32 Roll = 0;
+		if (!Transaction.SimulationRandom.TryNextIntInclusive(1, 100, Roll))
+		{
+			Result.Events.Reset();
+			AddError(Result, TEXT("random_draw_overflow"),
+				TEXT("Base defense exceeds the deterministic random-stream draw range."));
+			return Result;
+		}
 		const bool bHit = Roll <= Shot.Accuracy;
 		const int32 AppliedDamage = bHit ? FMath::Min(Contact->CurrentHull, Shot.Damage) : 0;
 		Contact->CurrentHull -= AppliedDamage;
@@ -22911,7 +22990,15 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		const int32 TargetCount = FMath::Min(DamageCandidateIds.Num(), MissionRule->BaseFacilitiesHit);
 		for (int32 Target = 0; Target < TargetCount; ++Target)
 		{
-			const int32 SelectedIndex = Transaction.SimulationRandom.NextIntInclusive(0, DamageCandidateIds.Num() - 1);
+			int32 SelectedIndex = 0;
+			if (!Transaction.SimulationRandom.TryNextIntInclusive(
+					0, DamageCandidateIds.Num() - 1, SelectedIndex))
+			{
+				Result.Events.Reset();
+				AddError(Result, TEXT("random_draw_overflow"),
+					TEXT("Base-defense breach exceeds the deterministic random-stream draw range."));
+				return Result;
+			}
 			const FGuid FacilityInstanceId = DamageCandidateIds[SelectedIndex];
 			DamageCandidateIds.RemoveAt(SelectedIndex, EAllowShrinking::No);
 			FBaseFacilityState* Facility = FindFacility(*Base, FacilityInstanceId);
