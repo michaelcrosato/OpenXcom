@@ -341,7 +341,7 @@ FCampaignSaveStoreResult FCampaignSaveStore::Save(
 	{
 		if (!FileManager.FileExists(*PrimaryPath) && FileManager.FileExists(*BackupPath))
 		{
-			FileManager.Move(*BackupPath, *PrimaryPath, true, true, false, true);
+			FileManager.Move(*PrimaryPath, *BackupPath, true, true, false, true);
 		}
 		AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("save_commit_failed"), TEXT("Could not atomically promote the verified temporary campaign save."));
 		return Result;
