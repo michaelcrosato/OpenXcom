@@ -12590,6 +12590,82 @@ bool FStrategicRandomCapacityTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicRandomMissionSelectionCapacityTest,
+	"UEGT.Core.StrategicCommands.RandomMissionSelectionCapacity",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicRandomMissionSelectionCapacityTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	FResolvedRuleSet Rules = MakeRules();
+	FAdversaryMissionRule Mission;
+	Mission.Identity.RuleId = TEXT("mission.random-cadence-raid");
+	Mission.DisplayName = TEXT("Random Cadence Raid");
+	Mission.ContactRuleId = TEXT("contact.skimmer");
+	Mission.TargetRegionId = TEXT("region.cascadia");
+	Mission.bTargetsPlayerBase = true;
+	Mission.OriginLongitudeMilliDegrees = -123120;
+	Mission.OriginLatitudeMilliDegrees = 49280;
+	Mission.IntervalHours = 1;
+	Mission.MinimumEscalation = 1;
+	Mission.SelectionWeight = 1;
+	Rules.AdversaryMissions.Add(Mission.Identity.RuleId, Mission);
+
+	FStrategicSimulationConfig Config = MakeConfig();
+	Config.MaxActiveAdversaryMissions = 4;
+	Config.CadetAdversaryIntervalPercent = 25;
+	FCampaignState State = MakeStateWithBase();
+	State.Difficulty = ECampaignDifficulty::Cadet;
+	State.SimulationRandom.Initialize(90210);
+	State.Funds = 50000;
+	const FGuid SecondaryBaseId(0x99999999, 0xAAAAAAAA, 0xBBBBBBBB, 0xCCCCCCCC);
+	FEstablishBaseCommand EstablishSecondaryBase = MakeBaseCommand(State.CommandSequence);
+	EstablishSecondaryBase.BaseId = SecondaryBaseId;
+	EstablishSecondaryBase.Name = TEXT("Southwatch");
+	EstablishSecondaryBase.LongitudeMilliDegrees = -123000;
+	EstablishSecondaryBase.LatitudeMilliDegrees = 49280;
+	const FStrategicCommandResult SecondaryBaseResult = FStrategicCommandService::Execute(
+		State, Rules, Config, EstablishSecondaryBase);
+	TestTrue(TEXT("Mission-selection fixture establishes a second base for target selection"),
+		SecondaryBaseResult.bAccepted && State.Bases.Num() == 2);
+	if (!SecondaryBaseResult.bAccepted || State.Bases.Num() != 2)
+	{
+		AddError(TEXT("Mission-selection fixture could not establish its second base."));
+		return false;
+	}
+
+	State.StrategicTime = FStrategicTimestamp(FDateTime(2035, 1, 1, 12, 0, 0));
+	State.NextAdversaryMissionSeconds = 5;
+	State.SimulationRandom.RestoreFromSave(
+		State.SimulationRandom.InitialSeed,
+		MAX_int64 - 12,
+		State.SimulationRandom.GetStateForSave());
+	const int64 InitialSequence = State.CommandSequence;
+	const int64 InitialDrawCount = State.SimulationRandom.DrawCount;
+	const FStrategicCommandResult CapacityValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceRandomCapacity(
+			State, Rules, Config, 3600);
+	TestTrue(TEXT("Random-capacity validation includes all one-hour mission-selection draws"),
+		!CapacityValidation.bAccepted
+		&& CapacityValidation.HasDiagnostic(TEXT("random_draw_overflow")));
+
+	FAdvanceStrategicTimeCommand Advance;
+	Advance.ExpectedSequence = InitialSequence;
+	Advance.Rate = EStrategicTimeRate::OneHour;
+	const FStrategicCommandResult Result = FStrategicCommandService::Execute(
+		State, Rules, Config, Advance);
+	TestTrue(TEXT("A one-hour cadence cannot exhaust mission-selection and sensor draws atomically"),
+		!Result.bAccepted
+		&& Result.HasDiagnostic(TEXT("random_draw_overflow"))
+		&& State.CommandSequence == InitialSequence
+		&& State.SimulationRandom.DrawCount == InitialDrawCount
+		&& State.AdversaryMissions.IsEmpty()
+		&& State.StrategicContacts.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicAdversaryCoordinateBoundaryTest,
 	"UEGT.Core.StrategicCommands.AdversaryCoordinateBoundary",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

@@ -6414,8 +6414,17 @@ namespace StrategicCommandServicePrivate
 			return false;
 		}
 		int64 MaximumSensorDraws = 0;
-		const int64 MaximumMissionSelectionDraws = Rules.AdversaryMissions.IsEmpty()
-			? 0 : MaximumSensorPasses + 1;
+		int64 MaximumMissionSelectionDraws = 0;
+		if (!Rules.AdversaryMissions.IsEmpty()
+			&& !TryMultiplyNonNegative(
+				MaximumAdditionalMissions,
+				State.Bases.Num() > 1 ? 2 : 1,
+				MaximumMissionSelectionDraws))
+		{
+			AddError(Result, TEXT("random_draw_overflow"),
+				TEXT("Adversary scheduling would exceed the deterministic random-stream range."));
+			return false;
+		}
 		int64 MaximumTimeAdvanceDraws = 0;
 		if (!TryMultiplyNonNegative(MaximumHiddenContacts, MaximumSensorPasses, MaximumSensorDraws)
 			|| !TryAdd(MaximumArrivalDraws, MaximumSensorDraws, MaximumTimeAdvanceDraws)
