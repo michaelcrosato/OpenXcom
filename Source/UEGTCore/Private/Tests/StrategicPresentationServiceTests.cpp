@@ -989,6 +989,42 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !MonthlyFinancialCapacitySnapshot.bCanAdvanceTime
 		&& MonthlyFinancialCapacitySnapshot.Diagnostics.Contains(
 			TEXT("Monthly campaign finances exceed the supported numeric range.")));
+	FCampaignState MonthlyCompletionCapacityCampaign;
+	MonthlyCompletionCapacityCampaign.StrategicTime =
+		FStrategicTimestamp(FDateTime(2035, 1, 31, 23, 59, 55));
+	MonthlyCompletionCapacityCampaign.SimulationRandom.Initialize(0);
+	MonthlyCompletionCapacityCampaign.Funds = MIN_int64;
+	MonthlyCompletionCapacityCampaign.MonthlyFunding = Operations.MonthlyMaintenance;
+	MonthlyCompletionCapacityCampaign.NextAdversaryMissionSeconds = 2 * 86400;
+	const FGuid MonthlyCompletionBaseId(101, 102, 103, 104);
+	FStrategicBaseState& MonthlyCompletionBase =
+		MonthlyCompletionCapacityCampaign.Bases.AddDefaulted_GetRef();
+	MonthlyCompletionBase.BaseId = MonthlyCompletionBaseId;
+	MonthlyCompletionBase.Name = TEXT("Monthly Completion Station");
+	MonthlyCompletionBase.RegionId = Mission.TargetRegionId;
+	MonthlyCompletionBase.LongitudeMilliDegrees = 11000;
+	MonthlyCompletionBase.LatitudeMilliDegrees = 33000;
+	MonthlyCompletionBase.ScientistCapacity = 10;
+	MonthlyCompletionBase.EngineerCapacity = 10;
+	MonthlyCompletionBase.Facilities.Add({
+		FGuid(105, 106, 107, 108), Operations.Identity.RuleId, 0, 0 });
+	FFacilityConstructionProjectState& MonthlyCompletionProject =
+		MonthlyCompletionCapacityCampaign.FacilityConstructionProjects.AddDefaulted_GetRef();
+	MonthlyCompletionProject.ProjectId = FGuid(109, 110, 111, 112);
+	MonthlyCompletionProject.FacilityInstanceId = FGuid(113, 114, 115, 116);
+	MonthlyCompletionProject.BaseId = MonthlyCompletionBaseId;
+	MonthlyCompletionProject.FacilityId = Fabrication.Identity.RuleId;
+	MonthlyCompletionProject.GridX = 2;
+	MonthlyCompletionProject.GridY = 0;
+	MonthlyCompletionProject.RemainingBuildSeconds = 5;
+	const FStrategicDashboardSnapshot MonthlyCompletionCapacitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			MonthlyCompletionCapacityCampaign, Rules, Config);
+	TestTrue(TEXT("Dashboard includes a facility completed before month-boundary settlement"),
+		MonthlyCompletionCapacitySnapshot.bSucceeded
+		&& !MonthlyCompletionCapacitySnapshot.bCanAdvanceTime
+		&& MonthlyCompletionCapacitySnapshot.Diagnostics.Contains(
+			TEXT("Monthly campaign finances exceed the supported numeric range.")));
 	FCampaignState AdversarySerialCapacityCampaign = Campaign;
 	AdversarySerialCapacityCampaign.NextAdversaryMissionSerial = MAX_int64 - 3;
 	AdversarySerialCapacityCampaign.NextAdversaryMissionSeconds = 5;

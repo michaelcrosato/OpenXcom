@@ -1407,6 +1407,42 @@ bool FStrategicMonthlyFinanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Month boundary advances exactly one slice"), Result.ExecutedSlices, 1);
 	TestEqual(TEXT("Timestamp reaches February"), State.StrategicTime.Utc, FDateTime(2035, 2, 1, 0, 0, 0));
 
+	FCampaignState CompletionState = MakeStateWithBase();
+	CompletionState.StrategicTime = FStrategicTimestamp(FDateTime(2035, 1, 31, 23, 59, 55));
+	CompletionState.Funds = MIN_int64;
+	CompletionState.MonthlyFunding = 100;
+	FFacilityConstructionProjectState& CompletionProject =
+		CompletionState.FacilityConstructionProjects.AddDefaulted_GetRef();
+	CompletionProject.ProjectId = FGuid(601, 602, 603, 604);
+	CompletionProject.FacilityInstanceId = FGuid(605, 606, 607, 608);
+	CompletionProject.BaseId = TestBaseId;
+	CompletionProject.FacilityId = TEXT("facility.fabrication-bay");
+	CompletionProject.GridX = 1;
+	CompletionProject.GridY = 0;
+	CompletionProject.RemainingBuildSeconds = 5;
+	const FStrategicSimulationConfig CompletionConfig = MakeConfig();
+	const FStrategicCommandResult CompletionCapacity =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceFinancialCapacity(
+			CompletionState, Rules, CompletionConfig, 5);
+	TestTrue(TEXT("Monthly financial-capacity validation includes a facility completed before settlement"),
+		!CompletionCapacity.bAccepted
+		&& CompletionCapacity.HasDiagnostic(TEXT("financial_overflow")));
+	const int64 CompletionSequence = CompletionState.CommandSequence;
+	const int64 CompletionFunds = CompletionState.Funds;
+	FAdvanceStrategicTimeCommand CompletionAdvance;
+	CompletionAdvance.ExpectedSequence = CompletionSequence;
+	CompletionAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+	const FStrategicCommandResult CompletionResult =
+		FStrategicCommandService::Execute(
+			CompletionState, Rules, CompletionConfig, CompletionAdvance);
+	TestTrue(TEXT("A facility completion cannot underflow month-boundary finances during time advance"),
+		!CompletionResult.bAccepted
+		&& CompletionResult.HasDiagnostic(TEXT("financial_overflow"))
+		&& CompletionState.CommandSequence == CompletionSequence
+		&& CompletionState.Funds == CompletionFunds
+		&& CompletionState.FacilityConstructionProjects.Num() == 1
+		&& CompletionState.FacilityConstructionProjects[0].RemainingBuildSeconds == 5);
+
 	FCampaignState Invalid = State;
 	Invalid.Bases[0].Facilities[0].FacilityId = TEXT("facility.not-loaded");
 	Advance.ExpectedSequence = Invalid.CommandSequence;

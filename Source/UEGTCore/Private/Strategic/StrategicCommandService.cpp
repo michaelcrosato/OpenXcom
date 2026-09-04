@@ -5806,6 +5806,68 @@ namespace StrategicCommandServicePrivate
 		return true;
 	}
 
+	bool AddProjectedMonthlyCompletionCosts(
+		const FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const int64 RequestedSeconds,
+		int64& MonthlyMaintenance,
+		int64& MonthlySalaries,
+		int64& MonthlyCraftMaintenance,
+		FStrategicCommandResult& Result)
+	{
+		for (const FFacilityConstructionProjectState& Project : State.FacilityConstructionProjects)
+		{
+			if (Project.RemainingBuildSeconds <= 0
+				|| Project.RemainingBuildSeconds > RequestedSeconds)
+			{
+				continue;
+			}
+			const FFacilityRule* Facility = Rules.Facilities.Find(Project.FacilityId);
+			if (Facility != nullptr && !TryAdd(
+					MonthlyMaintenance, Facility->MonthlyMaintenance, MonthlyMaintenance))
+			{
+				AddError(Result, TEXT("financial_overflow"),
+					TEXT("Monthly facility maintenance exceeds the campaign numeric range."));
+				return false;
+			}
+		}
+
+		for (const FRecruitmentOrderState& Order : State.RecruitmentOrders)
+		{
+			if (Order.RemainingTransitSeconds <= 0
+				|| Order.RemainingTransitSeconds > RequestedSeconds)
+			{
+				continue;
+			}
+			const FPersonnelRoleRule* Role = Rules.PersonnelRoles.Find(Order.RoleId);
+			if (Role != nullptr && !TryAdd(
+					MonthlySalaries, Role->MonthlySalary, MonthlySalaries))
+			{
+				AddError(Result, TEXT("financial_overflow"),
+					TEXT("Monthly personnel salaries exceed the campaign numeric range."));
+				return false;
+			}
+		}
+
+		for (const FCraftAcquisitionOrderState& Order : State.CraftAcquisitionOrders)
+		{
+			if (Order.RemainingTransitSeconds <= 0
+				|| Order.RemainingTransitSeconds > RequestedSeconds)
+			{
+				continue;
+			}
+			const FCraftRule* Craft = Rules.Craft.Find(Order.CraftRuleId);
+			if (Craft != nullptr && !TryAdd(
+					MonthlyCraftMaintenance, Craft->MonthlyMaintenance, MonthlyCraftMaintenance))
+			{
+				AddError(Result, TEXT("financial_overflow"),
+					TEXT("Monthly craft maintenance exceeds the campaign numeric range."));
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool ValidateStrategicMonthlyFinancialCapacity(
 		const FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -5850,6 +5912,9 @@ namespace StrategicCommandServicePrivate
 			|| !ComputeMonthlyPersonnelSalaries(ProjectedState, Rules, MonthlySalaries, Result)
 			|| !ComputeMonthlyCraftMaintenance(
 				ProjectedState, Rules, MonthlyCraftMaintenance, Result)
+			|| !AddProjectedMonthlyCompletionCosts(
+				State, Rules, RequestedSeconds, MonthlyMaintenance,
+				MonthlySalaries, MonthlyCraftMaintenance, Result)
 			|| !ValidateMonthlyFinancialTotals(
 				ProjectedState, MonthlyMaintenance, MonthlySalaries,
 				MonthlyCraftMaintenance, Result))
