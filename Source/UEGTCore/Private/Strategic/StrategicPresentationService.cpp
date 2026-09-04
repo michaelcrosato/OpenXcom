@@ -3618,7 +3618,7 @@ FStrategicDashboardSnapshot FStrategicPresentationService::BuildDashboard(
 					StorageUnavailableReason(ProjectBaseView, View.CancellationStorageDelta);
 			}
 		}
-		View.Progress = Progress(Project.AccumulatedWorkSeconds, TotalRequiredWork);
+		View.Progress = Progress(Project.AccumulatedWorkSeconds, RequiredPerUnit);
 		View.RemainingSeconds = !View.bPaused && AssignedEngineers > 0
 			? CeilScaledWorkSeconds(
 				TotalRemainingWork, AssignedEngineers, View.ManufacturingRatePercent)

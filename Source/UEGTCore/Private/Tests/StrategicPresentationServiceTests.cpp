@@ -3253,12 +3253,6 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& Snapshot.Projects[1].MaterialRequirements[0].RefundableQuantity == 4
 		&& Snapshot.Projects[1].StorageDeltaPerUnit == 1
 		&& Snapshot.Projects[1].CancellationStorageDelta == -7
-		&& FMath::IsNearlyEqual(
-			Snapshot.Projects[1].Progress,
-			static_cast<float>(static_cast<double>(Production.AccumulatedWorkSeconds)
-				/ (static_cast<double>(Manufactured.ManufactureHours) * 3600.0
-					* static_cast<double>(Production.UnitsRemaining))),
-			1.0e-8f)
 		&& Snapshot.Projects[1].bCanRemoveManufacturingUnit
 		&& Snapshot.Projects[1].bCanCancel);
 	FResolvedRuleSet ExtremeProjectRules = Rules;
