@@ -3991,6 +3991,42 @@ namespace StrategicCommandServicePrivate
 			Result, CommandSequence, TimestampUtc);
 	}
 
+	bool ApplyDueAdversaryMissionEscapes(
+		FCampaignState& State,
+		const FResolvedRuleSet& Rules,
+		const FStrategicSimulationConfig& Config,
+		const int64 RequestedSeconds)
+	{
+		FStrategicCommandResult ProjectionResult;
+		for (int32 Index = State.StrategicContacts.Num() - 1; Index >= 0; --Index)
+		{
+			const FStrategicContactState& Contact = State.StrategicContacts[Index];
+			if (Contact.ElapsedRouteSeconds >= Contact.TotalRouteSeconds
+				|| Contact.TotalRouteSeconds - Contact.ElapsedRouteSeconds > RequestedSeconds)
+			{
+				continue;
+			}
+			const FAdversaryMissionState* Mission =
+				FindAdversaryMission(State, Contact.ContactId);
+			const FAdversaryMissionRule* MissionRule = Mission != nullptr
+				? Rules.AdversaryMissions.Find(Mission->MissionRuleId)
+				: nullptr;
+			if (Mission == nullptr || MissionRule == nullptr || MissionRule->bTargetsPlayerBase)
+			{
+				continue;
+			}
+			const FGuid ContactId = Contact.ContactId;
+			if (!ApplyAdversaryMissionEscape(
+				State, Rules, Config, ContactId, ProjectionResult,
+				State.CommandSequence, State.StrategicTime.Utc))
+			{
+				return false;
+			}
+			State.StrategicContacts.RemoveAt(Index, EAllowShrinking::No);
+		}
+		return true;
+	}
+
 	bool ApplyAdversaryMissionThwarted(
 		FCampaignState& State,
 		const FResolvedRuleSet& Rules,
@@ -5896,6 +5932,13 @@ namespace StrategicCommandServicePrivate
 
 		FCampaignState ProjectedState = State;
 		FStrategicCommandResult ProjectionResult;
+		if (!ApplyDueAdversaryMissionEscapes(
+				ProjectedState, Rules, Config, RequestedSeconds))
+		{
+			AddError(Result, TEXT("financial_overflow"),
+				TEXT("Monthly adversary consequences exceed the supported numeric range."));
+			return false;
+		}
 		if (!ReviewRegionalMandates(
 				ProjectedState, Rules, Config, ProjectionResult,
 				ProjectedState.CommandSequence, EndUtc))

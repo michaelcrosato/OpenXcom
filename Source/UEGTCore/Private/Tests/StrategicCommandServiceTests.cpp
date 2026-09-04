@@ -1443,6 +1443,73 @@ bool FStrategicMonthlyFinanceTest::RunTest(const FString& Parameters)
 		&& CompletionState.FacilityConstructionProjects.Num() == 1
 		&& CompletionState.FacilityConstructionProjects[0].RemainingBuildSeconds == 5);
 
+	const FResolvedRuleSet EscapeRules = MakeAdversaryRules();
+	FCampaignState EscapeState = MakeStateWithBase();
+	EscapeState.StrategicTime = FStrategicTimestamp(FDateTime(2035, 1, 31, 23, 59, 45));
+	EscapeState.Funds = MIN_int64;
+	EscapeState.MonthlyFunding = 5500;
+	FRegionalPressureState& EscapePressure = EscapeState.RegionalPressure.AddDefaulted_GetRef();
+	EscapePressure.RegionId = TEXT("region.cascadia");
+	EscapePressure.Pressure = 0;
+	FRegionalMandateState& EscapeMandate = EscapeState.RegionalMandates.AddDefaulted_GetRef();
+	EscapeMandate.RegionId = EscapePressure.RegionId;
+	EscapeMandate.Support = 100;
+	EscapeMandate.BaselineMonthlyFunding = 5000;
+	EscapeMandate.CurrentMonthlyFunding = 5500;
+	EscapeState.NextAdversaryMissionSeconds = 5;
+	FAdvanceStrategicTimeCommand LaunchEscapeMission;
+	LaunchEscapeMission.ExpectedSequence = EscapeState.CommandSequence;
+	LaunchEscapeMission.Rate = EStrategicTimeRate::FiveSeconds;
+	const FStrategicCommandResult EscapeMissionLaunched =
+		FStrategicCommandService::Execute(
+			EscapeState, EscapeRules, MakeConfig(), LaunchEscapeMission);
+	TestTrue(TEXT("Month-boundary escape fixture launches its adversary mission"),
+		EscapeMissionLaunched.bAccepted
+		&& EscapeState.AdversaryMissions.Num() == 1
+		&& EscapeState.StrategicContacts.Num() == 1);
+	if (EscapeState.AdversaryMissions.Num() == 1 && EscapeState.StrategicContacts.Num() == 1)
+	{
+		FStrategicContactState& EscapeContact = EscapeState.StrategicContacts[0];
+		EscapeContact.Status = EStrategicContactStatus::Detected;
+		EscapeContact.ElapsedRouteSeconds = EscapeContact.TotalRouteSeconds - 5;
+		EscapeContact.LongitudeMilliDegrees = static_cast<int32>(
+			static_cast<int64>(EscapeContact.OriginLongitudeMilliDegrees)
+			+ (static_cast<int64>(EscapeContact.DestinationLongitudeMilliDegrees)
+				- EscapeContact.OriginLongitudeMilliDegrees)
+				* EscapeContact.ElapsedRouteSeconds / EscapeContact.TotalRouteSeconds);
+		EscapeContact.LatitudeMilliDegrees = static_cast<int32>(
+			static_cast<int64>(EscapeContact.OriginLatitudeMilliDegrees)
+			+ (static_cast<int64>(EscapeContact.DestinationLatitudeMilliDegrees)
+				- EscapeContact.OriginLatitudeMilliDegrees)
+				* EscapeContact.ElapsedRouteSeconds / EscapeContact.TotalRouteSeconds);
+		EscapeState.StrategicTime = FStrategicTimestamp(FDateTime(2035, 1, 31, 23, 59, 55));
+		const int64 EscapeSequence = EscapeState.CommandSequence;
+		const int64 EscapeFunds = EscapeState.Funds;
+		const int64 EscapeFunding = EscapeState.MonthlyFunding;
+		const FStrategicCommandResult EscapeFinancialCapacity =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceFinancialCapacity(
+				EscapeState, EscapeRules, MakeConfig(), 5);
+		TestTrue(TEXT("Monthly financial-capacity validation includes due adversary funding consequences"),
+			!EscapeFinancialCapacity.bAccepted
+			&& EscapeFinancialCapacity.HasDiagnostic(TEXT("financial_overflow")));
+		FAdvanceStrategicTimeCommand EscapeAdvance;
+		EscapeAdvance.ExpectedSequence = EscapeSequence;
+		EscapeAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+		const FStrategicCommandResult EscapeResult =
+			FStrategicCommandService::Execute(
+				EscapeState, EscapeRules, MakeConfig(), EscapeAdvance);
+		TestTrue(TEXT("A due adversary escape cannot underflow month-boundary finances"),
+			!EscapeResult.bAccepted
+			&& EscapeResult.HasDiagnostic(TEXT("financial_overflow"))
+			&& EscapeState.CommandSequence == EscapeSequence
+			&& EscapeState.Funds == EscapeFunds
+			&& EscapeState.MonthlyFunding == EscapeFunding
+			&& EscapeState.AdversaryMissions.Num() == 1
+			&& EscapeState.StrategicContacts.Num() == 1
+			&& EscapeState.StrategicContacts[0].ElapsedRouteSeconds
+				== EscapeState.StrategicContacts[0].TotalRouteSeconds - 5);
+	}
+
 	FCampaignState Invalid = State;
 	Invalid.Bases[0].Facilities[0].FacilityId = TEXT("facility.not-loaded");
 	Advance.ExpectedSequence = Invalid.CommandSequence;

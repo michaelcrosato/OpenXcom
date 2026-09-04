@@ -1025,6 +1025,93 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !MonthlyCompletionCapacitySnapshot.bCanAdvanceTime
 		&& MonthlyCompletionCapacitySnapshot.Diagnostics.Contains(
 			TEXT("Monthly campaign finances exceed the supported numeric range.")));
+	FResolvedRuleSet MonthlyEscapeCapacityRules = Rules;
+	FContactRule& MonthlyEscapeContactRule =
+		MonthlyEscapeCapacityRules.Contacts.FindChecked(ContactRule.Identity.RuleId);
+	MonthlyEscapeContactRule.CruiseSpeedKilometersPerHour = 1000;
+	FAdversaryMissionRule& MonthlyEscapeMissionRule =
+		MonthlyEscapeCapacityRules.AdversaryMissions.FindChecked(Mission.Identity.RuleId);
+	MonthlyEscapeMissionRule.PlanId = NAME_None;
+	MonthlyEscapeMissionRule.PlanStage = 0;
+	MonthlyEscapeMissionRule.EscapeBranchMissionRuleId = NAME_None;
+	MonthlyEscapeMissionRule.ThwartBranchMissionRuleId = NAME_None;
+	MonthlyEscapeMissionRule.FundingPenaltyOnEscape = 20000;
+	FCampaignState MonthlyEscapeCapacityCampaign;
+	MonthlyEscapeCapacityCampaign.StrategicTime =
+		FStrategicTimestamp(FDateTime(2035, 1, 31, 23, 59, 55));
+	MonthlyEscapeCapacityCampaign.SimulationRandom.Initialize(0);
+	MonthlyEscapeCapacityCampaign.Funds = MIN_int64;
+	MonthlyEscapeCapacityCampaign.MonthlyFunding = 5500;
+	MonthlyEscapeCapacityCampaign.NextAdversaryMissionSerial = 2;
+	MonthlyEscapeCapacityCampaign.NextAdversaryMissionSeconds = 2 * 86400;
+	MonthlyEscapeCapacityCampaign.RegionalPressure.Add({ Mission.TargetRegionId, 0 });
+	FRegionalMandateState& MonthlyEscapeCapacityMandate =
+		MonthlyEscapeCapacityCampaign.RegionalMandates.AddDefaulted_GetRef();
+	MonthlyEscapeCapacityMandate.RegionId = Mission.TargetRegionId;
+	MonthlyEscapeCapacityMandate.Support = 100;
+	MonthlyEscapeCapacityMandate.BaselineMonthlyFunding = 5000;
+	MonthlyEscapeCapacityMandate.CurrentMonthlyFunding = 5500;
+	FStrategicBaseState& MonthlyEscapeCapacityBase =
+		MonthlyEscapeCapacityCampaign.Bases.AddDefaulted_GetRef();
+	MonthlyEscapeCapacityBase.BaseId = FGuid(945, 946, 947, 948);
+	MonthlyEscapeCapacityBase.Name = TEXT("Monthly Escape Station");
+	MonthlyEscapeCapacityBase.RegionId = Mission.TargetRegionId;
+	MonthlyEscapeCapacityBase.LongitudeMilliDegrees = 11000;
+	MonthlyEscapeCapacityBase.LatitudeMilliDegrees = 33000;
+	MonthlyEscapeCapacityBase.ScientistCapacity = 10;
+	MonthlyEscapeCapacityBase.EngineerCapacity = 10;
+	MonthlyEscapeCapacityBase.Facilities.Add({
+		FGuid(949, 950, 951, 952), Operations.Identity.RuleId, 0, 0 });
+	FCreateStrategicContactCommand CreateMonthlyEscapeContact;
+	CreateMonthlyEscapeContact.ExpectedSequence = MonthlyEscapeCapacityCampaign.CommandSequence;
+	CreateMonthlyEscapeContact.ContactId = FGuid(953, 954, 955, 956);
+	CreateMonthlyEscapeContact.ContactRuleId = ContactRule.Identity.RuleId;
+	CreateMonthlyEscapeContact.OriginLongitudeMilliDegrees = -20000;
+	CreateMonthlyEscapeContact.OriginLatitudeMilliDegrees = 10000;
+	CreateMonthlyEscapeContact.DestinationLongitudeMilliDegrees = 12000;
+	CreateMonthlyEscapeContact.DestinationLatitudeMilliDegrees = 34000;
+	const FStrategicCommandResult MonthlyEscapeContactCreated =
+		FStrategicCommandService::Execute(
+			MonthlyEscapeCapacityCampaign, MonthlyEscapeCapacityRules,
+			CreateMonthlyEscapeContact);
+	TestTrue(TEXT("Presentation month-boundary escape fixture creates its contact"),
+		MonthlyEscapeContactCreated.bAccepted
+		&& MonthlyEscapeCapacityCampaign.StrategicContacts.Num() == 1);
+	if (MonthlyEscapeContactCreated.bAccepted
+		&& MonthlyEscapeCapacityCampaign.StrategicContacts.Num() == 1)
+	{
+		FStrategicContactState& MonthlyEscapeContact =
+			MonthlyEscapeCapacityCampaign.StrategicContacts[0];
+		MonthlyEscapeContact.Status = EStrategicContactStatus::Detected;
+		MonthlyEscapeContact.ElapsedRouteSeconds = MonthlyEscapeContact.TotalRouteSeconds - 5;
+		MonthlyEscapeContact.LongitudeMilliDegrees = static_cast<int32>(
+			static_cast<int64>(MonthlyEscapeContact.OriginLongitudeMilliDegrees)
+			+ (static_cast<int64>(MonthlyEscapeContact.DestinationLongitudeMilliDegrees)
+				- MonthlyEscapeContact.OriginLongitudeMilliDegrees)
+				* MonthlyEscapeContact.ElapsedRouteSeconds
+				/ MonthlyEscapeContact.TotalRouteSeconds);
+		MonthlyEscapeContact.LatitudeMilliDegrees = static_cast<int32>(
+			static_cast<int64>(MonthlyEscapeContact.OriginLatitudeMilliDegrees)
+			+ (static_cast<int64>(MonthlyEscapeContact.DestinationLatitudeMilliDegrees)
+				- MonthlyEscapeContact.OriginLatitudeMilliDegrees)
+				* MonthlyEscapeContact.ElapsedRouteSeconds
+				/ MonthlyEscapeContact.TotalRouteSeconds);
+		FAdversaryMissionState& MonthlyEscapeMission =
+			MonthlyEscapeCapacityCampaign.AdversaryMissions.AddDefaulted_GetRef();
+		MonthlyEscapeMission.MissionId = FGuid(957, 958, 959, 960);
+		MonthlyEscapeMission.ContactId = MonthlyEscapeContact.ContactId;
+		MonthlyEscapeMission.MissionRuleId = Mission.Identity.RuleId;
+		MonthlyEscapeMission.StartedUtc = MonthlyEscapeCapacityCampaign.StrategicTime.Utc;
+		MonthlyEscapeCapacityCampaign.AdversaryMissionsLaunched = 1;
+		const FStrategicDashboardSnapshot MonthlyEscapeCapacitySnapshot =
+			FStrategicPresentationService::BuildDashboard(
+				MonthlyEscapeCapacityCampaign, MonthlyEscapeCapacityRules, Config);
+		TestTrue(TEXT("Dashboard disables time advancement before a due adversary escape underflows month-boundary finances"),
+			MonthlyEscapeCapacitySnapshot.bSucceeded
+			&& !MonthlyEscapeCapacitySnapshot.bCanAdvanceTime
+			&& MonthlyEscapeCapacitySnapshot.Diagnostics.Contains(
+				TEXT("Monthly campaign finances exceed the supported numeric range.")));
+	}
 	FCampaignState AdversarySerialCapacityCampaign = Campaign;
 	AdversarySerialCapacityCampaign.NextAdversaryMissionSerial = MAX_int64 - 3;
 	AdversarySerialCapacityCampaign.NextAdversaryMissionSeconds = 5;
