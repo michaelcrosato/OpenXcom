@@ -127,6 +127,11 @@ bool FDeterministicRandomStream::TryNextIntInclusive(
 
 bool FDeterministicRandomStream::Chance(const double Probability)
 {
+	if (!IsValid() || DrawCount >= MAX_int64 - 1)
+	{
+		return false;
+	}
+
 	const double Draw = NextUnitDouble();
 	return Draw < FMath::Clamp(Probability, 0.0, 1.0);
 }

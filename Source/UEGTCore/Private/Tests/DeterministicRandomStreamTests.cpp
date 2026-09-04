@@ -116,6 +116,15 @@ bool FDeterministicRandomBoundaryTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Terminal draws saturate instead of wrapping the save counter"), Stream.DrawCount, MAX_int64);
 	TestFalse(TEXT("A saturated stream remains invalid for save validation"), Stream.IsValid());
 
+	FDeterministicRandomStream ChanceBoundary;
+	const uint64 ChanceState = ChanceBoundary.GetStateForSave();
+	TestTrue(TEXT("A stream with one raw draw remaining can be restored"),
+		ChanceBoundary.RestoreFromSave(7, MAX_int64 - 1, ChanceState));
+	TestFalse(TEXT("Chance fails closed when no save-safe draw remains"), ChanceBoundary.Chance(1.0));
+	TestEqual(TEXT("Failed Chance does not advance the save counter"), ChanceBoundary.DrawCount, MAX_int64 - 1);
+	TestEqual(TEXT("Failed Chance does not mutate the stream state"), ChanceBoundary.GetStateForSave(), ChanceState);
+	TestTrue(TEXT("Failed Chance leaves the stream save-valid"), ChanceBoundary.IsValid());
+
 	return true;
 }
 
