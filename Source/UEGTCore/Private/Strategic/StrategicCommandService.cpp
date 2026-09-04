@@ -21291,6 +21291,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		TArray<FBaseDefenseProgressionOutcome> ProgressionOutcomes;
 		TArray<FBaseDefenseCommendationOutcome> CommendationOutcomes;
 		TArray<FGuid> CasualtyIds;
+		TArray<FGuid> EquipmentRecoveryBaseIds;
 		TArray<FGuid> SurvivorIds;
 		TArray<FPersonnelSquadBondAdvance> SquadBondAdvances;
 		const FName CasualtyCause(TEXT("cause.base-defense-casualty"));
@@ -21359,6 +21360,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 				AddError(Result, TEXT("invalid_tactical_casualty_state"), TEXT("Base-defense casualty references an unavailable home base."));
 				return Result;
 			}
+			EquipmentRecoveryBaseIds.AddUnique(Agent->BaseId);
 			for (const FName ItemId : Agent->EquippedItems)
 			{
 				if (!TryAdjustInventory(*HomeBase, ItemId, 1))
@@ -21385,6 +21387,15 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 		{
 			Transaction.Personnel.RemoveAll(
 				[&CasualtyIds](const FPersonnelState& Person) { return CasualtyIds.Contains(Person.PersonnelId); });
+		}
+		for (const FGuid& RecoveryBaseId : EquipmentRecoveryBaseIds)
+		{
+			if (!ValidatePlayerStorageTransition(
+				State, Transaction, Rules, RecoveryBaseId,
+				TEXT("Recovering base-defense casualty equipment"), Result))
+			{
+				return Result;
+			}
 		}
 		if (Command.bObjectiveCompleted
 			&& !AdvancePersonnelSquadBonds(Transaction, SurvivorIds, SquadBondAdvances, Result))
@@ -21743,6 +21754,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	TArray<FTacticalProgressionOutcome> ProgressionOutcomes;
 	TArray<FTacticalCommendationOutcome> CommendationOutcomes;
 	TArray<FGuid> CasualtyIds;
+	TArray<FGuid> EquipmentRecoveryBaseIds;
 	TArray<FGuid> SurvivorIds;
 	TArray<FPersonnelSquadBondAdvance> SquadBondAdvances;
 	const FName TacticalCasualtyCause(TEXT("cause.tactical-casualty"));
@@ -21814,6 +21826,7 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 			AddError(Result, TEXT("invalid_tactical_casualty_state"), TEXT("Tactical casualty references an unavailable home base."));
 			return Result;
 		}
+		EquipmentRecoveryBaseIds.AddUnique(Agent->BaseId);
 		for (const FName ItemId : Agent->EquippedItems)
 		{
 			if (!TryAdjustInventory(*Base, ItemId, 1))
@@ -21841,6 +21854,15 @@ FStrategicCommandResult FStrategicCommandService::Execute(
 	{
 		Transaction.Personnel.RemoveAll(
 			[&CasualtyIds](const FPersonnelState& Person) { return CasualtyIds.Contains(Person.PersonnelId); });
+	}
+	for (const FGuid& RecoveryBaseId : EquipmentRecoveryBaseIds)
+	{
+		if (!ValidatePlayerStorageTransition(
+			State, Transaction, Rules, RecoveryBaseId,
+			TEXT("Recovering tactical casualty equipment"), Result))
+		{
+			return Result;
+		}
 	}
 	if (Command.bObjectiveCompleted
 		&& !AdvancePersonnelSquadBonds(Transaction, SurvivorIds, SquadBondAdvances, Result))

@@ -15799,8 +15799,10 @@ bool FStrategicTacticalBaseDefenseTest::RunTest(const FString& Parameters)
 	Store.InstanceId = FGuid(0x71112233, 0x44556677, 0x8899aabb, 0xccddeeff);
 	Store.FacilityId = TEXT("facility.compact-store");
 	Store.GridX = 1;
-	AddTestPersonnel(State, FGuid(0x81000001, 2, 3, 4), TEXT("Mara Voss"));
-	AddTestPersonnel(State, FGuid(0x81000002, 2, 3, 4), TEXT("Ilya Chen"));
+	FPersonnelState& FirstDefender = AddTestPersonnel(State, FGuid(0x81000001, 2, 3, 4), TEXT("Mara Voss"));
+	FirstDefender.EquippedItems.Add(TEXT("item.service-rifle"));
+	FPersonnelState& SecondDefender = AddTestPersonnel(State, FGuid(0x81000002, 2, 3, 4), TEXT("Ilya Chen"));
+	SecondDefender.EquippedItems.Add(TEXT("item.service-rifle"));
 	State.SimulationRandom.Initialize(20350831);
 	State.NextAdversaryMissionSeconds = 5;
 
@@ -16148,6 +16150,26 @@ bool FStrategicTacticalBaseDefenseTest::RunTest(const FString& Parameters)
 	}
 	FailedPlayers[0]->CurrentHealth = 40;
 	FailedPlayers[1]->CurrentHealth = 0;
+	FResolvedRuleSet StorageRules = Rules;
+	StorageRules.Facilities.FindChecked(TEXT("facility.operations-hub")).StorageCapacity = 5;
+	FCampaignState StorageFailure = Failure;
+	StorageFailure.Bases[0].Inventory.Add({ FName(TEXT("item.service-rifle")), 1 });
+	const int64 StorageSequence = StorageFailure.CommandSequence;
+	FResolveTacticalOperationCommand StorageResolve = Resolve;
+	StorageResolve.ExpectedSequence = StorageSequence;
+	StorageResolve.bObjectiveCompleted = false;
+	const FStrategicCommandResult StorageRejected = FStrategicCommandService::Execute(
+		StorageFailure, StorageRules, Config, StorageResolve);
+	TestFalse(TEXT("Base-defense casualty equipment overflow is rejected"), StorageRejected.bAccepted);
+	TestTrue(TEXT("Base-defense casualty storage rejection has a stable diagnostic"),
+		StorageRejected.HasDiagnostic(TEXT("storage_capacity_exceeded")));
+	TestTrue(TEXT("Base-defense casualty storage rejection is atomic"),
+		StorageFailure.CommandSequence == StorageSequence
+		&& StorageFailure.Personnel.Num() == 2
+		&& StorageFailure.TacticalBattles.Num() == 1
+		&& StorageFailure.TacticalOperations.Num() == 1
+		&& StorageFailure.Bases[0].Inventory.Num() == 1
+		&& StorageFailure.Bases[0].Inventory[0].Quantity == 1);
 	FCampaignState FailureReplay = Failure;
 	Resolve.ExpectedSequence = Failure.CommandSequence;
 	Resolve.bObjectiveCompleted = false;
@@ -19884,11 +19906,35 @@ bool FTacticalCombatObjectiveExtractionCasualtyTest::RunTest(const FString& Para
 			Read.Envelope.State.TacticalBattles[0], Read.Envelope.State, Rules, Diagnostics));
 	}
 
+	const FStrategicSimulationConfig Config = MakeConfig();
+	FCampaignState StorageOverflow = First;
+	FResolvedRuleSet StorageRules = Rules;
+	StorageRules.Facilities.FindChecked(TEXT("facility.operations-hub")).StorageCapacity = 5;
+	FInventoryStack& OccupiedStorage = StorageOverflow.Bases[0].Inventory.AddDefaulted_GetRef();
+	OccupiedStorage.ItemId = TEXT("item.service-rifle");
+	OccupiedStorage.Quantity = 1;
+	const int64 StorageSequence = StorageOverflow.CommandSequence;
+	FResolveTacticalOperationCommand StorageResolve;
+	StorageResolve.ExpectedSequence = StorageSequence;
+	StorageResolve.OperationId = OperationId;
+	StorageResolve.bObjectiveCompleted = true;
+	const FStrategicCommandResult StorageRejected = FStrategicCommandService::Execute(
+		StorageOverflow, StorageRules, Config, StorageResolve);
+	TestFalse(TEXT("Tactical casualty equipment overflow is rejected"), StorageRejected.bAccepted);
+	TestTrue(TEXT("Tactical casualty storage rejection has a stable diagnostic"),
+		StorageRejected.HasDiagnostic(TEXT("storage_capacity_exceeded")));
+	TestTrue(TEXT("Tactical casualty storage rejection is atomic"),
+		StorageOverflow.CommandSequence == StorageSequence
+		&& StorageOverflow.Personnel.Num() == 3
+		&& StorageOverflow.TacticalBattles.Num() == 1
+		&& StorageOverflow.TacticalOperations.Num() == 1
+		&& StorageOverflow.Bases[0].Inventory.Num() == 1
+		&& StorageOverflow.Bases[0].Inventory[0].Quantity == 1);
+
 	FResolveTacticalOperationCommand Resolve;
 	Resolve.ExpectedSequence = First.CommandSequence;
 	Resolve.OperationId = OperationId;
 	Resolve.bObjectiveCompleted = true;
-	const FStrategicSimulationConfig Config = MakeConfig();
 	const FStrategicCommandResult Debrief = FStrategicCommandService::Execute(First, Rules, Config, Resolve);
 	TestTrue(TEXT("Successful tactical debrief commits"), Debrief.bAccepted);
 	TestTrue(TEXT("Debrief emits casualty and injury events"), Debrief.HasEvent(EStrategicEventType::PersonnelDied)
