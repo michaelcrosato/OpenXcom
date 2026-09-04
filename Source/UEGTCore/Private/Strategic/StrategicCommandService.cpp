@@ -6368,6 +6368,19 @@ namespace StrategicCommandServicePrivate
 			}
 			Projection.StrategicContacts.RemoveAt(Index, EAllowShrinking::No);
 		}
+		if (bMissionMayLaunch)
+		{
+			FCampaignState LaunchProjection = State;
+			FStrategicCommandResult LaunchProjectionResult;
+			if (!LaunchAdversaryMission(
+					LaunchProjection, Rules, Config, LaunchProjectionResult,
+					LaunchProjection.CommandSequence, LaunchProjection.StrategicTime.Utc))
+			{
+				AddError(Result, TEXT("simulation_overflow"),
+					TEXT("Strategic simulation exceeded a persisted numeric range."));
+				return false;
+			}
+		}
 		return true;
 	}
 

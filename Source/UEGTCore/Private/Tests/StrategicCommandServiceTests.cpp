@@ -12359,6 +12359,13 @@ bool FStrategicAdversaryCoordinateBoundaryTest::RunTest(const FString& Parameter
 	FCampaignState State = MakeStateWithBase();
 	const int64 InitialSequence = State.CommandSequence;
 	State.NextAdversaryMissionSeconds = 5;
+	const FStrategicCommandResult CapacityValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceAdversaryCapacity(
+			State, Rules, MakeConfig(), 5);
+	TestFalse(TEXT("Adversary time-capacity validation rejects malformed launch coordinates"),
+		CapacityValidation.bAccepted);
+	TestTrue(TEXT("Malformed adversary coordinates are reported before simulation"),
+		CapacityValidation.HasDiagnostic(TEXT("simulation_overflow")));
 	FAdvanceStrategicTimeCommand Advance;
 	Advance.ExpectedSequence = InitialSequence;
 	Advance.Rate = EStrategicTimeRate::FiveSeconds;

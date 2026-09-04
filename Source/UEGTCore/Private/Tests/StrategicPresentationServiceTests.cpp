@@ -1000,6 +1000,22 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !AdversarySerialCapacitySnapshot.bCanAdvanceTime
 		&& AdversarySerialCapacitySnapshot.Diagnostics.Contains(
 			TEXT("Strategic simulation exceeded a persisted numeric range.")));
+	FResolvedRuleSet AdversaryLaunchCoordinateRules = Rules;
+	for (TPair<FName, FAdversaryMissionRule>& Pair : AdversaryLaunchCoordinateRules.AdversaryMissions)
+	{
+		Pair.Value.OriginLongitudeMilliDegrees = MAX_int32;
+		Pair.Value.OriginLatitudeMilliDegrees = MAX_int32;
+	}
+	FCampaignState AdversaryLaunchCoordinateCampaign = Campaign;
+	AdversaryLaunchCoordinateCampaign.NextAdversaryMissionSeconds = 5;
+	const FStrategicDashboardSnapshot AdversaryLaunchCoordinateSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			AdversaryLaunchCoordinateCampaign, AdversaryLaunchCoordinateRules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement before an adversary launch can exceed coordinate arithmetic"),
+		AdversaryLaunchCoordinateSnapshot.bSucceeded
+		&& !AdversaryLaunchCoordinateSnapshot.bCanAdvanceTime
+		&& AdversaryLaunchCoordinateSnapshot.Diagnostics.Contains(
+			TEXT("Strategic simulation exceeded a persisted numeric range.")));
 	FCampaignState AdversaryEscapeCapacityCampaign = Campaign;
 	AdversaryEscapeCapacityCampaign.CampaignScore = MIN_int64;
 	FStrategicContactState* AdversaryEscapeCapacityContact =
