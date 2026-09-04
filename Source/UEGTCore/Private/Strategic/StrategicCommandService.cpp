@@ -6377,14 +6377,35 @@ namespace StrategicCommandServicePrivate
 		}
 
 		int64 HiddenContactCount = 0;
+		int64 PotentialDueMissionEscapes = 0;
 		for (const FStrategicContactState& Contact : State.StrategicContacts)
 		{
 			HiddenContactCount += Contact.Status == EStrategicContactStatus::Hidden ? 1 : 0;
+			if (Contact.ElapsedRouteSeconds >= Contact.TotalRouteSeconds
+				|| Contact.TotalRouteSeconds - Contact.ElapsedRouteSeconds > RequestedSeconds)
+			{
+				continue;
+			}
+			const FAdversaryMissionState* Mission =
+				FindAdversaryMission(State, Contact.ContactId);
+			const FAdversaryMissionRule* MissionRule = Mission != nullptr
+				? Rules.AdversaryMissions.Find(Mission->MissionRuleId)
+				: nullptr;
+			if (Mission != nullptr && MissionRule != nullptr && !MissionRule->bTargetsPlayerBase)
+			{
+				++PotentialDueMissionEscapes;
+			}
 		}
 		const int64 MaximumSensorPasses = RequestedSeconds / 3600LL + 1;
-		const int64 MaximumAdditionalMissions = Rules.AdversaryMissions.IsEmpty()
+		int64 MaximumAdditionalMissions = Rules.AdversaryMissions.IsEmpty()
 			? 0
 			: FMath::Max<int64>(0, static_cast<int64>(Config.MaxActiveAdversaryMissions) - State.AdversaryMissions.Num());
+		if (!TryAdd(MaximumAdditionalMissions, PotentialDueMissionEscapes, MaximumAdditionalMissions))
+		{
+			AddError(Result, TEXT("random_draw_overflow"),
+				TEXT("Adversary mission count exceeds the deterministic random-stream range."));
+			return false;
+		}
 		int64 MaximumHiddenContacts = 0;
 		if (!TryAdd(HiddenContactCount, MaximumAdditionalMissions, MaximumHiddenContacts))
 		{

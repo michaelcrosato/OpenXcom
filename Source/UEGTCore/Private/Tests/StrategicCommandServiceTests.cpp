@@ -12472,6 +12472,124 @@ bool FStrategicAdversarySchedulingTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FStrategicRandomCapacityTest,
+	"UEGT.Core.StrategicCommands.RandomCapacity",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategicRandomCapacityTest::RunTest(const FString& Parameters)
+{
+	using namespace StrategicCommandServiceTests;
+
+	const FResolvedRuleSet BaseRules = MakeAdversaryRules();
+	FCampaignState State = MakeStateWithBase();
+	State.SimulationRandom.Initialize(90210);
+	State.NextAdversaryMissionSeconds = 5;
+	FAdvanceStrategicTimeCommand FirstAdvance;
+	FirstAdvance.ExpectedSequence = State.CommandSequence;
+	FirstAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+	const FStrategicCommandResult FirstResult = FStrategicCommandService::Execute(
+		State, BaseRules, MakeConfig(), FirstAdvance);
+	TestTrue(TEXT("Random-capacity fixture launches its initial adversary mission"),
+		FirstResult.bAccepted
+		&& State.AdversaryMissions.Num() == 1
+		&& State.StrategicContacts.Num() == 1);
+	if (State.AdversaryMissions.Num() != 1 || State.StrategicContacts.Num() != 1)
+	{
+		AddError(TEXT("Random-capacity fixture did not produce its initial adversary mission."));
+		return false;
+	}
+
+	const FName ExistingMissionId(TEXT("mission.glass-tide-survey"));
+	const FName PlanId(TEXT("plan.random-capacity"));
+	const FName BoundaryMissionId(TEXT("mission.random-base-raid"));
+	FResolvedRuleSet Rules = BaseRules;
+	FAdversaryPlanRule Plan;
+	Plan.Identity.RuleId = PlanId;
+	Plan.DisplayName = TEXT("Random Capacity Plan");
+	Plan.OpeningMissionRuleId = BoundaryMissionId;
+	Rules.AdversaryPlans.Add(PlanId, Plan);
+	FAdversaryMissionRule& ExistingMissionRule =
+		Rules.AdversaryMissions.FindChecked(ExistingMissionId);
+	ExistingMissionRule.PlanId = PlanId;
+	ExistingMissionRule.PlanStage = 1;
+	ExistingMissionRule.EscapeBranchMissionRuleId = NAME_None;
+	ExistingMissionRule.ThwartBranchMissionRuleId = NAME_None;
+	FAdversaryMissionRule BoundaryMissionRule = ExistingMissionRule;
+	BoundaryMissionRule.Identity.RuleId = BoundaryMissionId;
+	BoundaryMissionRule.DisplayName = TEXT("Random Base Raid");
+	BoundaryMissionRule.PlanId = NAME_None;
+	BoundaryMissionRule.PlanStage = 0;
+	BoundaryMissionRule.bTargetsPlayerBase = true;
+	BoundaryMissionRule.OriginLongitudeMilliDegrees = -123120;
+	BoundaryMissionRule.OriginLatitudeMilliDegrees = 49280;
+	Rules.AdversaryMissions.Add(BoundaryMissionId, BoundaryMissionRule);
+
+	FStrategicSimulationConfig Config = MakeConfig();
+	Config.MaxActiveAdversaryMissions = 1;
+	State.Funds = 50000;
+	const FGuid SecondaryBaseId(0x55555555, 0x66666666, 0x77777777, 0x88888888);
+	FEstablishBaseCommand EstablishSecondaryBase = MakeBaseCommand(State.CommandSequence);
+	EstablishSecondaryBase.BaseId = SecondaryBaseId;
+	EstablishSecondaryBase.Name = TEXT("Southwatch");
+	EstablishSecondaryBase.LongitudeMilliDegrees = -123000;
+	EstablishSecondaryBase.LatitudeMilliDegrees = 49280;
+	const FStrategicCommandResult SecondaryBaseResult = FStrategicCommandService::Execute(
+		State, Rules, Config, EstablishSecondaryBase);
+	TestTrue(TEXT("Random-capacity fixture establishes a second base for target selection"),
+		SecondaryBaseResult.bAccepted && State.Bases.Num() == 2);
+	if (!SecondaryBaseResult.bAccepted || State.Bases.Num() != 2)
+	{
+		AddError(TEXT("Random-capacity fixture could not establish its second base."));
+		return false;
+	}
+
+	FStrategicContactState& DueContact = State.StrategicContacts[0];
+	DueContact.Status = EStrategicContactStatus::Detected;
+	DueContact.ElapsedRouteSeconds = DueContact.TotalRouteSeconds - 5;
+	DueContact.LongitudeMilliDegrees = static_cast<int32>(
+		static_cast<int64>(DueContact.OriginLongitudeMilliDegrees)
+			+ (static_cast<int64>(DueContact.DestinationLongitudeMilliDegrees)
+				- DueContact.OriginLongitudeMilliDegrees) * DueContact.ElapsedRouteSeconds
+				/ DueContact.TotalRouteSeconds);
+	DueContact.LatitudeMilliDegrees = static_cast<int32>(
+		static_cast<int64>(DueContact.OriginLatitudeMilliDegrees)
+			+ (static_cast<int64>(DueContact.DestinationLatitudeMilliDegrees)
+				- DueContact.OriginLatitudeMilliDegrees) * DueContact.ElapsedRouteSeconds
+				/ DueContact.TotalRouteSeconds);
+	State.StrategicTime = FStrategicTimestamp(FDateTime(2035, 1, 1, 12, 59, 55));
+	State.NextAdversaryMissionSeconds = 5;
+	State.SimulationRandom.RestoreFromSave(
+		State.SimulationRandom.InitialSeed,
+		MAX_int64 - 3,
+		State.SimulationRandom.GetStateForSave());
+	const int64 InitialSequence = State.CommandSequence;
+	const int64 InitialDrawCount = State.SimulationRandom.DrawCount;
+	const int64 InitialElapsedRouteSeconds = DueContact.ElapsedRouteSeconds;
+	const FStrategicCommandResult CapacityValidation =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceRandomCapacity(
+			State, Rules, Config, 5);
+	TestTrue(TEXT("Random-capacity validation includes an escape-freed slot and target-base draw"),
+		!CapacityValidation.bAccepted
+		&& CapacityValidation.HasDiagnostic(TEXT("random_draw_overflow")));
+
+	FAdvanceStrategicTimeCommand Advance;
+	Advance.ExpectedSequence = InitialSequence;
+	Advance.Rate = EStrategicTimeRate::FiveSeconds;
+	const FStrategicCommandResult Result = FStrategicCommandService::Execute(
+		State, Rules, Config, Advance);
+	TestTrue(TEXT("A same-slice escape, launch, and sensor pass cannot exhaust the random stream atomically"),
+		!Result.bAccepted
+		&& Result.HasDiagnostic(TEXT("random_draw_overflow"))
+		&& State.CommandSequence == InitialSequence
+		&& State.SimulationRandom.DrawCount == InitialDrawCount
+		&& State.AdversaryMissions.Num() == 1
+		&& State.StrategicContacts.Num() == 1
+		&& State.StrategicContacts[0].Status == EStrategicContactStatus::Detected
+		&& State.StrategicContacts[0].ElapsedRouteSeconds == InitialElapsedRouteSeconds);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FStrategicAdversaryCoordinateBoundaryTest,
 	"UEGT.Core.StrategicCommands.AdversaryCoordinateBoundary",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
