@@ -6415,37 +6415,6 @@ namespace StrategicCommandServicePrivate
 		const int64 RequestedSeconds,
 		FStrategicCommandResult& Result)
 	{
-		const bool bMissionMayLaunch = State.Outcome == ECampaignOutcome::Ongoing
-			&& !Rules.AdversaryMissions.IsEmpty()
-			&& State.NextAdversaryMissionSeconds <= RequestedSeconds
-			&& State.AdversaryMissions.Num() < Config.MaxActiveAdversaryMissions;
-		bool bForcedBranchMayLaunch = false;
-		if (State.Outcome == ECampaignOutcome::Ongoing)
-		{
-			for (const FAdversaryMissionState& Mission : State.AdversaryMissions)
-			{
-				const FStrategicContactState* Contact = FindContact(State, Mission.ContactId);
-				const FAdversaryMissionRule* MissionRule =
-					Rules.AdversaryMissions.Find(Mission.MissionRuleId);
-				if (Contact != nullptr && MissionRule != nullptr
-					&& Contact->TotalRouteSeconds - Contact->ElapsedRouteSeconds <= RequestedSeconds
-					&& !MissionRule->PlanId.IsNone()
-					&& !MissionRule->EscapeBranchMissionRuleId.IsNone())
-				{
-					bForcedBranchMayLaunch = true;
-					break;
-				}
-			}
-		}
-		if ((bMissionMayLaunch || bForcedBranchMayLaunch)
-			&& (State.NextAdversaryMissionSerial >= MAX_int64 - 3
-				|| State.AdversaryMissionsLaunched == MAX_int32))
-		{
-			AddError(Result, TEXT("simulation_overflow"),
-				TEXT("Strategic simulation exceeded a persisted numeric range."));
-			return false;
-		}
-
 		FCampaignState Projection = State;
 		FStrategicCommandResult ProjectionResult;
 		for (int32 Index = Projection.StrategicContacts.Num() - 1; Index >= 0; --Index)
@@ -6476,9 +6445,22 @@ namespace StrategicCommandServicePrivate
 			}
 			Projection.StrategicContacts.RemoveAt(Index, EAllowShrinking::No);
 		}
+		const bool bMissionMayLaunch = Projection.Outcome == ECampaignOutcome::Ongoing
+			&& Projection.NextAdversaryMissionSerial == State.NextAdversaryMissionSerial
+			&& !Rules.AdversaryMissions.IsEmpty()
+			&& Projection.NextAdversaryMissionSeconds <= RequestedSeconds
+			&& Projection.AdversaryMissions.Num() < Config.MaxActiveAdversaryMissions;
+		if (bMissionMayLaunch
+			&& (Projection.NextAdversaryMissionSerial >= MAX_int64 - 3
+				|| Projection.AdversaryMissionsLaunched == MAX_int32))
+		{
+			AddError(Result, TEXT("simulation_overflow"),
+				TEXT("Strategic simulation exceeded a persisted numeric range."));
+			return false;
+		}
 		if (bMissionMayLaunch)
 		{
-			FCampaignState LaunchProjection = State;
+			FCampaignState LaunchProjection = Projection;
 			FStrategicCommandResult LaunchProjectionResult;
 			if (!LaunchAdversaryMission(
 					LaunchProjection, Rules, Config, LaunchProjectionResult,

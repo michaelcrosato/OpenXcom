@@ -12415,6 +12415,32 @@ bool FStrategicAdversarySchedulingTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Last mutation-capable mission serial rejection creates no mission"),
 		LastUsableSerial.AdversaryMissions.IsEmpty() && LastUsableSerial.StrategicContacts.IsEmpty());
 
+	FStrategicSimulationConfig EscapeThenLaunchConfig = MakeConfig();
+	EscapeThenLaunchConfig.MaxActiveAdversaryMissions = 1;
+	FCampaignState EscapeThenLaunch = EscapeCapacityState;
+	EscapeThenLaunch.CampaignScore = First.CampaignScore;
+	EscapeThenLaunch.NextAdversaryMissionSerial = MAX_int64 - 3;
+	EscapeThenLaunch.NextAdversaryMissionSeconds = 5;
+	const int64 EscapeThenLaunchSequence = EscapeThenLaunch.CommandSequence;
+	const FStrategicCommandResult EscapeThenLaunchCapacity =
+		FStrategicCommandService::ValidateStrategicTimeAdvanceAdversaryCapacity(
+			EscapeThenLaunch, Rules, EscapeThenLaunchConfig, 5);
+	TestTrue(TEXT("Adversary capacity validation projects cadence launch after a same-slice escape frees the active slot"),
+		!EscapeThenLaunchCapacity.bAccepted
+		&& EscapeThenLaunchCapacity.HasDiagnostic(TEXT("simulation_overflow")));
+	FAdvanceStrategicTimeCommand EscapeThenLaunchAdvance;
+	EscapeThenLaunchAdvance.ExpectedSequence = EscapeThenLaunchSequence;
+	EscapeThenLaunchAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+	const FStrategicCommandResult EscapeThenLaunchResult = FStrategicCommandService::Execute(
+		EscapeThenLaunch, Rules, EscapeThenLaunchConfig, EscapeThenLaunchAdvance);
+	TestTrue(TEXT("A freed adversary slot cannot launch into the terminal mission serial atomically"),
+		!EscapeThenLaunchResult.bAccepted
+		&& EscapeThenLaunchResult.HasDiagnostic(TEXT("simulation_overflow"))
+		&& EscapeThenLaunch.CommandSequence == EscapeThenLaunchSequence
+		&& EscapeThenLaunch.NextAdversaryMissionSerial == MAX_int64 - 3
+		&& EscapeThenLaunch.AdversaryMissions.Num() == 1
+		&& EscapeThenLaunch.StrategicContacts.Num() == 1);
+
 	FCampaignState PreTerminalSerial = MakeStateWithBase();
 	PreTerminalSerial.NextAdversaryMissionSerial = MAX_int64 - 2;
 	PreTerminalSerial.NextAdversaryMissionSeconds = 5;
