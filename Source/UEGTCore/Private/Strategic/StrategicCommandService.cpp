@@ -6337,6 +6337,37 @@ namespace StrategicCommandServicePrivate
 				TEXT("Strategic simulation exceeded a persisted numeric range."));
 			return false;
 		}
+
+		FCampaignState Projection = State;
+		FStrategicCommandResult ProjectionResult;
+		for (int32 Index = Projection.StrategicContacts.Num() - 1; Index >= 0; --Index)
+		{
+			const FStrategicContactState& Contact = Projection.StrategicContacts[Index];
+			if (Contact.ElapsedRouteSeconds >= Contact.TotalRouteSeconds
+				|| Contact.TotalRouteSeconds - Contact.ElapsedRouteSeconds > RequestedSeconds)
+			{
+				continue;
+			}
+			const FAdversaryMissionState* Mission =
+				FindAdversaryMission(Projection, Contact.ContactId);
+			const FAdversaryMissionRule* MissionRule = Mission != nullptr
+				? Rules.AdversaryMissions.Find(Mission->MissionRuleId)
+				: nullptr;
+			if (Mission == nullptr || MissionRule == nullptr || MissionRule->bTargetsPlayerBase)
+			{
+				continue;
+			}
+			const FGuid ContactId = Contact.ContactId;
+			if (!ApplyAdversaryMissionEscape(
+					Projection, Rules, Config, ContactId, ProjectionResult,
+					Projection.CommandSequence, Projection.StrategicTime.Utc))
+			{
+				AddError(Result, TEXT("simulation_overflow"),
+					TEXT("Strategic simulation exceeded a persisted numeric range."));
+				return false;
+			}
+			Projection.StrategicContacts.RemoveAt(Index, EAllowShrinking::No);
+		}
 		return true;
 	}
 

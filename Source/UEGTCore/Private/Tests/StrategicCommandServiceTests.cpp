@@ -12232,6 +12232,48 @@ bool FStrategicAdversarySchedulingTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Mission links its deterministic contact"), First.AdversaryMissions[0].ContactId, First.StrategicContacts[0].ContactId);
 		TestEqual(TEXT("Mission target region begins at zero pressure"), First.RegionalPressure[0].Pressure, 0);
 	}
+	FCampaignState EscapeCapacityState = First;
+	EscapeCapacityState.CampaignScore = MIN_int64;
+	if (!EscapeCapacityState.StrategicContacts.IsEmpty())
+	{
+		FStrategicContactState& EscapeContact = EscapeCapacityState.StrategicContacts[0];
+		const int64 EscapeElapsedSeconds = EscapeContact.TotalRouteSeconds - 5;
+		EscapeContact.ElapsedRouteSeconds = EscapeElapsedSeconds;
+		EscapeContact.LongitudeMilliDegrees = static_cast<int32>(
+			static_cast<int64>(EscapeContact.OriginLongitudeMilliDegrees)
+			+ (static_cast<int64>(EscapeContact.DestinationLongitudeMilliDegrees)
+				- EscapeContact.OriginLongitudeMilliDegrees) * EscapeElapsedSeconds
+				/ EscapeContact.TotalRouteSeconds);
+		EscapeContact.LatitudeMilliDegrees = static_cast<int32>(
+			static_cast<int64>(EscapeContact.OriginLatitudeMilliDegrees)
+			+ (static_cast<int64>(EscapeContact.DestinationLatitudeMilliDegrees)
+				- EscapeContact.OriginLatitudeMilliDegrees) * EscapeElapsedSeconds
+				/ EscapeContact.TotalRouteSeconds);
+		const int64 EscapeCapacitySequence = EscapeCapacityState.CommandSequence;
+		const FStrategicCommandResult EscapeCapacityValidation =
+			FStrategicCommandService::ValidateStrategicTimeAdvanceAdversaryCapacity(
+				EscapeCapacityState, Rules, MakeConfig(), 5);
+		FAdvanceStrategicTimeCommand EscapeCapacityAdvance;
+		EscapeCapacityAdvance.ExpectedSequence = EscapeCapacitySequence;
+		EscapeCapacityAdvance.Rate = EStrategicTimeRate::FiveSeconds;
+		const FStrategicCommandResult EscapeCapacityResult =
+			FStrategicCommandService::Execute(
+				EscapeCapacityState, Rules, MakeConfig(), EscapeCapacityAdvance);
+		TestTrue(TEXT("Adversary time-capacity validation includes escape score consequences"),
+			!EscapeCapacityValidation.bAccepted
+			&& EscapeCapacityValidation.HasDiagnostic(TEXT("simulation_overflow")));
+		TestTrue(TEXT("A mission escape that would underflow campaign score is rejected atomically"),
+			!EscapeCapacityResult.bAccepted
+			&& EscapeCapacityResult.HasDiagnostic(TEXT("simulation_overflow"))
+			&& EscapeCapacityState.CommandSequence == EscapeCapacitySequence
+			&& EscapeCapacityState.CampaignScore == MIN_int64
+			&& EscapeCapacityState.AdversaryMissions.Num() == 1
+			&& EscapeCapacityState.StrategicContacts.Num() == 1);
+	}
+	else
+	{
+		AddError(TEXT("Escape-capacity fixture did not produce an adversary contact."));
+	}
 
 	const FDateTime SaveTime(2026, 8, 30, 1, 0, 0);
 	const FGuid CampaignId(401, 402, 403, 404);

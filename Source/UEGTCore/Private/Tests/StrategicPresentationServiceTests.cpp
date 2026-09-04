@@ -1000,6 +1000,41 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 		&& !AdversarySerialCapacitySnapshot.bCanAdvanceTime
 		&& AdversarySerialCapacitySnapshot.Diagnostics.Contains(
 			TEXT("Strategic simulation exceeded a persisted numeric range.")));
+	FCampaignState AdversaryEscapeCapacityCampaign = Campaign;
+	AdversaryEscapeCapacityCampaign.CampaignScore = MIN_int64;
+	FStrategicContactState* AdversaryEscapeCapacityContact =
+		AdversaryEscapeCapacityCampaign.StrategicContacts.FindByPredicate(
+			[&VisibleContactId](const FStrategicContactState& Contact)
+			{
+				return Contact.ContactId == VisibleContactId;
+			});
+	if (AdversaryEscapeCapacityContact != nullptr)
+	{
+		const int64 EscapeElapsedSeconds = AdversaryEscapeCapacityContact->TotalRouteSeconds - 5;
+		AdversaryEscapeCapacityContact->ElapsedRouteSeconds = EscapeElapsedSeconds;
+		AdversaryEscapeCapacityContact->LongitudeMilliDegrees = static_cast<int32>(
+			static_cast<int64>(AdversaryEscapeCapacityContact->OriginLongitudeMilliDegrees)
+			+ (static_cast<int64>(AdversaryEscapeCapacityContact->DestinationLongitudeMilliDegrees)
+				- AdversaryEscapeCapacityContact->OriginLongitudeMilliDegrees) * EscapeElapsedSeconds
+				/ AdversaryEscapeCapacityContact->TotalRouteSeconds);
+		AdversaryEscapeCapacityContact->LatitudeMilliDegrees = static_cast<int32>(
+			static_cast<int64>(AdversaryEscapeCapacityContact->OriginLatitudeMilliDegrees)
+			+ (static_cast<int64>(AdversaryEscapeCapacityContact->DestinationLatitudeMilliDegrees)
+				- AdversaryEscapeCapacityContact->OriginLatitudeMilliDegrees) * EscapeElapsedSeconds
+				/ AdversaryEscapeCapacityContact->TotalRouteSeconds);
+	}
+	FResolvedRuleSet AdversaryEscapeCapacityRules = Rules;
+	AdversaryEscapeCapacityRules.AdversaryMissions.FindChecked(
+		Mission.Identity.RuleId).ScorePenaltyOnEscape = 1;
+	const FStrategicDashboardSnapshot AdversaryEscapeCapacitySnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			AdversaryEscapeCapacityCampaign, AdversaryEscapeCapacityRules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement before an adversary escape can underflow campaign score"),
+		AdversaryEscapeCapacityContact != nullptr
+		&& AdversaryEscapeCapacitySnapshot.bSucceeded
+		&& !AdversaryEscapeCapacitySnapshot.bCanAdvanceTime
+		&& AdversaryEscapeCapacitySnapshot.Diagnostics.Contains(
+			TEXT("Strategic simulation exceeded a persisted numeric range.")));
 	FCampaignState AdversaryBranchCapacityCampaign = Campaign;
 	AdversaryBranchCapacityCampaign.AdversaryMissionsLaunched = MAX_int32;
 	AdversaryBranchCapacityCampaign.AdversaryMissionsEscaped = MAX_int32 - 5;
