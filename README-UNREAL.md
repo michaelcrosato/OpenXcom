@@ -63,6 +63,8 @@ The localization checks can also run without an Unreal installation:
 ./scripts/Test-LocalizationCatalog.ps1
 ```
 
+The [UEGT preflight workflow](.github/workflows/uegt-preflight.yml) runs both localization checks in Windows PowerShell 5.1 and PowerShell 7 on relevant pushes and pull requests, and supports manual dispatch. Unreal builds, Editor tests, and packaged runtime tests still run with the installed engine using the commands above.
+
 For the production target:
 
 ```powershell

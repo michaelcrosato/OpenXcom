@@ -1,0 +1,51 @@
+name: UEGT preflight
+
+on:
+  push:
+    paths:
+      - 'Source/**'
+      - 'Content/Localization/**'
+      - 'scripts/Test-LocalizationCatalog*.ps1'
+      - '.github/workflows/uegt-preflight.yml'
+  pull_request:
+    paths:
+      - 'Source/**'
+      - 'Content/Localization/**'
+      - 'scripts/Test-LocalizationCatalog*.ps1'
+      - '.github/workflows/uegt-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uegt-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  localization:
+    name: Localization
+    runs-on: windows-2025
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install ripgrep
+        shell: pwsh
+        run: choco install ripgrep --version=15.2.0 --yes --no-progress --limit-output
+
+      - name: Validate localization in Windows PowerShell
+        shell: powershell
+        run: |
+          ./scripts/Test-LocalizationCatalog.Tests.ps1
+          ./scripts/Test-LocalizationCatalog.ps1
+
+      - name: Validate localization in PowerShell 7
+        shell: pwsh
+        run: |
+          ./scripts/Test-LocalizationCatalog.Tests.ps1
+          ./scripts/Test-LocalizationCatalog.ps1
