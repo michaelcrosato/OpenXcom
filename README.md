@@ -1,5 +1,7 @@
 # OpenXcom [![Workflow Status][workflow-badge]][actions-url]
 
+For the original Unreal game developed in this fork, see the [UEGT build and test guide](README-UNREAL.md). The documentation below describes the retained OpenXcom reference project.
+
 [workflow-badge]: https://github.com/OpenXcom/OpenXcom/workflows/ci/badge.svg
 [actions-url]: https://github.com/OpenXcom/OpenXcom/actions
 

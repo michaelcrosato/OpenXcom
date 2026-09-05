@@ -129,6 +129,14 @@ Completion requires every matrix row to be implemented and backed by current evi
 
 ## Verification record
 
+Maintenance audit on 2026-09-05:
+
+- The `UEGTEditor Win64 Development` and `UEGT Win64 Shipping` targets rebuilt successfully after save-store repairs and removal of empty module headers and unused target imports.
+- The full `UEGT.Core` suite passed all 186 tests. The baseline dashboard failure was corrected by independently exercising negative recurring funding and monthly financial overflow with otherwise valid funding. A save-store regression reproduced loss of the good backup after resaving a corrupt-primary slot, then passed after rotation was restricted to verified primary candidates.
+- Localization preflight passed with 1,636 unique entries, 529 exact diagnostics, 52 content-loader codes, and 84 tactical/game-layer codes across all five cultures.
+- The automation runner rejected a nonexistent filter, passed all four save-store tests, and retained both distinct logs under `Saved/Logs/Automation`. This path avoids Unreal's cleanup of `Saved/Automation/Logs`; each run checks its own discovery and completion markers and prints failure details.
+- The [Unreal build guide](../README-UNREAL.md) now separates current setup commands from [runtime fixtures](UNREAL-RUNTIME-FIXTURES.md) and [historical feature checkpoints](UNREAL-DEVELOPMENT-HISTORY.md). Local links, preservation of every prior fixture command, and retention of the historical feature text were checked. These maintenance checks do not close the outstanding release gates above.
+
 On 2026-08-31, using Unreal Engine 5.8.2 (changelist 56702186) and the Visual Studio 14.44 toolchain:
 
 - `./scripts/Build-Unreal.ps1` built the independent `UEGTEditor Win64 Development` target successfully.
