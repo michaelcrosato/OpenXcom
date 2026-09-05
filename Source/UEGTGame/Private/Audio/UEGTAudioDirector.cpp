@@ -2,6 +2,8 @@
 
 #include "Audio/UEGTAudioDirector.h"
 
+#include "Audio/UEGTGeneratedSoundWave.h"
+
 #include "Components/AudioComponent.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -241,7 +243,7 @@ bool UUEGTAudioDirector::PlayGeneratedCue(
 	const FVector* WorldLocation)
 {
 	PruneFinishedAudio();
-	const FUEGTGeneratedAudio Generated = FUEGTAudioSynthesisService::Generate(Cue);
+	FUEGTGeneratedAudio Generated = FUEGTAudioSynthesisService::Generate(Cue);
 	++Diagnostics.PlayRequests;
 	Diagnostics.LastCue = Cue;
 	Diagnostics.LastFrameCount = Generated.NumFrames;
@@ -263,21 +265,11 @@ bool UUEGTAudioDirector::PlayGeneratedCue(
 		return false;
 	}
 
-	USoundWaveProcedural* Wave = NewObject<USoundWaveProcedural>(this);
+	UUEGTGeneratedSoundWave* Wave = UUEGTGeneratedSoundWave::Create(this, MoveTemp(Generated));
 	if (Wave == nullptr)
 	{
 		return false;
 	}
-	Wave->NumChannels = Generated.NumChannels;
-	Wave->SetSampleRate(Generated.SampleRate);
-	Wave->SetNumFrames(Generated.NumFrames);
-	Wave->Duration = static_cast<float>(Generated.NumFrames) / Generated.SampleRate;
-	Wave->SoundGroup = SOUNDGROUP_UI;
-	Wave->bLooping = false;
-	Wave->QueueAudio(
-		reinterpret_cast<const uint8*>(Generated.Samples.GetData()),
-		Diagnostics.LastQueuedBytes);
-
 	UAudioComponent* Component = nullptr;
 	if (WorldLocation != nullptr)
 	{
@@ -323,7 +315,7 @@ bool UUEGTAudioDirector::PlayGeneratedCue(
 	{
 		ForegroundComponents.Add(Component);
 		ForegroundWaves.Add(Wave);
-		DuckAmbient(static_cast<float>(Generated.NumFrames) / static_cast<float>(Generated.SampleRate));
+		DuckAmbient(Wave->Duration);
 	}
 	return true;
 }

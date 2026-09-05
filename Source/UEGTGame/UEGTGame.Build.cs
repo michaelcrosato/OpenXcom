@@ -20,5 +20,8 @@ public class UEGTGame : ModuleRules
 			"UMG",
 			"UEGTCore"
 		});
+
+		// The private procedural wave subclass uses Unreal's audio proxy interface.
+		PrivateDependencyModuleNames.Add("AudioExtensions");
 	}
 }

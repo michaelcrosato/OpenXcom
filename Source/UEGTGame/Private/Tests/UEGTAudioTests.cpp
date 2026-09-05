@@ -4,9 +4,169 @@
 
 #include "Audio/UEGTAudioDirector.h"
 #include "Audio/UEGTAudioSynthesisService.h"
+#include "Audio/UEGTGeneratedSoundWave.h"
 #include "Localization/UEGTLocalizationService.h"
 
+#include "Components/AudioComponent.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "Misc/AutomationTest.h"
+#include "Sound/SoundGenerator.h"
+#include "Sound/SoundWaveProcedural.h"
+#include "UObject/StrongObjectPtr.h"
+#include "UObject/UObjectIterator.h"
+
+namespace UEGTAudioTests
+{
+	struct FPlaybackLifetimeFixture
+	{
+		TStrongObjectPtr<UUEGTAudioDirector> Director{NewObject<UUEGTAudioDirector>()};
+		TArray<TWeakObjectPtr<UAudioComponent>> InitialComponents;
+		TWeakObjectPtr<UAudioComponent> AmbientComponent;
+		double StartTime = 0.0;
+		bool bPlayedSecondCue = false;
+
+		~FPlaybackLifetimeFixture()
+		{
+			Director->Shutdown();
+		}
+	};
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FUEGTAudioPlaybackLifetimeTest,
+	"UEGT.Core.Game.Audio.PlaybackLifetime",
+	EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FUEGTAudioPlaybackLifetimeTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = nullptr;
+	if (GEngine != nullptr)
+	{
+		for (const FWorldContext& Context : GEngine->GetWorldContexts())
+		{
+			if (Context.WorldType == EWorldType::Game)
+			{
+				World = Context.World();
+				break;
+			}
+		}
+	}
+	if (!TestNotNull(TEXT("Audio lifetime verification requires a running game world"), World)
+		|| !TestNotNull(TEXT("Audio lifetime verification requires a runtime audio device"), World->GetAudioDeviceRaw()))
+	{
+		return false;
+	}
+	const auto Fixture = MakeShared<UEGTAudioTests::FPlaybackLifetimeFixture>();
+	Fixture->Director->Initialize(World);
+	Fixture->Director->SetPresentationMode(EUEGTAudioPresentationMode::Strategic);
+	TestTrue(TEXT("The foreground cue starts on the runtime audio device"),
+		Fixture->Director->PlayCue(EUEGTAudioCue::InterfaceConfirm));
+	for (TObjectIterator<UAudioComponent> It; It; ++It)
+	{
+		if (It->Sound != nullptr && It->Sound->GetOuter() == Fixture->Director.Get())
+		{
+			Fixture->InitialComponents.Add(*It);
+			if (It->Sound->GetDuration() > 1.0f)
+			{
+				Fixture->AmbientComponent = *It;
+			}
+		}
+	}
+	if (!TestEqual(TEXT("The director starts one ambient and one foreground voice"), Fixture->InitialComponents.Num(), 2))
+	{
+		return false;
+	}
+	Fixture->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FFunctionLatentCommand([this, Fixture]()
+	{
+		const double Elapsed = FPlatformTime::Seconds() - Fixture->StartTime;
+		if (Elapsed >= 3.0 && !Fixture->bPlayedSecondCue)
+		{
+			TestTrue(TEXT("The five-second ambient bed remains playing after three seconds"),
+				Fixture->AmbientComponent.IsValid() && Fixture->AmbientComponent->IsPlaying());
+			TestTrue(TEXT("A later foreground cue can duck the current ambient bed"),
+				Fixture->Director->PlayCue(EUEGTAudioCue::InterfaceConfirm));
+			Fixture->bPlayedSecondCue = true;
+		}
+		if (Elapsed < 6.5)
+		{
+			return false;
+		}
+		for (const TWeakObjectPtr<UAudioComponent>& Component : Fixture->InitialComponents)
+		{
+			if (Component.IsValid())
+			{
+				if (USoundWaveProcedural* Wave = Cast<USoundWaveProcedural>(Component->Sound))
+				{
+					AddInfo(FString::Printf(TEXT("Voice after %.2f seconds: duration=%.2f, playing=%s, queuedBytes=%d."),
+						Elapsed, Wave->Duration, Component->IsPlaying() ? TEXT("true") : TEXT("false"),
+						Wave->GetAvailableAudioByteCount()));
+				}
+			}
+			TestFalse(TEXT("A finite cue stops after its samples finish, including ducked ambience"),
+				Component.IsValid() && Component->IsPlaying());
+		}
+		return true;
+	}));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FUEGTAudioFiniteGeneratorTest,
+	"UEGT.Core.Game.Audio.FiniteGenerator",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FUEGTAudioFiniteGeneratorTest::RunTest(const FString& Parameters)
+{
+	TestNull(TEXT("Invalid synthesis output cannot create a playable voice"),
+		UUEGTGeneratedSoundWave::Create(GetTransientPackage(), FUEGTGeneratedAudio()));
+	for (const EUEGTAudioCue Cue : FUEGTAudioSynthesisService::GetCueTypes())
+	{
+		FUEGTGeneratedAudio Generated = FUEGTAudioSynthesisService::Generate(Cue);
+		const TArray<int16> ExpectedSamples = Generated.Samples;
+		UUEGTGeneratedSoundWave* Wave = UUEGTGeneratedSoundWave::Create(GetTransientPackage(), MoveTemp(Generated));
+		if (!TestNotNull(TEXT("A valid cue creates a finite voice"), Wave))
+		{
+			return false;
+		}
+		FSoundGeneratorInitParams Params;
+		const ISoundGeneratorPtr Generator = Wave->CreateSoundGenerator(Params);
+		const ISoundGeneratorPtr Replay = Wave->CreateSoundGenerator(Params);
+		if (!TestTrue(TEXT("Each playback has a generator"), Generator.IsValid() && Replay.IsValid()))
+		{
+			return false;
+		}
+		TestFalse(TEXT("The voice begins with unconsumed samples"), Generator->IsFinished());
+		float Buffer[1024];
+		TestEqual(TEXT("An empty request consumes no samples"), Generator->GetNextBuffer(Buffer, 0), 0);
+		bool bExactSamples = true;
+		int32 TotalSamples = 0;
+		for (int32 Block = 0; !Generator->IsFinished() && Block <= ExpectedSamples.Num(); ++Block)
+		{
+			const int32 Requested = Block % 2 == 0 ? 7 : UE_ARRAY_COUNT(Buffer);
+			const int32 Written = Generator->GetNextBuffer(Buffer, Requested);
+			if (Written <= 0 || Written > Requested || Written > ExpectedSamples.Num() - TotalSamples)
+			{
+				bExactSamples = false;
+				break;
+			}
+			for (int32 Index = 0; Index < Written; ++Index)
+			{
+				bExactSamples &= Buffer[Index] == static_cast<float>(ExpectedSamples[TotalSamples + Index]) / 32768.0f;
+			}
+			TotalSamples += Written;
+		}
+		TestTrue(TEXT("Rendering preserves every PCM sample across partial buffers"), bExactSamples);
+		TestEqual(TEXT("Rendering emits exactly the authored sample count"), TotalSamples, ExpectedSamples.Num());
+		TestTrue(TEXT("The generator signals end of stream after the last sample"), Generator->IsFinished());
+		TestEqual(TEXT("A finished voice produces no additional samples"), Generator->GetNextBuffer(Buffer, UE_ARRAY_COUNT(Buffer)), 0);
+		TestFalse(TEXT("Another playback retains its independent cursor"), Replay->IsFinished());
+		TestEqual(TEXT("A second playback starts from its first sample"), Replay->GetNextBuffer(Buffer, 1), 1);
+		TestEqual(TEXT("Replay preserves the first PCM sample"), Buffer[0], static_cast<float>(ExpectedSamples[0]) / 32768.0f);
+	}
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FUEGTAudioSynthesisTest,

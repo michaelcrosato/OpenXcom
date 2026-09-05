@@ -54,7 +54,7 @@ To verify behavior that differs outside the Editor, build and stage a Developmen
 ./scripts/Test-Unreal.ps1 -RuntimeRoot './Saved/RuntimeAutomation/Windows'
 ```
 
-Rebuild and restage after source or content changes. Runtime mode launches the staged `UEGT.exe` and runs only tests marked for `ClientContext`. The content/save identifier-casing regressions check Unreal's non-editor name storage, which does not preserve casing. Keep the full Editor suite as a separate check. Shipping builds exclude development automation tests.
+Rebuild and restage after source or content changes. Runtime mode launches the staged `UEGT.exe` and runs only tests marked for `ClientContext`. These cover non-editor identifier casing, campaign seed input, PCM streaming, and audio playback completion. The playback test requires a running game world and an Unreal audio device. Keep the full Editor suite as a separate check. Shipping builds exclude development automation tests.
 
 The localization checks can also run without an Unreal installation:
 
