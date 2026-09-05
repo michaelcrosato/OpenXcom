@@ -670,6 +670,37 @@ bool FContentJsonNameBoundsTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FContentJsonIdentifierCaseTest,
+	"UEGT.Core.Content.Json.IdentifierCase",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FContentJsonIdentifierCaseTest::RunTest(const FString& Parameters)
+{
+	using namespace ContentRulePipelineTests;
+	AddInfo(FString::Printf(TEXT("Identifier parsing uses WITH_CASE_PRESERVING_NAME=%d."), WITH_CASE_PRESERVING_NAME));
+	const FContentPackageParseResult Valid = FContentPackageJson::ParseString(BasePackageJson, TEXT("lowercase.json"));
+	TestTrue(TEXT("Lowercase identifiers parse before their mixed-case aliases"), Valid.bSucceeded);
+	for (const TCHAR* Id : { TEXT("uegt.base"), TEXT("item.pulse-carbine"),
+		TEXT("research.directed-energy"), TEXT("facility.energy-lab"), TEXT("category.engineering") })
+	{
+		const FString Json = BasePackageJson.Replace(
+			*FString::Printf(TEXT("\"%s\""), Id),
+			*FString::Printf(TEXT("\"%s\""), *FString(Id).ToUpper()), ESearchCase::CaseSensitive);
+		TestFalse(FString::Printf(TEXT("Uppercase alias '%s' is rejected even after lowercase names were interned"), Id),
+			FContentPackageJson::ParseString(Json, TEXT("uppercase.json")).bSucceeded);
+	}
+	TestTrue(TEXT("Invalid aliases do not disturb subsequent valid content"),
+		FContentPackageJson::ParseString(BasePackageJson, TEXT("lowercase-again.json")).bSucceeded);
+	const FString UppercaseFirst = BasePackageJson.Replace(TEXT("uegt.base"), TEXT("MOD.CASE-FIRST-CONTENT"));
+	TestFalse(TEXT("A first-seen uppercase package is rejected"),
+		FContentPackageJson::ParseString(UppercaseFirst, TEXT("uppercase-first.json")).bSucceeded);
+	TestTrue(TEXT("Rejected uppercase input cannot poison a later valid lowercase package"),
+		FContentPackageJson::ParseString(BasePackageJson.Replace(TEXT("uegt.base"), TEXT("mod.case-first-content")),
+			TEXT("lowercase-after-rejection.json")).bSucceeded);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FContentJsonTacticalRulesTest,
 	"UEGT.Core.Content.Json.TacticalRules",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

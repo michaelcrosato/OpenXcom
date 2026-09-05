@@ -51,7 +51,7 @@ Each JSON file has one package envelope:
 | Field | Contract |
 | --- | --- |
 | `schemaVersion` | Required integer. Schema 1 is the only supported version. |
-| `packageId` | Required stable ID: 3–64 lowercase ASCII characters, starting with a letter; digits, `.`, `_`, and `-` are allowed. |
+| `packageId` | Required stable ID: 3–64 lowercase ASCII characters, starting with a letter; digits, `.`, `_`, and `-` are allowed. The ID `none` is reserved. |
 | `displayName` | Required non-empty author-facing package name. |
 | `version` | Required non-empty compatibility string. Change it whenever save compatibility changes. |
 | `priority` | Optional integer, default `0`. Lower values load first among packages whose ordering prerequisites are already satisfied. |
@@ -61,7 +61,7 @@ Each JSON file has one package envelope:
 
 JSON types are enforced before conversion. Integer fields require unquoted whole numbers in the signed 32-bit range; strings and booleans are rejected even when they could convert to a number. Names, versions, and IDs require strings, including every element of an ID array. Boolean fields require `true` or `false` without quotes. Invalid types produce an `invalid_field_type` diagnostic and reject the package.
 
-Oversized identifiers and identifiers containing null characters reject the package with `invalid_field_value` diagnostics before reaching Unreal's name storage. Ordinary display text and prose retain their existing field-specific limits.
+Identifier spelling is validated before reaching Unreal's name storage. Uppercase aliases, oversized identifiers, and identifiers containing null characters reject the package with `invalid_field_value` diagnostics, even if an equivalent lowercase name has already loaded. Rejected IDs do not change how later valid packages load. Ordinary display text and prose retain their existing field-specific limits.
 
 Dependency and `loadAfter` cycles are errors. Otherwise ties are resolved lexically by `packageId`, so discovery order, folder names, and filesystem enumeration never affect the result.
 

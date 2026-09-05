@@ -3,6 +3,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Campaign/CampaignSave.h"
+#include "Content/ContentPackageJson.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -1454,6 +1455,41 @@ bool FCampaignSaveNameBoundsTest::RunTest(const FString& Parameters)
 	const FCampaignSaveWriteResult LongBuildWrite = FCampaignSaveCodec::Serialize(LongBuild);
 	TestTrue(TEXT("Name bounds preserve unrelated string fields and their checksums"),
 		LongBuildWrite.bSucceeded && FCampaignSaveCodec::Deserialize(LongBuildWrite.Json).bSucceeded);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FCampaignSaveIdentifierCaseTest,
+	"UEGT.Core.CampaignSave.IdentifierCase",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FCampaignSaveIdentifierCaseTest::RunTest(const FString& Parameters)
+{
+	using namespace CampaignSaveTests;
+	AddInfo(FString::Printf(TEXT("Save identifier parsing uses WITH_CASE_PRESERVING_NAME=%d."), WITH_CASE_PRESERVING_NAME));
+	const FCampaignSaveWriteResult Write = MakeSerializedSave();
+	if (!TestTrue(TEXT("Identifier case fixture serializes"), Write.bSucceeded))
+	{
+		return false;
+	}
+	for (const TCHAR* Id : { TEXT("uegt.base"), TEXT("region.cascadia"),
+		TEXT("facility.fabrication-bay"), TEXT("research.directed-energy") })
+	{
+		const FString Json = Write.Json.Replace(
+			*FString::Printf(TEXT("\"%s\""), Id),
+			*FString::Printf(TEXT("\"%s\""), *FString(Id).ToUpper()), ESearchCase::CaseSensitive);
+		TestFalse(TEXT("Case-changing ID aliases cannot pass through a cached name and matching checksum"),
+			FCampaignSaveCodec::Deserialize(Json).bSucceeded);
+	}
+	const FString UppercaseFirst = Write.Json.Replace(TEXT("uegt.base"), TEXT("MOD.CASE-FIRST-SAVE"));
+	TestFalse(TEXT("An unknown uppercase saved package is rejected"),
+		FCampaignSaveCodec::Deserialize(UppercaseFirst).bSucceeded);
+	const FString NewPackage = TEXT("{\"schemaVersion\":1,\"packageId\":\"mod.case-first-save\","
+		"\"displayName\":\"Case Test\",\"version\":\"1.0.0\"}");
+	TestTrue(TEXT("Rejected saved IDs cannot poison subsequently loaded content"),
+		FContentPackageJson::ParseString(NewPackage, TEXT("after-invalid-save.json")).bSucceeded);
+	TestTrue(TEXT("Valid save identity and checksums remain intact"),
+		FCampaignSaveCodec::Deserialize(Write.Json, MakeContentPackages()).bSucceeded);
 	return true;
 }
 

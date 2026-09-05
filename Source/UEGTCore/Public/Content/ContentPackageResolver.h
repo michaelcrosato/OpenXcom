@@ -87,4 +87,6 @@ public:
 
 	static FContentResolution Resolve(const TArray<FContentPackageDescriptor>& Packages);
 	static bool IsValidPackageId(FName PackageId);
+	/** Validate serialized spelling before FName conversion can discard casing. */
+	static bool IsValidPackageIdText(const FString& Value);
 };

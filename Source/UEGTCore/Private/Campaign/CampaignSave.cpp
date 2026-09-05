@@ -41,6 +41,12 @@ namespace CampaignSavePrivate
 					*Context, NAME_SIZE - 1));
 			return NAME_None;
 		}
+		if (!Value.IsEmpty() && !FContentPackageResolver::IsValidPackageIdText(Value))
+		{
+			AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_field_value"),
+				FString::Printf(TEXT("%s contains an identifier that must use 3-64 lowercase ASCII characters, start with a letter, and not be 'none'."), *Context));
+			return NAME_None;
+		}
 		return FName(*Value);
 	}
 

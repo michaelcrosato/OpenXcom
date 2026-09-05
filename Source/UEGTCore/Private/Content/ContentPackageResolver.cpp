@@ -42,13 +42,13 @@ bool FContentResolution::HasDiagnostic(const FName Code) const
 
 bool FContentPackageResolver::IsValidPackageId(const FName PackageId)
 {
-	if (PackageId.IsNone())
-	{
-		return false;
-	}
+	return !PackageId.IsNone() && IsValidPackageIdText(PackageId.ToString());
+}
 
-	const FString Value = PackageId.ToString();
-	if (Value.Len() < 3 || Value.Len() > 64 || Value[0] < TEXT('a') || Value[0] > TEXT('z'))
+bool FContentPackageResolver::IsValidPackageIdText(const FString& Value)
+{
+	if (Value.Len() < 3 || Value.Len() > 64 || Value[0] < TEXT('a') || Value[0] > TEXT('z')
+		|| Value.Equals(TEXT("none"), ESearchCase::CaseSensitive))
 	{
 		return false;
 	}

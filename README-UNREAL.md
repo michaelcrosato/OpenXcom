@@ -33,15 +33,28 @@ Run from the repository root:
 ./scripts/Test-Unreal.ps1
 ```
 
-Build before testing: the test runner uses the compiled editor modules. The default `UEGT.Core` filter includes both domain and game/presentation tests. Every run first tests the localization validator, then checks the authored catalog's schema and field types, exact field casing, unique dotted keys, five cultures, exact English/source equality, bounded placeholder indexes and multiplicity, and source-diagnostic coverage. Unreal must discover tests and report successful completion for the script to pass.
+Build before testing: the default test runner uses the compiled editor modules. The default `UEGT.Core` filter includes both domain and game/presentation tests. Every run first tests the localization validator, then checks the catalog in the worktree for the required schema and field types, exact field casing, unique dotted keys, five cultures, exact English/source equality, bounded placeholder indexes and multiplicity, and source-diagnostic coverage. Unreal must discover tests and report successful completion for the script to pass. Automation disables user-mod discovery; tests that exercise mods load their own fixtures.
 
-Each invocation prints a unique log path under `Saved/Logs/Automation` and surfaces automation errors in the console. Logs from previous editor sessions cannot satisfy the current run's completion check, and later automation sessions retain earlier logs.
+Each invocation prints a unique Editor or Runtime log path under `Saved/Logs/Automation` and surfaces automation errors in the console. Logs from previous sessions cannot satisfy the current run's completion check, and later automation sessions retain earlier logs.
 
 For a focused regression run:
 
 ```powershell
 ./scripts/Test-Unreal.ps1 -TestFilter UEGT.Core.CampaignSaveStore
 ```
+
+To verify behavior that differs outside the Editor, build and stage a Development game, then pass its `Windows` directory to the runner:
+
+```powershell
+./scripts/Build-Unreal.ps1 -Target UEGT -Configuration Development
+& 'C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\RunUAT.bat' BuildCookRun `
+  "-project=$PWD/UEGT.uproject" -nop4 -platform=Win64 -clientconfig=Development `
+  -skipbuild -cook -stage -pak -iostore -unattended -utf8output `
+  "-stagingdirectory=$PWD/Saved/RuntimeAutomation"
+./scripts/Test-Unreal.ps1 -RuntimeRoot './Saved/RuntimeAutomation/Windows'
+```
+
+Rebuild and restage after source or content changes. Runtime mode launches the staged `UEGT.exe` and runs only tests marked for `ClientContext`. The content/save identifier-casing regressions check Unreal's non-editor name storage, which does not preserve casing. Keep the full Editor suite as a separate check. Shipping builds exclude development automation tests.
 
 The localization checks can also run without an Unreal installation:
 
@@ -73,7 +86,7 @@ Campaign slots live under the runtime project's `Saved/SaveGames`. Each slot use
 
 Resaving retains the newest compatible prior candidate as the backup. If no candidate matches the new catalog, the newest valid candidate from another catalog is retained instead. A recovered temporary file is moved to the backup before its path is reused; a corrupt, stale, or incompatible primary cannot replace the selected recovery copy. Save timestamps never move behind campaign creation or the retained candidate, so a backward system-clock adjustment cannot make a successful save load older progress.
 
-Save readers enforce JSON scalar types before checksum validation. Signed 64-bit values use canonical decimal strings to retain full precision; ordinary integer fields use JSON numbers. Numbers and booleans cannot stand in for text or ID strings, and quoted numbers cannot stand in for integer fields. Oversized identifiers and identifiers containing null characters return diagnostics before Unreal name construction.
+Save readers enforce JSON scalar types before checksum validation. Signed 64-bit values use canonical decimal strings to retain full precision; ordinary integer fields use JSON numbers. Numbers and booleans cannot stand in for text or ID strings, and quoted numbers cannot stand in for integer fields. Identifier spelling is validated before Unreal name construction, so uppercase aliases, oversized IDs, and embedded null characters return diagnostics in both Editor and standalone builds.
 
 User packages are discovered under `Saved/Mods`. Save compatibility depends on the loaded package IDs and versions. See [content authoring](docs/CONTENT-AUTHORING.md) and the [Aurora Relay sample](Samples/Mods/AuroraRelay/README.md) for installation, reload, replacement, and validation rules.
 
