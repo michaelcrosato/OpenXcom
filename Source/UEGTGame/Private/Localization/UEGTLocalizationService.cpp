@@ -15,12 +15,24 @@ namespace UEGTLocalizationPrivate
 	TOptional<FUEGTLocalizationCatalog> ActiveCatalog;
 	bool bDefaultLoadAttempted = false;
 
+	bool HasExactTypedField(const FJsonObject& Object, const FString& Name, const EJson Type)
+	{
+		for (const TPair<FString, TSharedPtr<FJsonValue>>& Field : Object.Values)
+		{
+			if (Field.Key.Equals(Name, ESearchCase::CaseSensitive))
+			{
+				return Field.Value.IsValid() && Field.Value->Type == Type;
+			}
+		}
+		return false;
+	}
+
 	FString NormalizeCulture(FString CultureName)
 	{
 		CultureName.TrimStartAndEndInline();
 		CultureName.ToLowerInline();
 		CultureName.ReplaceInline(TEXT("_"), TEXT("-"));
-		if (CultureName.Len() > 2)
+		if (CultureName.Len() > 2 && CultureName[2] == TEXT('-'))
 		{
 			CultureName = CultureName.Left(2);
 		}
@@ -143,7 +155,8 @@ FUEGTLocalizationLoadResult FUEGTLocalizationService::ParseCatalog(const FString
 	}
 
 	double SchemaVersion = 0.0;
-	if (!Root->TryGetNumberField(TEXT("schemaVersion"), SchemaVersion)
+	if (!HasExactTypedField(*Root, TEXT("schemaVersion"), EJson::Number)
+		|| !Root->TryGetNumberField(TEXT("schemaVersion"), SchemaVersion)
 		|| SchemaVersion != 1.0 || FMath::FloorToDouble(SchemaVersion) != SchemaVersion)
 	{
 		AddDiagnostic(Result, TEXT("Localization catalog requires schemaVersion 1."));
@@ -152,14 +165,16 @@ FUEGTLocalizationLoadResult FUEGTLocalizationService::ParseCatalog(const FString
 	Result.Catalog.SchemaVersion = 1;
 
 	FString CatalogId;
-	if (!Root->TryGetStringField(TEXT("catalogId"), CatalogId) || !IsValidCatalogId(CatalogId))
+	if (!HasExactTypedField(*Root, TEXT("catalogId"), EJson::String)
+		|| !Root->TryGetStringField(TEXT("catalogId"), CatalogId) || !IsValidCatalogId(CatalogId))
 	{
 		AddDiagnostic(Result, TEXT("Localization catalogId must be a lowercase namespaced id."));
 		return Result;
 	}
 	Result.Catalog.CatalogId = FName(*CatalogId);
 
-	if (!Root->TryGetStringField(TEXT("sourceCulture"), Result.Catalog.SourceCulture))
+	if (!HasExactTypedField(*Root, TEXT("sourceCulture"), EJson::String)
+		|| !Root->TryGetStringField(TEXT("sourceCulture"), Result.Catalog.SourceCulture))
 	{
 		AddDiagnostic(Result, TEXT("Localization catalog requires sourceCulture."));
 		return Result;
@@ -172,7 +187,8 @@ FUEGTLocalizationLoadResult FUEGTLocalizationService::ParseCatalog(const FString
 	}
 
 	const TArray<TSharedPtr<FJsonValue>>* CultureValues = nullptr;
-	if (!Root->TryGetArrayField(TEXT("cultures"), CultureValues) || CultureValues == nullptr)
+	if (!HasExactTypedField(*Root, TEXT("cultures"), EJson::Array)
+		|| !Root->TryGetArrayField(TEXT("cultures"), CultureValues) || CultureValues == nullptr)
 	{
 		AddDiagnostic(Result, TEXT("Localization catalog requires a cultures array."));
 		return Result;
@@ -205,7 +221,8 @@ FUEGTLocalizationLoadResult FUEGTLocalizationService::ParseCatalog(const FString
 	}
 
 	const TArray<TSharedPtr<FJsonValue>>* EntryValues = nullptr;
-	if (!Root->TryGetArrayField(TEXT("entries"), EntryValues) || EntryValues == nullptr || EntryValues->IsEmpty())
+	if (!HasExactTypedField(*Root, TEXT("entries"), EJson::Array)
+		|| !Root->TryGetArrayField(TEXT("entries"), EntryValues) || EntryValues == nullptr || EntryValues->IsEmpty())
 	{
 		AddDiagnostic(Result, TEXT("Localization catalog requires at least one entry."));
 		return Result;
@@ -220,7 +237,8 @@ FUEGTLocalizationLoadResult FUEGTLocalizationService::ParseCatalog(const FString
 		const TSharedPtr<FJsonObject> EntryObject = Value->AsObject();
 		FString Key;
 		FUEGTLocalizedTextEntry Entry;
-		if (!EntryObject->TryGetStringField(TEXT("key"), Key) || !IsValidTextKey(Key))
+		if (!HasExactTypedField(*EntryObject, TEXT("key"), EJson::String)
+			|| !EntryObject->TryGetStringField(TEXT("key"), Key) || !IsValidTextKey(Key))
 		{
 			AddDiagnostic(Result, TEXT("Localization entry keys must be lowercase dotted ids."));
 			return Result;
@@ -230,13 +248,14 @@ FUEGTLocalizationLoadResult FUEGTLocalizationService::ParseCatalog(const FString
 			AddDiagnostic(Result, FString::Printf(TEXT("Localization entry '%s' is duplicated."), *Key));
 			return Result;
 		}
-		if (!EntryObject->TryGetStringField(TEXT("source"), Entry.Source)
+		if (!HasExactTypedField(*EntryObject, TEXT("source"), EJson::String)
+			|| !EntryObject->TryGetStringField(TEXT("source"), Entry.Source)
 			|| Entry.Source.TrimStartAndEnd().IsEmpty())
 		{
 			AddDiagnostic(Result, FString::Printf(TEXT("Localization entry '%s' requires source text."), *Key));
 			return Result;
 		}
-		if (!EntryObject->HasTypedField<EJson::Object>(TEXT("translations")))
+		if (!HasExactTypedField(*EntryObject, TEXT("translations"), EJson::Object))
 		{
 			AddDiagnostic(Result, FString::Printf(TEXT("Localization entry '%s' requires translations."), *Key));
 			return Result;
@@ -251,7 +270,8 @@ FUEGTLocalizationLoadResult FUEGTLocalizationService::ParseCatalog(const FString
 		for (const FString& Culture : RequiredCultures)
 		{
 			FString Translation;
-			if (!Translations->TryGetStringField(Culture, Translation)
+			if (!HasExactTypedField(*Translations, Culture, EJson::String)
+				|| !Translations->TryGetStringField(Culture, Translation)
 				|| Translation.TrimStartAndEnd().IsEmpty())
 			{
 				AddDiagnostic(Result, FString::Printf(
@@ -284,7 +304,7 @@ FUEGTLocalizationLoadResult FUEGTLocalizationService::ParseCatalog(const FString
 				return Result;
 			}
 		}
-		if (Entry.Translations.FindChecked(TEXT("en")) != Entry.Source)
+		if (!Entry.Translations.FindChecked(TEXT("en")).Equals(Entry.Source, ESearchCase::CaseSensitive))
 		{
 			AddDiagnostic(Result, FString::Printf(
 				TEXT("Localization entry '%s' English translation must equal its source."), *Key));

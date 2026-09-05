@@ -12,6 +12,51 @@
 #include "Misc/Paths.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FUEGTLocalizationSchemaTest,
+	"UEGT.Core.Game.Localization.CatalogSchema",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FUEGTLocalizationSchemaTest::RunTest(const FString& Parameters)
+{
+	const FString Json = TEXT("{\"schemaVersion\":1,\"catalogId\":\"uegt.test\",\"sourceCulture\":\"en\","
+		"\"cultures\":[\"en\",\"fr\",\"de\",\"es\",\"ja\"],\"entries\":[{\"key\":\"test.label\",\"source\":\"ON\","
+		"\"translations\":{\"en\":\"ON\",\"fr\":\"ACTIF\",\"de\":\"AN\",\"es\":\"SI\",\"ja\":\"ON\"}}]}");
+	const FUEGTLocalizationLoadResult Valid = FUEGTLocalizationService::ParseCatalog(Json);
+	TestTrue(TEXT("Minimal catalog with correctly typed fields is accepted"), Valid.bSucceeded);
+	TestEqual(TEXT("Regional culture normalization preserves supported language tags"),
+		Valid.Catalog.Resolve(TEXT("test.label"), TEXT("fallback"), TEXT(" fr_CA ")), FString(TEXT("ACTIF")));
+	TestEqual(TEXT("Arbitrary words cannot select a culture through their first two letters"),
+		Valid.Catalog.Resolve(TEXT("test.label"), TEXT("fallback"), TEXT("frame")), FString(TEXT("ON")));
+
+	struct FInvalidCase
+	{
+		const TCHAR* Name;
+		FString Json;
+	};
+	const FInvalidCase Cases[] = {
+		{ TEXT("String schema"), Json.Replace(TEXT("\"schemaVersion\":1"), TEXT("\"schemaVersion\":\"1\"")) },
+		{ TEXT("Boolean schema"), Json.Replace(TEXT("\"schemaVersion\":1"), TEXT("\"schemaVersion\":true")) },
+		{ TEXT("Numeric text"), Json.Replace(TEXT("\"ON\""), TEXT("42")) },
+		{ TEXT("Boolean text"), Json.Replace(TEXT("\"ON\""), TEXT("true")) },
+		{ TEXT("Numeric translation"), Json.Replace(TEXT("\"fr\":\"ACTIF\""), TEXT("\"fr\":42")) },
+		{ TEXT("Null translation"), Json.Replace(TEXT("\"fr\":\"ACTIF\""), TEXT("\"fr\":null")) },
+		{ TEXT("Malformed source culture"), Json.Replace(TEXT("\"sourceCulture\":\"en\""), TEXT("\"sourceCulture\":\"english\"")) },
+		{ TEXT("Malformed listed culture"), Json.Replace(TEXT("[\"en\",\"fr\",\"de\",\"es\",\"ja\"]"), TEXT("[\"en\",\"french\",\"de\",\"es\",\"ja\"]")) },
+		{ TEXT("Incorrectly cased field"), Json.Replace(TEXT("\"source\":"), TEXT("\"Source\":")) },
+		{ TEXT("Incorrectly cased root field"), Json.Replace(TEXT("\"schemaVersion\":"), TEXT("\"SchemaVersion\":")) },
+		{ TEXT("Incorrectly cased culture key"), Json.Replace(TEXT("\"en\":\"ON\""), TEXT("\"EN\":\"ON\"")) },
+		{ TEXT("English case mismatch"), Json.Replace(TEXT("\"en\":\"ON\""), TEXT("\"en\":\"on\"")) }
+	};
+	for (const FInvalidCase& Case : Cases)
+	{
+		const FUEGTLocalizationLoadResult Invalid = FUEGTLocalizationService::ParseCatalog(Case.Json);
+		TestTrue(FString::Printf(TEXT("%s is rejected with a diagnostic"), Case.Name),
+			!Invalid.bSucceeded && !Invalid.Diagnostics.IsEmpty());
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FUEGTLocalizationCatalogTest,
 	"UEGT.Core.Game.Localization.CatalogAndLocaleSnapshots",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

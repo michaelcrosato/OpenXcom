@@ -20,7 +20,7 @@ The original Unreal code under `Source/` is [MIT licensed](Source/LICENSE.txt). 
 
 - Unreal Engine 5.8.2 or newer.
 - A Visual Studio toolchain supported by that Unreal installation.
-- PowerShell and `rg` (ripgrep) on `PATH`; the localization preflight uses `rg` to scan source diagnostics.
+- Windows PowerShell 5.1 or PowerShell 7.5+ and `rg` (ripgrep) on `PATH`. The preflight preserves JSON string types, including date-shaped UI text, and uses `rg` to scan source diagnostics.
 
 The scripts default to `C:\Program Files\Epic Games\UE_5.8`. Pass `-EngineRoot` to use another installation.
 
@@ -33,7 +33,7 @@ Run from the repository root:
 ./scripts/Test-Unreal.ps1
 ```
 
-Build before testing: the test runner uses the compiled editor modules. The default `UEGT.Core` filter includes both domain and game/presentation tests. Every run first checks localization key uniqueness, all five cultures, placeholder parity, and source-diagnostic coverage. Unreal must discover tests and report successful completion for the script to pass.
+Build before testing: the test runner uses the compiled editor modules. The default `UEGT.Core` filter includes both domain and game/presentation tests. Every run first tests the localization validator, then checks the authored catalog's schema and field types, exact field casing, unique dotted keys, five cultures, exact English/source equality, bounded placeholder indexes and multiplicity, and source-diagnostic coverage. Unreal must discover tests and report successful completion for the script to pass.
 
 Each invocation prints a unique log path under `Saved/Logs/Automation` and surfaces automation errors in the console. Logs from previous editor sessions cannot satisfy the current run's completion check, and later automation sessions retain earlier logs.
 
@@ -41,6 +41,13 @@ For a focused regression run:
 
 ```powershell
 ./scripts/Test-Unreal.ps1 -TestFilter UEGT.Core.CampaignSaveStore
+```
+
+The localization checks can also run without an Unreal installation:
+
+```powershell
+./scripts/Test-LocalizationCatalog.Tests.ps1
+./scripts/Test-LocalizationCatalog.ps1
 ```
 
 For the production target:

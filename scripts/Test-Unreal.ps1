@@ -15,12 +15,14 @@ $EditorCommand = Join-Path $EngineRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.e
 $LogDirectory = Join-Path $ProjectRoot "Saved\Logs\Automation"
 $LogFile = Join-Path $LogDirectory ("UEGT-{0}-{1}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"), [guid]::NewGuid().ToString("N"))
 $LocalizationAudit = Join-Path $PSScriptRoot "Test-LocalizationCatalog.ps1"
+$LocalizationValidatorTests = Join-Path $PSScriptRoot "Test-LocalizationCatalog.Tests.ps1"
 
 if (-not (Test-Path -LiteralPath $EditorCommand -PathType Leaf))
 {
 	throw "Unreal command-line editor was not found at '$EditorCommand'. Pass -EngineRoot for the installed engine."
 }
 
+& $LocalizationValidatorTests
 & $LocalizationAudit -ProjectRoot $ProjectRoot
 
 [void] (New-Item -ItemType Directory -Path $LogDirectory -Force)

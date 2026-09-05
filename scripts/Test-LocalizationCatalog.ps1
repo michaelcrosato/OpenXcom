@@ -31,47 +31,141 @@ if (-not (Test-Path -LiteralPath $GameSourceRoot -PathType Container))
 	throw "Game-layer source was not found at '$GameSourceRoot'."
 }
 
-$Catalog = Get-Content -LiteralPath $CatalogPath -Raw | ConvertFrom-Json
+function Get-CatalogField($Object, [string] $Name)
+{
+	# JSON field names are case-sensitive, unlike PowerShell property access.
+	foreach ($Property in $Object.PSObject.Properties)
+	{
+		if ($Property.Name -ceq $Name) { return ,$Property.Value }
+	}
+	return $null
+}
+
+function ConvertTo-CatalogCulture([string] $Name)
+{
+	$Name = $Name.Trim().ToLowerInvariant().Replace("_", "-")
+	if ($Name.Length -gt 2 -and $Name[2] -eq '-') { return $Name.Substring(0, 2) }
+	return $Name
+}
+
+function Get-IndexedPlaceholders([string] $Value, [string] $Context)
+{
+	$Indices = [System.Collections.Generic.List[int]]::new()
+	foreach ($Match in [regex]::Matches($Value, '\{([0-9]+)(\})?'))
+	{
+		$Index = 0
+		if (-not [int]::TryParse($Match.Groups[1].Value, [System.Globalization.NumberStyles]::None,
+			[System.Globalization.CultureInfo]::InvariantCulture, [ref]$Index))
+		{
+			throw "$Context contains an indexed placeholder outside the 32-bit range."
+		}
+		if ($Match.Groups[2].Success) { $Indices.Add($Index) }
+	}
+	$Indices.Sort()
+	return $Indices.ToArray()
+}
+
+$Json = Get-Content -LiteralPath $CatalogPath -Raw -Encoding UTF8
+if (-not $Json.TrimStart().StartsWith("{")) { throw "Localization catalog must be a JSON object." }
+$JsonParameters = @{ InputObject = $Json }
+if ((Get-Command ConvertFrom-Json).Parameters.ContainsKey("DateKind"))
+{
+	# Preserve date-shaped UI text instead of coercing it to System.DateTime.
+	$JsonParameters.DateKind = "String"
+}
+elseif ($PSVersionTable.PSEdition -eq "Core")
+{
+	throw "Localization validation requires Windows PowerShell 5.1 or PowerShell 7.5+ to preserve JSON string types."
+}
+$Catalog = ConvertFrom-Json @JsonParameters
+$SchemaVersion = Get-CatalogField $Catalog "schemaVersion"
+if (($SchemaVersion -isnot [int] -and $SchemaVersion -isnot [long] -and $SchemaVersion -isnot [double]) -or $SchemaVersion -ne 1)
+{
+	throw "Localization catalog requires numeric schemaVersion 1."
+}
+$CatalogId = Get-CatalogField $Catalog "catalogId"
+if ($CatalogId -isnot [string] -or $CatalogId -cnotmatch '\A[a-z][a-z0-9.-]*\z')
+{
+	throw "Localization catalogId must be a lowercase id."
+}
+$SourceCulture = Get-CatalogField $Catalog "sourceCulture"
+if ($SourceCulture -isnot [string] -or (ConvertTo-CatalogCulture $SourceCulture) -cne "en")
+{
+	throw "Localization sourceCulture must be English (en)."
+}
+$Cultures = Get-CatalogField $Catalog "cultures"
+if ($Cultures -isnot [array] -or $Cultures.Count -ne $RequiredCultures.Count)
+{
+	throw "Localization cultures must be an array containing exactly en, fr, de, es, and ja."
+}
+$SeenCultures = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+foreach ($Culture in $Cultures)
+{
+	if ($Culture -isnot [string]) { throw "Localization cultures must be strings." }
+	$NormalizedCulture = ConvertTo-CatalogCulture $Culture
+	if ($RequiredCultures -cnotcontains $NormalizedCulture -or -not $SeenCultures.Add($NormalizedCulture))
+	{
+		throw "Localization cultures must contain en, fr, de, es, and ja exactly once."
+	}
+}
+$Entries = Get-CatalogField $Catalog "entries"
+if ($Entries -isnot [array] -or $Entries.Count -eq 0)
+{
+	throw "Localization entries must be a non-empty array."
+}
 $SeenKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 $ExactDiagnosticKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-$PlaceholderPattern = [regex]::new("\{[0-9]+\}")
 
-foreach ($Entry in $Catalog.entries)
+foreach ($Entry in $Entries)
 {
-	if ([string]::IsNullOrWhiteSpace([string] $Entry.key))
+	if ($Entry -isnot [pscustomobject]) { throw "Localization entry must be an object." }
+	$Key = Get-CatalogField $Entry "key"
+	if ($Key -isnot [string] -or $Key -cnotmatch '\A[a-z][a-z0-9.-]*\z' -or
+		-not $Key.Contains(".") -or $Key.EndsWith(".") -or $Key.Contains(".."))
 	{
-		throw "Localization catalog contains an entry without a key."
+		throw "Localization entry key must be a lowercase dotted id."
 	}
 
-	if (-not $SeenKeys.Add([string] $Entry.key))
+	if (-not $SeenKeys.Add($Key))
 	{
-		throw "Localization key '$($Entry.key)' is duplicated."
+		throw "Localization key '$Key' is duplicated."
 	}
 
-	if ([string]::IsNullOrWhiteSpace([string] $Entry.source))
+	$Source = Get-CatalogField $Entry "source"
+	if ($Source -isnot [string] -or [string]::IsNullOrWhiteSpace($Source))
 	{
-		throw "Localization key '$($Entry.key)' has an empty source string."
+		throw "Localization key '$Key' requires a non-empty source string."
 	}
 
-	$SourcePlaceholders = @($PlaceholderPattern.Matches([string] $Entry.source) | ForEach-Object Value | Sort-Object)
+	$Translations = Get-CatalogField $Entry "translations"
+	if ($Translations -isnot [pscustomobject]) { throw "Localization key '$Key' requires a translations object." }
+	if (@($Translations.PSObject.Properties).Count -ne $RequiredCultures.Count)
+	{
+		throw "Localization key '$Key' must contain exactly five translations."
+	}
+	$SourcePlaceholders = @(Get-IndexedPlaceholders $Source "Localization key '$Key' source")
 	foreach ($Culture in $RequiredCultures)
 	{
-		$Translation = [string] $Entry.translations.$Culture
-		if ([string]::IsNullOrWhiteSpace($Translation))
+		$Translation = Get-CatalogField $Translations $Culture
+		if ($Translation -isnot [string] -or [string]::IsNullOrWhiteSpace($Translation))
 		{
-			throw "Localization key '$($Entry.key)' has no '$Culture' translation."
+			throw "Localization key '$Key' requires a non-empty '$Culture' translation string."
+		}
+		if ($Culture -ceq "en" -and $Translation -cne $Source)
+		{
+			throw "Localization key '$Key' English translation must equal its source."
 		}
 
-		$TranslationPlaceholders = @($PlaceholderPattern.Matches($Translation) | ForEach-Object Value | Sort-Object)
+		$TranslationPlaceholders = @(Get-IndexedPlaceholders $Translation "Localization key '$Key' translation '$Culture'")
 		if (Compare-Object $SourcePlaceholders $TranslationPlaceholders)
 		{
-			throw "Localization key '$($Entry.key)' changes placeholders in '$Culture'."
+			throw "Localization key '$Key' changes placeholders in '$Culture'."
 		}
 	}
 
-	if ($Entry.key -like "diagnostic.*" -and $Entry.key -notlike "diagnostic.generic-*")
+	if ($Key -like "diagnostic.*" -and $Key -notlike "diagnostic.generic-*")
 	{
-		[void] $ExactDiagnosticKeys.Add([string] $Entry.key)
+		[void] $ExactDiagnosticKeys.Add($Key)
 	}
 }
 
