@@ -8228,6 +8228,41 @@ FReply UUEGTStrategicHudWidget::HandleAccessibilityPresetClicked(
 	return FReply::Handled();
 }
 
+bool UUEGTStrategicHudWidget::TryParseCampaignSeed(const FString& Text, int64& OutSeed)
+{
+	const FString Trimmed = Text.TrimStartAndEnd();
+	if (Trimmed.IsEmpty())
+	{
+		return false;
+	}
+	const bool bNegative = Trimmed[0] == TEXT('-');
+	int32 Index = bNegative || Trimmed[0] == TEXT('+') ? 1 : 0;
+	if (Index == Trimmed.Len())
+	{
+		return false;
+	}
+	const uint64 Limit = static_cast<uint64>(MAX_int64) + (bNegative ? 1ULL : 0ULL);
+	uint64 Magnitude = 0;
+	for (; Index < Trimmed.Len(); ++Index)
+	{
+		const TCHAR Character = Trimmed[Index];
+		if (Character < TEXT('0') || Character > TEXT('9'))
+		{
+			return false;
+		}
+		const uint64 Digit = static_cast<uint64>(Character - TEXT('0'));
+		if (Magnitude > (Limit - Digit) / 10ULL)
+		{
+			return false;
+		}
+		Magnitude = Magnitude * 10ULL + Digit;
+	}
+	OutSeed = bNegative
+		? (Magnitude == Limit ? MIN_int64 : -static_cast<int64>(Magnitude))
+		: static_cast<int64>(Magnitude);
+	return true;
+}
+
 FReply UUEGTStrategicHudWidget::HandleStartCampaignClicked()
 {
 	if (SeedTextBox.IsValid())
@@ -8235,7 +8270,7 @@ FReply UUEGTStrategicHudWidget::HandleStartCampaignClicked()
 		SeedText = SeedTextBox->GetText().ToString();
 	}
 	int64 Seed = 0;
-	if (!LexTryParseString(Seed, *SeedText.TrimStartAndEnd()))
+	if (!TryParseCampaignSeed(SeedText, Seed))
 	{
 		ShowStatusMessage(UEGTStrategicHudPrivate::Localized(
 			TEXT("menu.campaign-seed-invalid"),

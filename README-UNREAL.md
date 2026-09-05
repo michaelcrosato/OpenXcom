@@ -80,6 +80,8 @@ After building the editor target:
 
 The native shell provides campaign setup, strategy, base management, and tactical play. [Runtime fixtures](docs/UNREAL-RUNTIME-FIXTURES.md) give repeatable commands for specific interface states and screenshots in non-shipping builds.
 
+Campaign seeds accept whole decimal integers from `-9223372036854775808` through `9223372036854775807`, with an optional sign, surrounding whitespace, and leading zeros. Fractions, exponent notation, trailing text, embedded null characters, and out-of-range values are rejected before starting a campaign.
+
 ## Saves and mods
 
 Campaign slots live under the runtime project's `Saved/SaveGames`. Each slot uses `.uegtsave`, `.uegtsave.tmp`, and `.uegtsave.bak` candidates. Writes verify the temporary file before promotion. Loading validates available candidates against the requested catalog and selects the newest valid timestamp, preferring primary, temporary, then backup on ties.

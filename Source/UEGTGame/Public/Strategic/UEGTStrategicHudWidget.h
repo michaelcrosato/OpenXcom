@@ -109,6 +109,9 @@ public:
 	/** Clamps a manufacturing quantity after applying a signed UI delta. */
 	static int32 CalculateManufacturingQuantity(int32 CurrentQuantity, int32 Delta);
 
+	/** Parses a whole signed decimal seed, allowing surrounding whitespace and leading zeros. */
+	static bool TryParseCampaignSeed(const FString& Text, int64& OutSeed);
+
 	UFUNCTION(BlueprintPure, Category = "UEGT|Strategic|HUD")
 	FStrategicDashboardSnapshot GetCurrentSnapshot() const { return CurrentSnapshot; }
 

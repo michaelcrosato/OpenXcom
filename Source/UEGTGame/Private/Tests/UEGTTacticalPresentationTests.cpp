@@ -40,6 +40,46 @@ bool FUEGTStrategicHudManufacturingQuantityArithmeticTest::RunTest(const FString
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FUEGTStrategicHudCampaignSeedTest,
+	"UEGT.Core.Game.StrategicHudCampaignSeed",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FUEGTStrategicHudCampaignSeedTest::RunTest(const FString& Parameters)
+{
+	const TPair<const TCHAR*, int64> ValidSeeds[] = {
+		{ TEXT("0"), 0 }, { TEXT("-0"), 0 }, { TEXT("+0"), 0 },
+		{ TEXT("\t +00042 \r\n"), 42 }, { TEXT(" -0042 "), -42 },
+		{ TEXT("9223372036854775807"), MAX_int64 },
+		{ TEXT("-9223372036854775808"), MIN_int64 },
+		{ TEXT("+0009223372036854775807"), MAX_int64 },
+		{ TEXT("-0009223372036854775808"), MIN_int64 }
+	};
+	for (const auto& Valid : ValidSeeds)
+	{
+		int64 Seed = 123;
+		TestTrue(TEXT("A valid whole decimal seed is accepted"),
+			UUEGTStrategicHudWidget::TryParseCampaignSeed(Valid.Key, Seed));
+		TestEqual(TEXT("Every valid seed retains its exact signed value"), Seed, Valid.Value);
+	}
+	for (const TCHAR* Invalid : { TEXT(""), TEXT(" \t "), TEXT("+"), TEXT("-"),
+		TEXT("123abc"), TEXT("123.5"), TEXT("1e4"), TEXT("0x10"), TEXT("0junk"),
+		TEXT("--0"), TEXT("+-0"), TEXT("9 9"), TEXT("inf"),
+		TEXT("9223372036854775808"), TEXT("-9223372036854775809"),
+		TEXT("9999999999999999999999999999999999999999") })
+	{
+		int64 Seed = 123;
+		TestFalse(FString::Printf(TEXT("Malformed or overflowing campaign seed '%s' is rejected"), Invalid),
+			UUEGTStrategicHudWidget::TryParseCampaignSeed(Invalid, Seed));
+	}
+	FString EmbeddedNull = TEXT("42x7");
+	EmbeddedNull[2] = TEXT('\0');
+	int64 Seed = 123;
+	TestFalse(TEXT("An embedded null cannot silently truncate a campaign seed"),
+		UUEGTStrategicHudWidget::TryParseCampaignSeed(EmbeddedNull, Seed));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FUEGTTacticalRuntimePresentationTest,
 	"UEGT.Core.Game.TacticalRuntimeBoardCameraHud",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
