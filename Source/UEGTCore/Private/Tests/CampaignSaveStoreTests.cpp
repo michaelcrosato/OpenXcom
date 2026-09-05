@@ -89,6 +89,28 @@ bool FCampaignSaveStoreBackupRecoveryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Recovery emits a stable diagnostic"), Recovered.HasDiagnostic(TEXT("save_recovered")));
 	TestEqual(TEXT("Backup preserves the prior committed state"), Recovered.Envelope.State.Funds, int64(100));
 
+	FString BackupBeforeResave;
+	TestTrue(TEXT("Verified recovery backup can be read"), FFileHelper::LoadFileToString(
+		BackupBeforeResave, *FCampaignSaveStore::GetBackupPath(Directory, Slot)));
+	const FCampaignSaveStoreResult Resaved = FCampaignSaveStore::Save(
+		Directory, Slot, MakeEnvelope(300), FDateTime(2026, 8, 29, 20, 15, 0));
+	TestTrue(TEXT("Saving after backup recovery succeeds"), Resaved.bSucceeded);
+	FString BackupAfterResave;
+	TestTrue(TEXT("Recovery backup still exists after resaving"), FFileHelper::LoadFileToString(
+		BackupAfterResave, *FCampaignSaveStore::GetBackupPath(Directory, Slot)));
+	TestEqual(TEXT("Corrupt primary does not overwrite the verified backup"),
+		BackupAfterResave, BackupBeforeResave);
+	const FCampaignSaveStoreResult ResavedLoad = FCampaignSaveStore::Load(Directory, Slot, MakePackages());
+	TestTrue(TEXT("New committed state loads from the primary"), ResavedLoad.bSucceeded
+		&& ResavedLoad.Source == ECampaignSaveSource::Primary && ResavedLoad.Envelope.State.Funds == 300);
+
+	TestTrue(TEXT("Second corrupt primary fixture writes"), FFileHelper::SaveStringToFile(
+		TEXT("{corrupt-again"), *FCampaignSaveStore::GetPrimaryPath(Directory, Slot),
+		FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM));
+	const FCampaignSaveStoreResult RecoveredAgain = FCampaignSaveStore::Load(Directory, Slot, MakePackages());
+	TestTrue(TEXT("Backup remains recoverable after another primary corruption"), RecoveredAgain.bSucceeded
+		&& RecoveredAgain.Source == ECampaignSaveSource::Backup && RecoveredAgain.Envelope.State.Funds == 100);
+
 	CleanupTestDirectory(Directory);
 	return true;
 }

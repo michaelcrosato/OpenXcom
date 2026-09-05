@@ -331,11 +331,18 @@ FCampaignSaveStoreResult FCampaignSaveStore::Save(
 		return Result;
 	}
 
-	if (FileManager.FileExists(*PrimaryPath)
-		&& !FileManager.Move(*BackupPath, *PrimaryPath, true, true, false, true))
+	if (FileManager.FileExists(*PrimaryPath))
 	{
-		AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("backup_rotation_failed"), TEXT("Could not rotate the current campaign save to its backup."));
-		return Result;
+		// A recovered slot may still have a corrupt primary. Never rotate that
+		// rejected candidate over the backup that made recovery possible.
+		FString PrimaryJson;
+		const bool bPrimaryValid = FFileHelper::LoadFileToString(PrimaryJson, *PrimaryPath)
+			&& FCampaignSaveCodec::Deserialize(PrimaryJson).bSucceeded;
+		if (bPrimaryValid && !FileManager.Move(*BackupPath, *PrimaryPath, true, true, false, true))
+		{
+			AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("backup_rotation_failed"), TEXT("Could not rotate the current campaign save to its backup."));
+			return Result;
+		}
 	}
 	if (!FileManager.Move(*PrimaryPath, *TemporaryPath, true, true, false, true))
 	{
