@@ -44,7 +44,7 @@ bool UUEGTGameInstance::ReloadContent()
 		{
 			ModsDirectory = GetDefaultUserModsDirectory();
 		}
-		else if (FPaths::IsRelative(ModsDirectory))
+		else if (!ModsDirectory.IsEmpty() && FPaths::IsRelative(ModsDirectory))
 		{
 			ModsDirectory = FPaths::Combine(FPaths::ProjectDir(), ModsDirectory);
 		}
@@ -63,8 +63,8 @@ bool UUEGTGameInstance::ReloadContentFromDirectories(const TArray<FString>& Cont
 		return false;
 	}
 
-	const FContentCatalogLoadResult Catalog = FContentPackageCatalog::LoadDirectories(ContentDirectories);
-	ContentDiagnostics = Catalog.Diagnostics;
+	FContentCatalogLoadResult Catalog = FContentPackageCatalog::LoadDirectories(ContentDirectories);
+	ContentDiagnostics = MoveTemp(Catalog.Diagnostics);
 	if (!Catalog.bSucceeded)
 	{
 		bContentReady = false;
@@ -72,6 +72,7 @@ bool UUEGTGameInstance::ReloadContentFromDirectories(const TArray<FString>& Cont
 	}
 
 	TArray<FCampaignContentVersion> NextContentVersions;
+	NextContentVersions.Reserve(Catalog.Packages.Num());
 	for (const FContentPackage& Package : Catalog.Packages)
 	{
 		FCampaignContentVersion& Version = NextContentVersions.AddDefaulted_GetRef();
@@ -84,9 +85,9 @@ bool UUEGTGameInstance::ReloadContentFromDirectories(const TArray<FString>& Cont
 			return Left.PackageId.LexicalLess(Right.PackageId);
 		});
 
-	LoadedRules = Catalog.RuleSet;
+	LoadedRules = MoveTemp(Catalog.RuleSet);
 	LoadedContentVersions = MoveTemp(NextContentVersions);
-	LoadedContentFiles = Catalog.LoadedFiles;
+	LoadedContentFiles = MoveTemp(Catalog.LoadedFiles);
 	TArray<FString> NextContentDirectories;
 	for (const FString& ContentDirectory : ContentDirectories)
 	{

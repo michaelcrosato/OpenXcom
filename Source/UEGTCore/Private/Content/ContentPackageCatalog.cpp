@@ -107,13 +107,14 @@ FContentCatalogLoadResult FContentPackageCatalog::LoadDirectories(const TArray<F
 	}
 
 	TArray<FContentPackage> ParsedPackages;
+	ParsedPackages.Reserve(Files.Num());
 	for (const FString& File : Files)
 	{
-		const FContentPackageParseResult Parse = FContentPackageJson::ParseFile(File);
-		Result.Diagnostics.Append(Parse.Diagnostics);
+		FContentPackageParseResult Parse = FContentPackageJson::ParseFile(File);
+		Result.Diagnostics.Append(MoveTemp(Parse.Diagnostics));
 		if (Parse.bSucceeded)
 		{
-			ParsedPackages.Add(Parse.Package);
+			ParsedPackages.Add(MoveTemp(Parse.Package));
 			Result.LoadedFiles.Add(File);
 		}
 	}
@@ -123,8 +124,8 @@ FContentCatalogLoadResult FContentPackageCatalog::LoadDirectories(const TArray<F
 		return Result;
 	}
 
-	const FRuleSetBuildResult Build = FRuleSetBuilder::Build(ParsedPackages);
-	Result.Diagnostics.Append(Build.Diagnostics);
+	FRuleSetBuildResult Build = FRuleSetBuilder::Build(ParsedPackages);
+	Result.Diagnostics.Append(MoveTemp(Build.Diagnostics));
 	if (!Build.bSucceeded)
 	{
 		Result.LoadedFiles.Reset();
@@ -140,7 +141,7 @@ FContentCatalogLoadResult FContentPackageCatalog::LoadDirectories(const TArray<F
 	{
 		Result.Packages.Add(MoveTemp(PackagesById.FindChecked(PackageId)));
 	}
-	Result.RuleSet = Build.RuleSet;
+	Result.RuleSet = MoveTemp(Build.RuleSet);
 	Result.bSucceeded = true;
 	return Result;
 }

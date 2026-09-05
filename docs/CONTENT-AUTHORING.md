@@ -19,7 +19,7 @@ The default directory is optional. If it does not exist, the built-in catalog lo
 
 Two development command-line switches control discovery:
 
-- `-UEGTModsDir=<directory>` replaces `Saved/Mods` with an explicit directory. A relative path is resolved from the project directory. An explicit missing directory is an error.
+- `-UEGTModsDir=<directory>` replaces `Saved/Mods` with an explicit directory. A relative path is resolved from the project directory. An explicit missing or empty directory is an error, including `-UEGTModsDir=""` and whitespace-only values.
 - `-UEGTNoUserMods` loads only the built-in catalog.
 
 For example, launch the included sample directly from the repository:

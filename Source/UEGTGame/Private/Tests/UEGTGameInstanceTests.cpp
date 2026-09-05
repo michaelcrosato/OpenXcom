@@ -5,7 +5,9 @@
 #include "UEGTGameInstance.h"
 
 #include "Misc/AutomationTest.h"
+#include "Misc/CommandLine.h"
 #include "Misc/Paths.h"
+#include "Misc/ScopeExit.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FUEGTGameInstanceModCatalogTest,
@@ -70,6 +72,44 @@ bool FUEGTGameInstanceModCatalogTest::RunTest(const FString& Parameters)
 		: FCampaignSaveReadResult();
 	TestTrue(TEXT("A modded campaign cannot be loaded under a different active package set"),
 		!Incompatible.bSucceeded && Incompatible.HasDiagnostic(TEXT("incompatible_content")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FUEGTGameInstanceModCommandLineTest,
+	"UEGT.Core.GameInstance.ModCommandLine",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FUEGTGameInstanceModCommandLineTest::RunTest(const FString& Parameters)
+{
+	UUEGTGameInstance* Instance = NewObject<UUEGTGameInstance>();
+	if (!TestNotNull(TEXT("Mod command-line fixture can be constructed"), Instance))
+	{
+		return false;
+	}
+	const FString OriginalCommandLine = FCommandLine::Get();
+	ON_SCOPE_EXIT { FCommandLine::Set(*OriginalCommandLine); };
+	for (const TCHAR* CommandLine : {
+		TEXT("-UEGTModsDir="), TEXT("-UEGTModsDir=\"\""), TEXT("-UEGTModsDir=\"   \"") })
+	{
+		FCommandLine::Set(CommandLine);
+		TestFalse(TEXT("An explicitly empty mod directory rejects content reload"), Instance->ReloadContent());
+		TestTrue(TEXT("Empty mod roots are diagnosed before expansion or discovery"),
+			!Instance->IsContentReady() && Instance->GetContentDiagnostics().ContainsByPredicate(
+				[](const FContentDiagnostic& Diagnostic)
+				{
+					return Diagnostic.Code == TEXT("content_directory_missing")
+						&& Diagnostic.Message.Contains(TEXT("path is empty"));
+				}));
+	}
+	FCommandLine::Set(TEXT("-UEGTModsDir=\"Samples/Mods\""));
+	TestTrue(TEXT("A valid relative mod directory recovers content loading"), Instance->ReloadContent());
+	TestTrue(TEXT("Relative mod roots resolve from the project directory"),
+		Instance->GetLoadedContentVersions().Num() == 2
+		&& Instance->GetLoadedRules().Items.Contains(TEXT("item.aurora-relay")));
+	FCommandLine::Set(TEXT("-UEGTNoUserMods -UEGTModsDir=\"\""));
+	TestTrue(TEXT("Disabling user mods ignores an unused override"), Instance->ReloadContent());
+	TestEqual(TEXT("Disabled user mods load only the base package"), Instance->GetLoadedContentVersions().Num(), 1);
 	return true;
 }
 
