@@ -599,6 +599,45 @@ bool FContentJsonInvalidTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FContentJsonScalarTypesTest,
+	"UEGT.Core.Content.Json.ScalarTypes",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FContentJsonScalarTypesTest::RunTest(const FString& Parameters)
+{
+	using namespace ContentRulePipelineTests;
+	struct FInvalidCase
+	{
+		const TCHAR* Name;
+		const TCHAR* Original;
+		const TCHAR* Replacement;
+	};
+	const FInvalidCase Cases[] = {
+		{ TEXT("Quoted schema version"), TEXT("\"schemaVersion\": 1"), TEXT("\"schemaVersion\": \"1\"") },
+		{ TEXT("Boolean schema version"), TEXT("\"schemaVersion\": 1"), TEXT("\"schemaVersion\": true") },
+		{ TEXT("Quoted priority"), TEXT("\"priority\": 0"), TEXT("\"priority\": \"0\"") },
+		{ TEXT("Boolean priority"), TEXT("\"priority\": 0"), TEXT("\"priority\": false") },
+		{ TEXT("Numeric display name"), TEXT("\"displayName\": \"UEGT Base Rules\""), TEXT("\"displayName\": 42") },
+		{ TEXT("Boolean display name"), TEXT("\"displayName\": \"UEGT Base Rules\""), TEXT("\"displayName\": true") },
+		{ TEXT("Numeric compatibility version"), TEXT("\"version\": \"1.0.0\""), TEXT("\"version\": 42") },
+		{ TEXT("Boolean package id"), TEXT("\"packageId\": \"uegt.base\""), TEXT("\"packageId\": true") },
+		{ TEXT("Boolean id array entry"), TEXT("\"prerequisites\": []"), TEXT("\"prerequisites\": [true]") },
+		{ TEXT("Numeric id array entry"), TEXT("\"prerequisites\": []"), TEXT("\"prerequisites\": [42]") },
+		{ TEXT("Quoted rule integer"), TEXT("\"power\": 42"), TEXT("\"power\": \"42\"") },
+		{ TEXT("Boolean rule integer"), TEXT("\"power\": 42"), TEXT("\"power\": true") }
+	};
+	for (const FInvalidCase& Case : Cases)
+	{
+		const FString Json = BasePackageJson.Replace(Case.Original, Case.Replacement);
+		TestNotEqual(FString::Printf(TEXT("%s changes the valid fixture"), Case.Name), Json, BasePackageJson);
+		const FContentPackageParseResult Invalid = FContentPackageJson::ParseString(Json, Case.Name);
+		TestTrue(FString::Printf(TEXT("%s is rejected as an invalid field type"), Case.Name),
+			!Invalid.bSucceeded && Invalid.HasDiagnostic(TEXT("invalid_field_type")));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FContentJsonTacticalRulesTest,
 	"UEGT.Core.Content.Json.TacticalRules",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

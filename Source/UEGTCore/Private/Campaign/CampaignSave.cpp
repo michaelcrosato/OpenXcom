@@ -3678,7 +3678,8 @@ namespace CampaignSavePrivate
 			AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("missing_field"), FString::Printf(TEXT("%s is missing required string '%s'."), *Context, Field));
 			return false;
 		}
-		if (!Object->TryGetStringField(Field, OutValue))
+		// Preserve the schema's string representation, especially for lossless int64 fields.
+		if (!Object->HasTypedField<EJson::String>(Field) || !Object->TryGetStringField(Field, OutValue))
 		{
 			AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_field_type"), FString::Printf(TEXT("%s.%s must be a string."), *Context, Field));
 			return false;
@@ -3702,7 +3703,7 @@ namespace CampaignSavePrivate
 		{
 			return true;
 		}
-		if (!Object->TryGetStringField(Field, OutValue))
+		if (!Object->HasTypedField<EJson::String>(Field) || !Object->TryGetStringField(Field, OutValue))
 		{
 			AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_field_type"), FString::Printf(TEXT("%s.%s must be a string."), *Context, Field));
 			return false;
@@ -3723,7 +3724,8 @@ namespace CampaignSavePrivate
 			AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("missing_field"), FString::Printf(TEXT("%s is missing required integer '%s'."), *Context, Field));
 			return false;
 		}
-		if (!Object->TryGetNumberField(Field, Number)
+		if (!Object->HasTypedField<EJson::Number>(Field)
+			|| !Object->TryGetNumberField(Field, Number)
 			|| !FMath::IsFinite(Number)
 			|| Number != FMath::TruncToDouble(Number)
 			|| Number < static_cast<double>(MIN_int32)
@@ -3921,7 +3923,8 @@ namespace CampaignSavePrivate
 		for (int32 Index = 0; Index < Values->Num(); ++Index)
 		{
 			FString Value;
-			if (!(*Values)[Index].IsValid() || !(*Values)[Index]->TryGetString(Value))
+			if (!(*Values)[Index].IsValid() || (*Values)[Index]->Type != EJson::String
+				|| !(*Values)[Index]->TryGetString(Value))
 			{
 				AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_field_type"), FString::Printf(TEXT("%s.%s[%d] must be a string."), *Context, Field, Index));
 				bValid = false;
@@ -3955,7 +3958,8 @@ namespace CampaignSavePrivate
 		for (int32 Index = 0; Index < Values->Num(); ++Index)
 		{
 			double Number = 0.0;
-			if (!(*Values)[Index].IsValid() || !(*Values)[Index]->TryGetNumber(Number))
+			if (!(*Values)[Index].IsValid() || (*Values)[Index]->Type != EJson::Number
+				|| !(*Values)[Index]->TryGetNumber(Number))
 			{
 				AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_field_type"), FString::Printf(TEXT("%s.%s[%d] must be an integer."), *Context, Field, Index));
 				bValid = false;
@@ -4066,7 +4070,8 @@ namespace CampaignSavePrivate
 		{
 			FString Value;
 			FGuid Guid;
-			if (!(*Values)[Index].IsValid() || !(*Values)[Index]->TryGetString(Value) || !FGuid::Parse(Value, Guid))
+			if (!(*Values)[Index].IsValid() || (*Values)[Index]->Type != EJson::String
+				|| !(*Values)[Index]->TryGetString(Value) || !FGuid::Parse(Value, Guid))
 			{
 				AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_field_value"), FString::Printf(TEXT("%s.%s[%d] must be a GUID string."), *Context, Field, Index));
 				bValid = false;

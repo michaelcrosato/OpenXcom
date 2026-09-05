@@ -64,7 +64,8 @@ namespace ContentPackageJsonPrivate
 			AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("missing_field"), FString::Printf(TEXT("%s is missing required string '%s'."), *Context, Field));
 			return false;
 		}
-		if (!Object->TryGetStringField(Field, OutValue))
+		// Unreal's TryGet helpers also convert other scalar types.
+		if (!Object->HasTypedField<EJson::String>(Field) || !Object->TryGetStringField(Field, OutValue))
 		{
 			AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("invalid_field_type"), FString::Printf(TEXT("%s.%s must be a string."), *Context, Field));
 			return false;
@@ -96,7 +97,8 @@ namespace ContentPackageJsonPrivate
 		}
 
 		double Number = 0.0;
-		if (!Object->TryGetNumberField(Field, Number)
+		if (!Object->HasTypedField<EJson::Number>(Field)
+			|| !Object->TryGetNumberField(Field, Number)
 			|| !FMath::IsFinite(Number)
 			|| Number != FMath::TruncToDouble(Number)
 			|| Number < static_cast<double>(MIN_int32)
@@ -177,7 +179,8 @@ namespace ContentPackageJsonPrivate
 		for (int32 Index = 0; Index < Values->Num(); ++Index)
 		{
 			FString Value;
-			if (!(*Values)[Index].IsValid() || !(*Values)[Index]->TryGetString(Value))
+			if (!(*Values)[Index].IsValid() || (*Values)[Index]->Type != EJson::String
+				|| !(*Values)[Index]->TryGetString(Value))
 			{
 				AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("invalid_field_type"), FString::Printf(TEXT("%s.%s[%d] must be an id string."), *Context, Field, Index));
 				bValid = false;

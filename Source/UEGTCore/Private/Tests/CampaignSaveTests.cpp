@@ -1354,6 +1354,70 @@ bool FCampaignSaveTamperTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FCampaignSaveScalarTypesTest,
+	"UEGT.Core.CampaignSave.ScalarTypes",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCampaignSaveScalarTypesTest::RunTest(const FString& Parameters)
+{
+	using namespace CampaignSaveTests;
+	FCampaignState State = MakeState();
+	State.Funds = 42;
+	State.Bases[0].Name = TEXT("true");
+	State.CompletedResearch = { TEXT("true") };
+	const FCampaignSaveWriteResult Write = FCampaignSaveCodec::Serialize(FCampaignSaveCodec::CreateNew(
+		State, MakeContentPackages(), TEXT("42"), TestWallClock, TestCampaignId));
+	if (!TestTrue(TEXT("Scalar type fixture serializes"), Write.bSucceeded))
+	{
+		return false;
+	}
+	TestTrue(TEXT("Correct scalar types preserve checksum and load successfully"),
+		FCampaignSaveCodec::Deserialize(Write.Json, MakeContentPackages()).bSucceeded);
+
+	struct FInvalidCase
+	{
+		const TCHAR* Name;
+		FString Original;
+		FString Replacement;
+	};
+	// These replacements preserve the decoded value if the parser coerces types.
+	// Checksum validation alone therefore cannot enforce the JSON schema.
+	const FInvalidCase Cases[] = {
+		{ TEXT("Quoted format version"),
+			FString::Printf(TEXT("\"formatVersion\":%d"), FCampaignSaveCodec::CurrentFormatVersion),
+			FString::Printf(TEXT("\"formatVersion\":\"%d\""), FCampaignSaveCodec::CurrentFormatVersion) },
+		{ TEXT("Numeric 64-bit funds"), TEXT("\"funds\":\"42\""), TEXT("\"funds\":42") },
+		{ TEXT("Numeric build version"), TEXT("\"buildVersion\":\"42\""), TEXT("\"buildVersion\":42") },
+		{ TEXT("Boolean base name"), TEXT("\"name\":\"true\""), TEXT("\"name\":true") },
+		{ TEXT("Quoted capacity"), TEXT("\"scientistCapacity\":10"), TEXT("\"scientistCapacity\":\"10\"") },
+		{ TEXT("Boolean grid coordinate"), TEXT("\"gridX\":1"), TEXT("\"gridX\":true") },
+		{ TEXT("Boolean id array entry"), TEXT("\"completedResearch\":[\"true\"]"), TEXT("\"completedResearch\":[true]") }
+	};
+	for (const FInvalidCase& Case : Cases)
+	{
+		const FString Json = Write.Json.Replace(*Case.Original, *Case.Replacement);
+		TestNotEqual(FString::Printf(TEXT("%s changes the valid fixture"), Case.Name), Json, Write.Json);
+		const FCampaignSaveReadResult Invalid = FCampaignSaveCodec::Deserialize(Json);
+		TestTrue(FString::Printf(TEXT("%s is rejected as an invalid field type"), Case.Name),
+			!Invalid.bSucceeded && Invalid.HasDiagnostic(TEXT("invalid_field_type")));
+	}
+	for (const TCHAR* Entry : { TEXT("\"0\""), TEXT("true") })
+	{
+		// This partial battle isolates array-element diagnostics from domain validation.
+		const FString Json = Write.Json.Replace(TEXT("\"tacticalBattles\":[]"),
+			*FString::Printf(TEXT("\"tacticalBattles\":[{\"playerDiscoveredCellIndices\":[%s]}]"), Entry));
+		const FCampaignSaveReadResult Invalid = FCampaignSaveCodec::Deserialize(Json);
+		TestTrue(TEXT("Non-numeric discovered-cell entries receive a field-type diagnostic"),
+			!Invalid.bSucceeded && Invalid.Diagnostics.ContainsByPredicate([](const FCampaignSaveDiagnostic& Diagnostic)
+			{
+				return Diagnostic.Code == TEXT("invalid_field_type")
+					&& Diagnostic.Message.Contains(TEXT("playerDiscoveredCellIndices[0]"));
+			}));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCampaignSaveCompatibilityTest,
 	"UEGT.Core.CampaignSave.ContentCompatibility",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -1476,6 +1540,14 @@ bool FCampaignSaveMigrationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("New command sequence receives safe default"), Migrated.Envelope.State.CommandSequence, int64(0));
 	TestEqual(TEXT("Legacy funds survive migration"), Migrated.Envelope.State.Funds, int64(750000));
 	TestTrue(TEXT("Migrated envelope validates with current checksum"), FCampaignSaveCodec::Validate(Migrated.Envelope, Packages).bSucceeded);
+	for (const TCHAR* Checksum : { TEXT("42"), TEXT("true") })
+	{
+		const FString InvalidChecksumJson = LegacyJson.Replace(TEXT("\"formatVersion\":1"),
+			*FString::Printf(TEXT("\"formatVersion\":1,\"saveChecksum\":%s"), Checksum));
+		const FCampaignSaveReadResult InvalidChecksum = FCampaignSaveCodec::Deserialize(InvalidChecksumJson, Packages);
+		TestTrue(TEXT("Legacy optional checksums must still have string type"),
+			!InvalidChecksum.bSucceeded && InvalidChecksum.HasDiagnostic(TEXT("invalid_field_type")));
+	}
 
 	const FCampaignSaveWriteResult Rewritten = FCampaignSaveCodec::Serialize(Migrated.Envelope);
 	TestTrue(TEXT("Migrated save can be rewritten"), Rewritten.bSucceeded);
