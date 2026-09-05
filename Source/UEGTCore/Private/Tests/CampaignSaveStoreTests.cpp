@@ -163,6 +163,186 @@ bool FCampaignSaveStoreInterruptedWriteTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FCampaignSaveStoreRecoveryHistoryTest,
+	"UEGT.Core.CampaignSaveStore.RecoveryHistory",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCampaignSaveStoreRecoveryHistoryTest::RunTest(const FString& Parameters)
+{
+	using namespace CampaignSaveStoreTests;
+	struct FRecoveryCase
+	{
+		const TCHAR* Name;
+		ECampaignSaveSource Source;
+		bool bPrimaryExists;
+		bool bIncompatiblePrimary;
+		bool bRecoveryUsesOtherCatalog = false;
+	};
+	const FRecoveryCase Cases[] = {
+		{ TEXT("NewestTemporary"), ECampaignSaveSource::Temporary, true, false },
+		{ TEXT("OnlyTemporary"), ECampaignSaveSource::Temporary, false, false },
+		{ TEXT("NewestBackup"), ECampaignSaveSource::Backup, true, false },
+		{ TEXT("CompatibleBackup"), ECampaignSaveSource::Backup, true, true },
+		{ TEXT("NewCatalog"), ECampaignSaveSource::Temporary, false, false, true }
+	};
+	for (const FRecoveryCase& Case : Cases)
+	{
+		const FString Directory = ResetTestDirectory(Case.Name);
+		TestTrue(TEXT("Recovery fixture directory is created"), IFileManager::Get().MakeDirectory(*Directory, true));
+		const FString Slot = TEXT("recovered-campaign");
+		const FString PrimaryPath = FCampaignSaveStore::GetPrimaryPath(Directory, Slot);
+		const FString BackupPath = FCampaignSaveStore::GetBackupPath(Directory, Slot);
+		if (Case.bPrimaryExists)
+		{
+			FCampaignSaveEnvelope PrimaryEnvelope = MakeEnvelope(200);
+			PrimaryEnvelope.Header.LastSavedUtc = FDateTime(2026, 8, 29, 20, Case.bIncompatiblePrimary ? 30 : 10, 0);
+			if (Case.bIncompatiblePrimary)
+			{
+				PrimaryEnvelope.Header.ContentPackages[0].Version = TEXT("2.0.0");
+			}
+			const FCampaignSaveWriteResult PrimaryWrite = FCampaignSaveCodec::Serialize(PrimaryEnvelope);
+			TestTrue(TEXT("Primary recovery fixture writes"), PrimaryWrite.bSucceeded
+				&& FFileHelper::SaveStringToFile(PrimaryWrite.Json, *PrimaryPath,
+					FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM));
+		}
+		FCampaignSaveEnvelope RecoveryEnvelope = MakeEnvelope(300);
+		RecoveryEnvelope.Header.LastSavedUtc = FDateTime(2026, 8, 29, 20, 20, 0);
+		if (Case.bRecoveryUsesOtherCatalog)
+		{
+			RecoveryEnvelope.Header.ContentPackages[0].Version = TEXT("2.0.0");
+		}
+		const FCampaignSaveWriteResult RecoveryWrite = FCampaignSaveCodec::Serialize(RecoveryEnvelope);
+		const FString RecoveryPath = Case.Source == ECampaignSaveSource::Temporary
+			? FCampaignSaveStore::GetTemporaryPath(Directory, Slot) : BackupPath;
+		TestTrue(TEXT("Newest compatible candidate fixture writes"), RecoveryWrite.bSucceeded
+			&& FFileHelper::SaveStringToFile(RecoveryWrite.Json, *RecoveryPath,
+				FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM));
+		const FCampaignSaveStoreResult Before = FCampaignSaveStore::Load(
+			Directory, Slot, RecoveryEnvelope.Header.ContentPackages);
+		TestTrue(FString::Printf(TEXT("%s: newest compatible state is recovered"), Case.Name),
+			Before.bSucceeded && Before.Source == Case.Source && Before.Envelope.State.Funds == 300);
+
+		FCampaignSaveEnvelope InvalidEnvelope = MakeEnvelope(400);
+		InvalidEnvelope.Header.FormatVersion = 0;
+		const FCampaignSaveStoreResult InvalidSave = FCampaignSaveStore::Save(
+			Directory, Slot, InvalidEnvelope, FDateTime(2026, 8, 29, 20, 25, 0));
+		TestTrue(TEXT("Invalid input is rejected before candidate files are changed"), !InvalidSave.bSucceeded
+			&& InvalidSave.HasDiagnostic(TEXT("unsupported_write_version")));
+		FString RecoveryAfterInvalidSave;
+		TestTrue(TEXT("Rejected save leaves the recovery candidate intact"),
+			FFileHelper::LoadFileToString(RecoveryAfterInvalidSave, *RecoveryPath)
+			&& RecoveryAfterInvalidSave == RecoveryWrite.Json);
+
+		const FCampaignSaveStoreResult Saved = FCampaignSaveStore::Save(
+			Directory, Slot, MakeEnvelope(400), FDateTime(2026, 8, 29, 20, 25, 0));
+		TestTrue(TEXT("Recovered campaign resaves successfully"), Saved.bSucceeded);
+		const FCampaignSaveStoreResult Current = FCampaignSaveStore::Load(Directory, Slot, MakePackages());
+		TestTrue(TEXT("New primary is selected after resaving"), Current.bSucceeded
+			&& Current.Source == ECampaignSaveSource::Primary && Current.Envelope.State.Funds == 400);
+		FString BackupJson;
+		TestTrue(FString::Printf(TEXT("%s: backup retains the recovered state byte for byte"), Case.Name),
+			FFileHelper::LoadFileToString(BackupJson, *BackupPath) && BackupJson == RecoveryWrite.Json);
+		TestTrue(TEXT("New-primary corruption fixture writes"), FFileHelper::SaveStringToFile(
+			TEXT("{corrupt"), *PrimaryPath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM));
+		const FCampaignSaveStoreResult Recovered = FCampaignSaveStore::Load(
+			Directory, Slot, RecoveryEnvelope.Header.ContentPackages);
+		TestTrue(FString::Printf(TEXT("%s: another corruption recovers the most recent prior state"), Case.Name),
+			Recovered.bSucceeded && Recovered.Source == ECampaignSaveSource::Backup && Recovered.Envelope.State.Funds == 300);
+		CleanupTestDirectory(Directory);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FCampaignSaveStoreClockRollbackTest,
+	"UEGT.Core.CampaignSaveStore.ClockRollback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCampaignSaveStoreClockRollbackTest::RunTest(const FString& Parameters)
+{
+	using namespace CampaignSaveStoreTests;
+	const FString Directory = ResetTestDirectory(TEXT("ClockRollback"));
+	const FString Slot = TEXT("campaign");
+	const FDateTime FirstSaveTime(2026, 8, 29, 20, 10, 0);
+	TestTrue(TEXT("Initial save succeeds"), FCampaignSaveStore::Save(
+		Directory, Slot, MakeEnvelope(100), FirstSaveTime).bSucceeded);
+	const FCampaignSaveStoreResult SecondSave = FCampaignSaveStore::Save(
+		Directory, Slot, MakeEnvelope(200), FDateTime(2026, 8, 29, 20, 5, 0));
+	TestTrue(TEXT("Saving after a clock rollback succeeds"), SecondSave.bSucceeded);
+	TestEqual(TEXT("Slot timestamp cannot move backward"), SecondSave.Envelope.Header.LastSavedUtc, FirstSaveTime);
+	const FCampaignSaveStoreResult Current = FCampaignSaveStore::Load(Directory, Slot, MakePackages());
+	TestTrue(TEXT("A successful save still loads the newly committed state after a clock rollback"),
+		Current.bSucceeded && Current.Source == ECampaignSaveSource::Primary && Current.Envelope.State.Funds == 200);
+	FCampaignSaveEnvelope TiedTemporary = MakeEnvelope(150);
+	TiedTemporary.Header.LastSavedUtc = FirstSaveTime;
+	const FCampaignSaveWriteResult TiedWrite = FCampaignSaveCodec::Serialize(TiedTemporary);
+	TestTrue(TEXT("Temporary candidate with an equal timestamp writes"), TiedWrite.bSucceeded
+		&& FFileHelper::SaveStringToFile(TiedWrite.Json, *FCampaignSaveStore::GetTemporaryPath(Directory, Slot),
+			FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM));
+	const FCampaignSaveStoreResult Tie = FCampaignSaveStore::Load(Directory, Slot, MakePackages());
+	TestTrue(TEXT("Primary wins a timestamp tie across all three candidates"), Tie.bSucceeded
+		&& Tie.Source == ECampaignSaveSource::Primary && Tie.Envelope.State.Funds == 200);
+	const FDateTime LaterTime(2026, 8, 29, 20, 15, 0);
+	const FCampaignSaveStoreResult LaterSave = FCampaignSaveStore::Save(Directory, Slot, MakeEnvelope(300), LaterTime);
+	TestTrue(TEXT("A later wall clock resumes normal save timestamps"), LaterSave.bSucceeded
+		&& LaterSave.Envelope.Header.LastSavedUtc == LaterTime);
+	const FCampaignSaveEnvelope NewEnvelope = MakeEnvelope(500);
+	const FCampaignSaveStoreResult BeforeCreation = FCampaignSaveStore::Save(
+		Directory, TEXT("new-slot"), NewEnvelope, NewEnvelope.Header.CreatedUtc - FTimespan::FromMinutes(1));
+	TestTrue(TEXT("First save survives a clock rollback before campaign creation"), BeforeCreation.bSucceeded
+		&& BeforeCreation.Envelope.Header.LastSavedUtc == NewEnvelope.Header.CreatedUtc);
+	CleanupTestDirectory(Directory);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FCampaignSaveStoreRecoveryFailureTest,
+	"UEGT.Core.CampaignSaveStore.RecoveryWriteFailures",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCampaignSaveStoreRecoveryFailureTest::RunTest(const FString& Parameters)
+{
+	using namespace CampaignSaveStoreTests;
+	for (const bool bBlockBackup : { true, false })
+	{
+		const FString Directory = ResetTestDirectory(bBlockBackup ? TEXT("BlockedBackup") : TEXT("BlockedPrimary"));
+		TestTrue(TEXT("Failure fixture directory is created"), IFileManager::Get().MakeDirectory(*Directory, true));
+		const FString Slot = TEXT("campaign");
+		const FString TemporaryPath = FCampaignSaveStore::GetTemporaryPath(Directory, Slot);
+		const FString BackupPath = FCampaignSaveStore::GetBackupPath(Directory, Slot);
+		const FString BlockedPath = bBlockBackup ? BackupPath : FCampaignSaveStore::GetPrimaryPath(Directory, Slot);
+		TestTrue(TEXT("A directory blocks the target file move"), IFileManager::Get().MakeDirectory(*BlockedPath, true));
+		FCampaignSaveEnvelope PreviousEnvelope = MakeEnvelope(300);
+		PreviousEnvelope.Header.LastSavedUtc = FDateTime(2026, 8, 29, 20, 20, 0);
+		const FCampaignSaveWriteResult PreviousWrite = FCampaignSaveCodec::Serialize(PreviousEnvelope);
+		TestTrue(TEXT("Recovered temporary fixture writes"), PreviousWrite.bSucceeded
+			&& FFileHelper::SaveStringToFile(PreviousWrite.Json, *TemporaryPath,
+				FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM));
+		const FCampaignSaveStoreResult FailedSave = FCampaignSaveStore::Save(
+			Directory, Slot, MakeEnvelope(400), FDateTime(2026, 8, 29, 20, 25, 0));
+		TestTrue(TEXT("File move failure is reported with its stable diagnostic"), !FailedSave.bSucceeded
+			&& FailedSave.HasDiagnostic(bBlockBackup ? TEXT("backup_rotation_failed") : TEXT("save_commit_failed")));
+		FString RetainedJson;
+		const FString RetainedPath = bBlockBackup ? TemporaryPath : BackupPath;
+		TestTrue(TEXT("A failed save retains the recovered state byte for byte"),
+			FFileHelper::LoadFileToString(RetainedJson, *RetainedPath) && RetainedJson == PreviousWrite.Json);
+		if (!bBlockBackup)
+		{
+			const FCampaignSaveStoreResult Interrupted = FCampaignSaveStore::Load(Directory, Slot, MakePackages());
+			TestTrue(TEXT("Verified new temporary data survives a failed final promotion"), Interrupted.bSucceeded
+				&& Interrupted.Source == ECampaignSaveSource::Temporary && Interrupted.Envelope.State.Funds == 400);
+			TestTrue(TEXT("A later torn temporary file is simulated"), FFileHelper::SaveStringToFile(
+				TEXT("{torn"), *TemporaryPath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM));
+		}
+		const FCampaignSaveStoreResult Recovered = FCampaignSaveStore::Load(Directory, Slot, MakePackages());
+		TestTrue(TEXT("Prior campaign remains recoverable after the failed save"), Recovered.bSucceeded
+			&& Recovered.Envelope.State.Funds == 300);
+		CleanupTestDirectory(Directory);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCampaignSaveStoreListingTest,
 	"UEGT.Core.CampaignSaveStore.ValidatedSlotListing",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

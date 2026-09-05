@@ -43,7 +43,6 @@ namespace CampaignSaveStorePrivate
 		ECampaignSaveSource Source = ECampaignSaveSource::None;
 		FString Path;
 		int32 TieBreakPriority = 0;
-		FCampaignSaveReadResult Read;
 	};
 
 	const TCHAR* SourceLabel(const ECampaignSaveSource Source)
@@ -79,8 +78,9 @@ namespace CampaignSaveStorePrivate
 
 		IFileManager& FileManager = IFileManager::Get();
 		int32 ExistingFiles = 0;
-		FCandidate* Best = nullptr;
-		for (FCandidate& Candidate : Candidates)
+		FCampaignSaveReadResult BestRead;
+		int32 BestPriority = 0;
+		for (const FCandidate& Candidate : Candidates)
 		{
 			if (!FileManager.FileExists(*Candidate.Path))
 			{
@@ -95,24 +95,26 @@ namespace CampaignSaveStorePrivate
 				continue;
 			}
 
-			Candidate.Read = ExpectedContentPackages == nullptr
+			FCampaignSaveReadResult Read = ExpectedContentPackages == nullptr
 				? FCampaignSaveCodec::Deserialize(Json)
 				: FCampaignSaveCodec::Deserialize(Json, *ExpectedContentPackages);
-			if (!Candidate.Read.bSucceeded)
+			if (!Read.bSucceeded)
 			{
 				AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Warning, TEXT("save_candidate_invalid"), FString::Printf(TEXT("The %s save candidate failed validation."), SourceLabel(Candidate.Source)));
 				continue;
 			}
 
-			if (Best == nullptr
-				|| Candidate.Read.Envelope.Header.LastSavedUtc > Best->Read.Envelope.Header.LastSavedUtc
-				|| (Candidate.Read.Envelope.Header.LastSavedUtc == Best->Read.Envelope.Header.LastSavedUtc && Candidate.TieBreakPriority > Best->TieBreakPriority))
+			if (!BestRead.bSucceeded
+				|| Read.Envelope.Header.LastSavedUtc > BestRead.Envelope.Header.LastSavedUtc
+				|| (Read.Envelope.Header.LastSavedUtc == BestRead.Envelope.Header.LastSavedUtc && Candidate.TieBreakPriority > BestPriority))
 			{
-				Best = &Candidate;
+				Result.Source = Candidate.Source;
+				BestPriority = Candidate.TieBreakPriority;
+				BestRead = MoveTemp(Read);
 			}
 		}
 
-		if (Best == nullptr)
+		if (!BestRead.bSucceeded)
 		{
 			if (ExistingFiles == 0)
 			{
@@ -126,13 +128,12 @@ namespace CampaignSaveStorePrivate
 		}
 
 		Result.bSucceeded = true;
-		Result.Source = Best->Source;
-		Result.bRecovered = Best->Source != ECampaignSaveSource::Primary;
-		Result.Envelope = Best->Read.Envelope;
-		Result.Diagnostics.Append(Best->Read.Diagnostics);
+		Result.bRecovered = Result.Source != ECampaignSaveSource::Primary;
+		Result.Envelope = MoveTemp(BestRead.Envelope);
+		Result.Diagnostics.Append(MoveTemp(BestRead.Diagnostics));
 		if (Result.bRecovered)
 		{
-			AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Warning, TEXT("save_recovered"), FString::Printf(TEXT("Loaded the verified %s campaign save candidate."), SourceLabel(Best->Source)));
+			AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Warning, TEXT("save_recovered"), FString::Printf(TEXT("Loaded the verified %s campaign save candidate."), SourceLabel(Result.Source)));
 		}
 		return Result;
 	}
@@ -295,8 +296,32 @@ FCampaignSaveStoreResult FCampaignSaveStore::Save(
 		return Result;
 	}
 
+	ECampaignSaveSource PreviousSource = ECampaignSaveSource::None;
+	FDateTime PreviousSaveTime;
+	{
+		// Preserve the same candidate that a load with this catalog would select.
+		// If the slot only contains another catalog's saves, retain its newest
+		// verified candidate so overwriting a slot still leaves recovery history.
+		FCampaignSaveStoreResult Previous = LoadInternal(SaveDirectory, SlotName, &InputEnvelope.Header.ContentPackages);
+		if (!Previous.bSucceeded && !Previous.HasDiagnostic(TEXT("save_not_found")))
+		{
+			Previous = LoadInternal(SaveDirectory, SlotName, nullptr);
+		}
+		if (Previous.bSucceeded)
+		{
+			PreviousSource = Previous.Source;
+			PreviousSaveTime = Previous.Envelope.Header.LastSavedUtc;
+		}
+	} // Release the prior campaign payload before serializing the new state.
+
 	FCampaignSaveEnvelope Envelope = InputEnvelope;
-	Envelope.Header.LastSavedUtc = WallClockUtc;
+	Envelope.Header.LastSavedUtc = FMath::Max(WallClockUtc, Envelope.Header.CreatedUtc);
+	if (PreviousSource != ECampaignSaveSource::None)
+	{
+		// Ties prefer the primary on load, so a clock rollback needs no artificial
+		// increment and cannot make a successful save load its older backup.
+		Envelope.Header.LastSavedUtc = FMath::Max(Envelope.Header.LastSavedUtc, PreviousSaveTime);
+	}
 	const FCampaignSaveWriteResult Write = FCampaignSaveCodec::Serialize(Envelope);
 	Result.Diagnostics.Append(Write.Diagnostics);
 	if (!Write.bSucceeded)
@@ -314,6 +339,12 @@ FCampaignSaveStoreResult FCampaignSaveStore::Save(
 	const FString PrimaryPath = GetPrimaryPath(SaveDirectory, SlotName);
 	const FString TemporaryPath = GetTemporaryPath(SaveDirectory, SlotName);
 	const FString BackupPath = GetBackupPath(SaveDirectory, SlotName);
+	if (PreviousSource == ECampaignSaveSource::Temporary
+		&& !FileManager.Move(*BackupPath, *TemporaryPath, true, true, false, true))
+	{
+		AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("backup_rotation_failed"), TEXT("Could not rotate the current campaign save to its backup."));
+		return Result;
+	}
 	if (!FFileHelper::SaveStringToFile(Write.Json, *TemporaryPath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
 	{
 		AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("temporary_write_failed"), TEXT("Could not write the temporary campaign save."));
@@ -331,18 +362,11 @@ FCampaignSaveStoreResult FCampaignSaveStore::Save(
 		return Result;
 	}
 
-	if (FileManager.FileExists(*PrimaryPath))
+	if (PreviousSource == ECampaignSaveSource::Primary
+		&& !FileManager.Move(*BackupPath, *PrimaryPath, true, true, false, true))
 	{
-		// A recovered slot may still have a corrupt primary. Never rotate that
-		// rejected candidate over the backup that made recovery possible.
-		FString PrimaryJson;
-		const bool bPrimaryValid = FFileHelper::LoadFileToString(PrimaryJson, *PrimaryPath)
-			&& FCampaignSaveCodec::Deserialize(PrimaryJson).bSucceeded;
-		if (bPrimaryValid && !FileManager.Move(*BackupPath, *PrimaryPath, true, true, false, true))
-		{
-			AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("backup_rotation_failed"), TEXT("Could not rotate the current campaign save to its backup."));
-			return Result;
-		}
+		AddDiagnostic(Result.Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("backup_rotation_failed"), TEXT("Could not rotate the current campaign save to its backup."));
+		return Result;
 	}
 	if (!FileManager.Move(*PrimaryPath, *TemporaryPath, true, true, false, true))
 	{

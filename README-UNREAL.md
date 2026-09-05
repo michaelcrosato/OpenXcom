@@ -62,7 +62,9 @@ The native shell provides campaign setup, strategy, base management, and tactica
 
 ## Saves and mods
 
-Campaign slots live under the runtime project's `Saved/SaveGames`. Each slot uses `.uegtsave`, `.uegtsave.tmp`, and `.uegtsave.bak` candidates. Writes verify the temporary file before promotion. Loading validates all available candidates and selects the newest valid timestamp, preferring primary, temporary, then backup on ties. Resaving a recovered slot preserves a valid backup when the old primary is corrupt.
+Campaign slots live under the runtime project's `Saved/SaveGames`. Each slot uses `.uegtsave`, `.uegtsave.tmp`, and `.uegtsave.bak` candidates. Writes verify the temporary file before promotion. Loading validates available candidates against the requested catalog and selects the newest valid timestamp, preferring primary, temporary, then backup on ties.
+
+Resaving retains the newest compatible prior candidate as the backup. If no candidate matches the new catalog, the newest valid candidate from another catalog is retained instead. A recovered temporary file is moved to the backup before its path is reused; a corrupt, stale, or incompatible primary cannot replace the selected recovery copy. Save timestamps never move behind campaign creation or the retained candidate, so a backward system-clock adjustment cannot make a successful save load older progress.
 
 User packages are discovered under `Saved/Mods`. Save compatibility depends on the loaded package IDs and versions. See [content authoring](docs/CONTENT-AUTHORING.md) and the [Aurora Relay sample](Samples/Mods/AuroraRelay/README.md) for installation, reload, replacement, and validation rules.
 

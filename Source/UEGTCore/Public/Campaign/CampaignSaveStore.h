@@ -98,6 +98,9 @@ struct UEGTCORE_API FCampaignSaveSlotListResult
 
 /**
  * Slot storage with verified temporary writes and recoverable primary/backup rotation.
+ * Saves retain the newest compatible prior candidate as the backup, falling back
+ * to another catalog's newest valid candidate when no compatible one exists.
+ * Save timestamps never precede campaign creation or the retained candidate.
  * The caller supplies the platform-appropriate save directory.
  */
 class UEGTCORE_API FCampaignSaveStore final
