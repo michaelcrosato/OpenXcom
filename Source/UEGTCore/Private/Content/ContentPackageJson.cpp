@@ -31,6 +31,18 @@ namespace ContentPackageJsonPrivate
 			});
 	}
 
+	FName ReadNameValue(const FString& Value, const FString& Context, FContentPackageParseResult& Result)
+	{
+		if (Value.Len() >= NAME_SIZE || FCString::Strlen(*Value) != Value.Len())
+		{
+			AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("invalid_field_value"),
+				FString::Printf(TEXT("%s contains an identifier exceeding the %d-character name limit or containing a null character."),
+					*Context, NAME_SIZE - 1));
+			return NAME_None;
+		}
+		return FName(*Value);
+	}
+
 	void WarnUnknownFields(
 		const TSharedPtr<FJsonObject>& Object,
 		const TSet<FString>& AllowedFields,
@@ -186,7 +198,7 @@ namespace ContentPackageJsonPrivate
 				bValid = false;
 				continue;
 			}
-			const FName Name(*Value);
+			const FName Name = ReadNameValue(Value, Context, Result);
 			if (!FContentPackageResolver::IsValidPackageId(Name))
 			{
 				AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("invalid_rule_id"), FString::Printf(TEXT("%s.%s[%d] contains invalid id '%s'."), *Context, Field, Index, *Value));
@@ -246,7 +258,7 @@ namespace ContentPackageJsonPrivate
 				*InputObject, TEXT("itemId"), ItemIdText, InputContext, Result);
 			bInputValid &= ReadInteger(
 				*InputObject, TEXT("quantity"), Quantity, true, InputContext, Result);
-			const FName ItemId(*ItemIdText);
+			const FName ItemId = ReadNameValue(ItemIdText, Context, Result);
 			if (bInputValid && !FContentPackageResolver::IsValidPackageId(ItemId))
 			{
 				AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("invalid_rule_id"),
@@ -292,7 +304,7 @@ namespace ContentPackageJsonPrivate
 		bool bValid = ReadRequiredString(Object, TEXT("id"), RuleId, Context, Result);
 		if (bValid)
 		{
-			OutIdentity.RuleId = FName(*RuleId);
+			OutIdentity.RuleId = ReadNameValue(RuleId, Context, Result);
 			if (!FContentPackageResolver::IsValidPackageId(OutIdentity.RuleId))
 			{
 				AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("invalid_rule_id"), FString::Printf(TEXT("%s.id '%s' is not a valid namespaced id."), *Context, *RuleId));
@@ -509,7 +521,7 @@ namespace ContentPackageJsonPrivate
 		bValid &= ReadRequiredString(Object, TEXT("displayName"), OutRule.DisplayName, Context, Result);
 		FString Category;
 		bValid &= ReadRequiredString(Object, TEXT("category"), Category, Context, Result);
-		OutRule.Category = FName(*Category);
+		OutRule.Category = ReadNameValue(Category, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("purchaseCost"), OutRule.PurchaseCost, true, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("sellValue"), OutRule.SellValue, true, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("mass"), OutRule.Mass, true, Context, Result);
@@ -526,7 +538,7 @@ namespace ContentPackageJsonPrivate
 		{
 			FString TacticalAmmunitionItemId;
 			bValid &= ReadRequiredString(Object, TEXT("tacticalAmmunitionItemId"), TacticalAmmunitionItemId, Context, Result);
-			OutRule.TacticalAmmunitionItemId = FName(*TacticalAmmunitionItemId);
+			OutRule.TacticalAmmunitionItemId = ReadNameValue(TacticalAmmunitionItemId, Context, Result);
 		}
 		bValid &= ReadInteger(Object, TEXT("tacticalMagazineCapacity"), OutRule.TacticalMagazineCapacity, false, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("tacticalAmmunitionPerAttack"), OutRule.TacticalAmmunitionPerAttack, false, Context, Result);
@@ -557,7 +569,7 @@ namespace ContentPackageJsonPrivate
 		{
 			FString AmmunitionItemId;
 			bValid &= ReadRequiredString(Object, TEXT("ammunitionItemId"), AmmunitionItemId, Context, Result);
-			OutRule.AmmunitionItemId = FName(*AmmunitionItemId);
+			OutRule.AmmunitionItemId = ReadNameValue(AmmunitionItemId, Context, Result);
 		}
 		bValid &= ReadInteger(Object, TEXT("magazineCapacity"), OutRule.MagazineCapacity, false, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("salvoSize"), OutRule.SalvoSize, false, Context, Result);
@@ -713,7 +725,7 @@ namespace ContentPackageJsonPrivate
 		bValid &= ReadRequiredString(Object, TEXT("displayName"), OutRule.DisplayName, Context, Result);
 		FString CategoryId;
 		bValid &= ReadRequiredString(Object, TEXT("category"), CategoryId, Context, Result);
-		OutRule.CategoryId = FName(*CategoryId);
+		OutRule.CategoryId = ReadNameValue(CategoryId, Context, Result);
 		bValid &= ReadRequiredString(Object, TEXT("summary"), OutRule.Summary, Context, Result);
 		bValid &= ReadRequiredString(Object, TEXT("body"), OutRule.Body, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("sortOrder"), OutRule.SortOrder, true, Context, Result);
@@ -757,7 +769,7 @@ namespace ContentPackageJsonPrivate
 			FString SupplyItemId;
 			bValid &= ReadRequiredString(
 				Object, TEXT("baseDefenseSupplyItemId"), SupplyItemId, Context, Result);
-			OutRule.BaseDefenseSupplyItemId = FName(*SupplyItemId);
+			OutRule.BaseDefenseSupplyItemId = ReadNameValue(SupplyItemId, Context, Result);
 			if (!FContentPackageResolver::IsValidPackageId(OutRule.BaseDefenseSupplyItemId))
 			{
 				AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("invalid_rule_id"),
@@ -1080,7 +1092,7 @@ namespace ContentPackageJsonPrivate
 		FString OpeningMissionRuleId;
 		bValid &= ReadRequiredString(
 			Object, TEXT("openingMissionRuleId"), OpeningMissionRuleId, Context, Result);
-		OutRule.OpeningMissionRuleId = FName(*OpeningMissionRuleId);
+		OutRule.OpeningMissionRuleId = ReadNameValue(OpeningMissionRuleId, Context, Result);
 		if (!FContentPackageResolver::IsValidPackageId(OutRule.OpeningMissionRuleId))
 		{
 			AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("invalid_field_value"),
@@ -1115,27 +1127,27 @@ namespace ContentPackageJsonPrivate
 		if (Object->HasField(TEXT("planId")))
 		{
 			bValid &= ReadRequiredString(Object, TEXT("planId"), PlanId, Context, Result);
-			OutRule.PlanId = FName(*PlanId);
+			OutRule.PlanId = ReadNameValue(PlanId, Context, Result);
 		}
 		bValid &= ReadInteger(Object, TEXT("planStage"), OutRule.PlanStage, false, Context, Result);
 		if (Object->HasField(TEXT("escapeBranchMissionRuleId")))
 		{
 			bValid &= ReadRequiredString(Object, TEXT("escapeBranchMissionRuleId"),
 				EscapeBranchMissionRuleId, Context, Result);
-			OutRule.EscapeBranchMissionRuleId = FName(*EscapeBranchMissionRuleId);
+			OutRule.EscapeBranchMissionRuleId = ReadNameValue(EscapeBranchMissionRuleId, Context, Result);
 		}
 		if (Object->HasField(TEXT("thwartBranchMissionRuleId")))
 		{
 			bValid &= ReadRequiredString(Object, TEXT("thwartBranchMissionRuleId"),
 				ThwartBranchMissionRuleId, Context, Result);
-			OutRule.ThwartBranchMissionRuleId = FName(*ThwartBranchMissionRuleId);
+			OutRule.ThwartBranchMissionRuleId = ReadNameValue(ThwartBranchMissionRuleId, Context, Result);
 		}
 		FString ContactRuleId;
 		FString TargetRegionId;
 		bValid &= ReadRequiredString(Object, TEXT("contactRuleId"), ContactRuleId, Context, Result);
 		bValid &= ReadRequiredString(Object, TEXT("targetRegionId"), TargetRegionId, Context, Result);
-		OutRule.ContactRuleId = FName(*ContactRuleId);
-		OutRule.TargetRegionId = FName(*TargetRegionId);
+		OutRule.ContactRuleId = ReadNameValue(ContactRuleId, Context, Result);
+		OutRule.TargetRegionId = ReadNameValue(TargetRegionId, Context, Result);
 		bValid &= ReadOptionalBool(Object, TEXT("targetsPlayerBase"), OutRule.bTargetsPlayerBase, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("originLongitudeMilliDegrees"), OutRule.OriginLongitudeMilliDegrees, true, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("originLatitudeMilliDegrees"), OutRule.OriginLatitudeMilliDegrees, true, Context, Result);
@@ -1334,28 +1346,28 @@ namespace ContentPackageJsonPrivate
 		if (Object->HasField(TEXT("doorTerrainRuleId")))
 		{
 			bValid &= ReadRequiredString(Object, TEXT("doorTerrainRuleId"), DoorTerrainRuleId, Context, Result);
-			OutRule.DoorTerrainRuleId = FName(*DoorTerrainRuleId);
+			OutRule.DoorTerrainRuleId = ReadNameValue(DoorTerrainRuleId, Context, Result);
 		}
 		if (Object->HasField(TEXT("verticalConnectorTerrainRuleId")))
 		{
 			bValid &= ReadRequiredString(Object, TEXT("verticalConnectorTerrainRuleId"), VerticalConnectorTerrainRuleId, Context, Result);
-			OutRule.VerticalConnectorTerrainRuleId = FName(*VerticalConnectorTerrainRuleId);
+			OutRule.VerticalConnectorTerrainRuleId = ReadNameValue(VerticalConnectorTerrainRuleId, Context, Result);
 		}
 		bValid &= ReadRequiredString(Object, TEXT("adversaryUnitRuleId"), AdversaryUnitRuleId, Context, Result);
 		bValid &= ReadRequiredString(Object, TEXT("objectiveId"), ObjectiveId, Context, Result);
-		OutRule.SourceContactRuleId = FName(*SourceContactRuleId);
-		OutRule.FloorTerrainRuleId = FName(*FloorTerrainRuleId);
-		OutRule.ObstacleTerrainRuleId = FName(*ObstacleTerrainRuleId);
-		OutRule.AdversaryUnitRuleId = FName(*AdversaryUnitRuleId);
+		OutRule.SourceContactRuleId = ReadNameValue(SourceContactRuleId, Context, Result);
+		OutRule.FloorTerrainRuleId = ReadNameValue(FloorTerrainRuleId, Context, Result);
+		OutRule.ObstacleTerrainRuleId = ReadNameValue(ObstacleTerrainRuleId, Context, Result);
+		OutRule.AdversaryUnitRuleId = ReadNameValue(AdversaryUnitRuleId, Context, Result);
 		bValid &= ReadTacticalAiPosture(Object, TEXT("aiPosture"), OutRule.AiPosture, Context, Result);
-		OutRule.ObjectiveId = FName(*ObjectiveId);
+		OutRule.ObjectiveId = ReadNameValue(ObjectiveId, Context, Result);
 		bValid &= ReadTacticalObjectiveType(Object, TEXT("objectiveType"), OutRule.ObjectiveType, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("objectiveRequiredInteractions"), OutRule.ObjectiveRequiredInteractions, false, Context, Result);
 		if (Object->HasField(TEXT("objectiveRewardItemId")))
 		{
 			FString ObjectiveRewardItemId;
 			bValid &= ReadRequiredString(Object, TEXT("objectiveRewardItemId"), ObjectiveRewardItemId, Context, Result);
-			OutRule.ObjectiveRewardItemId = FName(*ObjectiveRewardItemId);
+			OutRule.ObjectiveRewardItemId = ReadNameValue(ObjectiveRewardItemId, Context, Result);
 		}
 		bValid &= ReadInteger(Object, TEXT("objectiveRewardQuantity"), OutRule.ObjectiveRewardQuantity, false, Context, Result);
 		bValid &= ReadInteger(Object, TEXT("missionExperienceReward"), OutRule.MissionExperienceReward, false, Context, Result);
@@ -1491,7 +1503,7 @@ FContentPackageParseResult FContentPackageJson::ParseString(const FString& Json,
 	FString PackageId;
 	if (ReadRequiredString(Root, TEXT("packageId"), PackageId, SourceLabel, Result))
 	{
-		Result.Package.Descriptor.PackageId = FName(*PackageId);
+		Result.Package.Descriptor.PackageId = ReadNameValue(PackageId, SourceLabel, Result);
 		if (!FContentPackageResolver::IsValidPackageId(Result.Package.Descriptor.PackageId))
 		{
 			AddDiagnostic(Result, EContentDiagnosticSeverity::Error, TEXT("invalid_package_id"), FString::Printf(TEXT("%s.packageId '%s' is invalid."), *SourceLabel, *PackageId));

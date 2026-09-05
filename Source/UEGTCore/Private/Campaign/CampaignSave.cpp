@@ -32,6 +32,18 @@ namespace CampaignSavePrivate
 			});
 	}
 
+	FName ReadNameValue(const FString& Value, const FString& Context, TArray<FCampaignSaveDiagnostic>& Diagnostics)
+	{
+		if (Value.Len() >= NAME_SIZE || FCString::Strlen(*Value) != Value.Len())
+		{
+			AddDiagnostic(Diagnostics, ECampaignSaveDiagnosticSeverity::Error, TEXT("invalid_field_value"),
+				FString::Printf(TEXT("%s contains an identifier exceeding the %d-character name limit or containing a null character."),
+					*Context, NAME_SIZE - 1));
+			return NAME_None;
+		}
+		return FName(*Value);
+	}
+
 	void NormalizeContentPackages(TArray<FCampaignContentVersion>& Packages)
 	{
 		Packages.Sort(
@@ -3930,7 +3942,7 @@ namespace CampaignSavePrivate
 				bValid = false;
 				continue;
 			}
-			OutValues.Add(FName(*Value));
+			OutValues.Add(ReadNameValue(Value, Context, Diagnostics));
 		}
 		return bValid;
 	}
@@ -4012,7 +4024,7 @@ namespace CampaignSavePrivate
 			const bool bVersionValid = ReadRequiredString(*PackageObject, TEXT("version"), Package.Version, Context, Diagnostics);
 			if (bIdValid)
 			{
-				Package.PackageId = FName(*Id);
+				Package.PackageId = ReadNameValue(Id, Context, Diagnostics);
 			}
 			if (bIdValid && bVersionValid)
 			{
@@ -4116,7 +4128,7 @@ namespace CampaignSavePrivate
 			FInventoryStack Stack;
 			FString ItemId;
 			bool bStackValid = ReadRequiredString(*StackObject, TEXT("itemId"), ItemId, StackContext, Diagnostics);
-			Stack.ItemId = FName(*ItemId);
+			Stack.ItemId = ReadNameValue(ItemId, Context, Diagnostics);
 			bStackValid &= ReadInt32(*StackObject, TEXT("quantity"), Stack.Quantity, StackContext, Diagnostics);
 			if (bStackValid)
 			{
@@ -4174,7 +4186,7 @@ namespace CampaignSavePrivate
 			FString FacilityId;
 			bool bFacilityValid = ReadGuidString(*FacilityObject, TEXT("instanceId"), Facility.InstanceId, Context, Diagnostics);
 			bFacilityValid &= ReadRequiredString(*FacilityObject, TEXT("facilityId"), FacilityId, Context, Diagnostics);
-			Facility.FacilityId = FName(*FacilityId);
+			Facility.FacilityId = ReadNameValue(FacilityId, Context, Diagnostics);
 			bFacilityValid &= ReadInt32(*FacilityObject, TEXT("gridX"), Facility.GridX, Context, Diagnostics);
 			bFacilityValid &= ReadInt32(*FacilityObject, TEXT("gridY"), Facility.GridY, Context, Diagnostics);
 			if (FormatVersion >= 19)
@@ -4231,7 +4243,7 @@ namespace CampaignSavePrivate
 			bool bBaseValid = ReadGuidString(*BaseObject, TEXT("id"), Base.BaseId, Context, Diagnostics);
 			bBaseValid &= ReadRequiredString(*BaseObject, TEXT("name"), Base.Name, Context, Diagnostics);
 			bBaseValid &= ReadRequiredString(*BaseObject, TEXT("regionId"), RegionId, Context, Diagnostics);
-			Base.RegionId = FName(*RegionId);
+			Base.RegionId = ReadNameValue(RegionId, Context, Diagnostics);
 			bBaseValid &= ReadInt32(*BaseObject, TEXT("longitudeMilliDegrees"), Base.LongitudeMilliDegrees, Context, Diagnostics);
 			bBaseValid &= ReadInt32(*BaseObject, TEXT("latitudeMilliDegrees"), Base.LatitudeMilliDegrees, Context, Diagnostics);
 			bBaseValid &= ReadInt32(*BaseObject, TEXT("scientistCapacity"), Base.ScientistCapacity, Context, Diagnostics);
@@ -4359,7 +4371,7 @@ namespace CampaignSavePrivate
 				*ConvoyObject, TEXT("destinationBaseId"), Convoy.DestinationBaseId, Context, Diagnostics);
 			bConvoyValid &= ReadRequiredString(
 				*ConvoyObject, TEXT("itemId"), ItemId, Context, Diagnostics);
-			Convoy.ItemId = FName(*ItemId);
+			Convoy.ItemId = ReadNameValue(ItemId, Context, Diagnostics);
 			bConvoyValid &= ReadInt32(
 				*ConvoyObject, TEXT("quantity"), Convoy.Quantity, Context, Diagnostics);
 			bConvoyValid &= ReadInt64String(
@@ -4491,7 +4503,7 @@ namespace CampaignSavePrivate
 			FResearchProjectState Project;
 			FString ResearchId;
 			bool bProjectValid = ReadRequiredString(*ProjectObject, TEXT("researchId"), ResearchId, Context, Diagnostics);
-			Project.ResearchId = FName(*ResearchId);
+			Project.ResearchId = ReadNameValue(ResearchId, Context, Diagnostics);
 			bProjectValid &= ReadGuidString(*ProjectObject, TEXT("baseId"), Project.BaseId, Context, Diagnostics);
 			bProjectValid &= ReadInt32(*ProjectObject, TEXT("assignedScientists"), Project.AssignedScientists, Context, Diagnostics);
 			bProjectValid &= ReadInt64String(*ProjectObject, TEXT("accumulatedWorkSeconds"), Project.AccumulatedWorkSeconds, Context, Diagnostics);
@@ -4541,7 +4553,7 @@ namespace CampaignSavePrivate
 			FString ItemId;
 			bool bProjectValid = ReadGuidString(*ProjectObject, TEXT("projectId"), Project.ProjectId, Context, Diagnostics);
 			bProjectValid &= ReadRequiredString(*ProjectObject, TEXT("itemId"), ItemId, Context, Diagnostics);
-			Project.ItemId = FName(*ItemId);
+			Project.ItemId = ReadNameValue(ItemId, Context, Diagnostics);
 			bProjectValid &= ReadGuidString(*ProjectObject, TEXT("baseId"), Project.BaseId, Context, Diagnostics);
 			bProjectValid &= ReadInt32(*ProjectObject, TEXT("assignedEngineers"), Project.AssignedEngineers, Context, Diagnostics);
 			bProjectValid &= ReadInt32(*ProjectObject, TEXT("unitsRemaining"), Project.UnitsRemaining, Context, Diagnostics);
@@ -4593,7 +4605,7 @@ namespace CampaignSavePrivate
 			bProjectValid &= ReadGuidString(*ProjectObject, TEXT("facilityInstanceId"), Project.FacilityInstanceId, Context, Diagnostics);
 			bProjectValid &= ReadGuidString(*ProjectObject, TEXT("baseId"), Project.BaseId, Context, Diagnostics);
 			bProjectValid &= ReadRequiredString(*ProjectObject, TEXT("facilityId"), FacilityId, Context, Diagnostics);
-			Project.FacilityId = FName(*FacilityId);
+			Project.FacilityId = ReadNameValue(FacilityId, Context, Diagnostics);
 			bProjectValid &= ReadInt32(*ProjectObject, TEXT("gridX"), Project.GridX, Context, Diagnostics);
 			bProjectValid &= ReadInt32(*ProjectObject, TEXT("gridY"), Project.GridY, Context, Diagnostics);
 			bProjectValid &= ReadInt64String(*ProjectObject, TEXT("remainingBuildSeconds"), Project.RemainingBuildSeconds, Context, Diagnostics);
@@ -4668,7 +4680,7 @@ namespace CampaignSavePrivate
 			bool bPersonValid = ReadGuidString(*PersonObject, TEXT("id"), Person.PersonnelId, Context, Diagnostics);
 			bPersonValid &= ReadRequiredString(*PersonObject, TEXT("displayName"), Person.DisplayName, Context, Diagnostics);
 			bPersonValid &= ReadRequiredString(*PersonObject, TEXT("roleId"), RoleId, Context, Diagnostics);
-			Person.RoleId = FName(*RoleId);
+			Person.RoleId = ReadNameValue(RoleId, Context, Diagnostics);
 			bPersonValid &= ReadGuidString(*PersonObject, TEXT("baseId"), Person.BaseId, Context, Diagnostics);
 			bPersonValid &= ReadRequiredString(*PersonObject, TEXT("status"), Status, Context, Diagnostics);
 			if (!Status.IsEmpty() && !TryParsePersonnelStatus(Status, Person.Status))
@@ -4835,7 +4847,7 @@ namespace CampaignSavePrivate
 			bOrderValid &= ReadGuidString(*OrderObject, TEXT("personnelId"), Order.PersonnelId, Context, Diagnostics);
 			bOrderValid &= ReadRequiredString(*OrderObject, TEXT("displayName"), Order.DisplayName, Context, Diagnostics);
 			bOrderValid &= ReadRequiredString(*OrderObject, TEXT("roleId"), RoleId, Context, Diagnostics);
-			Order.RoleId = FName(*RoleId);
+			Order.RoleId = ReadNameValue(RoleId, Context, Diagnostics);
 			bOrderValid &= ReadGuidString(*OrderObject, TEXT("baseId"), Order.BaseId, Context, Diagnostics);
 			bOrderValid &= ReadInt64String(*OrderObject, TEXT("remainingTransitSeconds"), Order.RemainingTransitSeconds, Context, Diagnostics);
 			if (bOrderValid)
@@ -4892,13 +4904,13 @@ namespace CampaignSavePrivate
 			bool bRecordValid = ReadGuidString(*RecordObject, TEXT("personnelId"), Record.PersonnelId, Context, Diagnostics);
 			bRecordValid &= ReadRequiredString(*RecordObject, TEXT("displayName"), Record.DisplayName, Context, Diagnostics);
 			bRecordValid &= ReadRequiredString(*RecordObject, TEXT("roleId"), RoleId, Context, Diagnostics);
-			Record.RoleId = FName(*RoleId);
+			Record.RoleId = ReadNameValue(RoleId, Context, Diagnostics);
 			bRecordValid &= ReadInt32(*RecordObject, TEXT("rank"), Record.Rank, Context, Diagnostics);
 			bRecordValid &= ReadInt32(*RecordObject, TEXT("missions"), Record.Missions, Context, Diagnostics);
 			bRecordValid &= ReadInt32(*RecordObject, TEXT("kills"), Record.Kills, Context, Diagnostics);
 			bRecordValid &= ReadIsoDate(*RecordObject, TEXT("deathUtc"), Record.DeathUtc, Context, Diagnostics);
 			bRecordValid &= ReadRequiredString(*RecordObject, TEXT("causeId"), CauseId, Context, Diagnostics);
-			Record.CauseId = FName(*CauseId);
+			Record.CauseId = ReadNameValue(CauseId, Context, Diagnostics);
 			if (FormatVersion >= 35)
 			{
 				bRecordValid &= ReadInt32(*RecordObject, TEXT("stewardshipToursCompleted"),
@@ -4955,7 +4967,7 @@ namespace CampaignSavePrivate
 			FCraftWeaponState WeaponState;
 			FString WeaponItemId;
 			bool bWeaponValid = ReadRequiredString(*WeaponObject, TEXT("weaponItemId"), WeaponItemId, Context, Diagnostics);
-			WeaponState.WeaponItemId = FName(*WeaponItemId);
+			WeaponState.WeaponItemId = ReadNameValue(WeaponItemId, Context, Diagnostics);
 			bWeaponValid &= ReadInt32(*WeaponObject, TEXT("ammunition"), WeaponState.Ammunition, Context, Diagnostics);
 			bWeaponValid &= ReadInt64String(*WeaponObject, TEXT("remainingCooldownSeconds"), WeaponState.RemainingCooldownSeconds, Context, Diagnostics);
 			if (bWeaponValid)
@@ -5031,7 +5043,7 @@ namespace CampaignSavePrivate
 			bool bCraftValid = ReadGuidString(*CraftObject, TEXT("craftId"), Craft.CraftId, Context, Diagnostics);
 			bCraftValid &= ReadRequiredString(*CraftObject, TEXT("displayName"), Craft.DisplayName, Context, Diagnostics);
 			bCraftValid &= ReadRequiredString(*CraftObject, TEXT("craftRuleId"), CraftRuleId, Context, Diagnostics);
-			Craft.CraftRuleId = FName(*CraftRuleId);
+			Craft.CraftRuleId = ReadNameValue(CraftRuleId, Context, Diagnostics);
 			bCraftValid &= ReadGuidString(*CraftObject, TEXT("baseId"), Craft.BaseId, Context, Diagnostics);
 			bCraftValid &= ReadGuidString(*CraftObject, TEXT("assignedPilotId"), Craft.AssignedPilotId, Context, Diagnostics);
 			bCraftValid &= ReadRequiredString(*CraftObject, TEXT("status"), Status, Context, Diagnostics);
@@ -5125,7 +5137,7 @@ namespace CampaignSavePrivate
 			FString Status;
 			bool bContactValid = ReadGuidString(*ContactObject, TEXT("contactId"), Contact.ContactId, Context, Diagnostics);
 			bContactValid &= ReadRequiredString(*ContactObject, TEXT("contactRuleId"), ContactRuleId, Context, Diagnostics);
-			Contact.ContactRuleId = FName(*ContactRuleId);
+			Contact.ContactRuleId = ReadNameValue(ContactRuleId, Context, Diagnostics);
 			bContactValid &= ReadRequiredString(*ContactObject, TEXT("status"), Status, Context, Diagnostics);
 			if (!Status.IsEmpty() && !TryParseContactStatus(Status, Contact.Status))
 			{
@@ -5197,7 +5209,7 @@ namespace CampaignSavePrivate
 				bSiteValid = false;
 			}
 			bSiteValid &= ReadRequiredString(*SiteObject, TEXT("sourceContactRuleId"), SourceContactRuleId, Context, Diagnostics);
-			Site.SourceContactRuleId = FName(*SourceContactRuleId);
+			Site.SourceContactRuleId = ReadNameValue(SourceContactRuleId, Context, Diagnostics);
 			bSiteValid &= ReadInt32(*SiteObject, TEXT("longitudeMilliDegrees"), Site.LongitudeMilliDegrees, Context, Diagnostics);
 			bSiteValid &= ReadInt32(*SiteObject, TEXT("latitudeMilliDegrees"), Site.LatitudeMilliDegrees, Context, Diagnostics);
 			bSiteValid &= ReadInt32(*SiteObject, TEXT("threatRating"), Site.ThreatRating, Context, Diagnostics);
@@ -5336,7 +5348,7 @@ namespace CampaignSavePrivate
 				bCellValid &= ReadInt32(*CellObject, TEXT("z"), Cell.Z, Context, Diagnostics);
 			}
 			bCellValid &= ReadRequiredString(*CellObject, TEXT("terrainRuleId"), TerrainRuleId, Context, Diagnostics);
-			Cell.TerrainRuleId = FName(*TerrainRuleId);
+			Cell.TerrainRuleId = ReadNameValue(TerrainRuleId, Context, Diagnostics);
 			bCellValid &= ReadInt32(*CellObject, TEXT("currentIntegrity"), Cell.CurrentIntegrity, Context, Diagnostics);
 			bCellValid &= ReadBool(*CellObject, TEXT("playerDeployment"), Cell.bPlayerDeployment, Context, Diagnostics);
 			bCellValid &= ReadBool(*CellObject, TEXT("extraction"), Cell.bExtraction, Context, Diagnostics);
@@ -5394,7 +5406,7 @@ namespace CampaignSavePrivate
 			FTacticalWeaponState WeaponState;
 			FString WeaponItemId;
 			bool bWeaponValid = ReadRequiredString(*WeaponObject, TEXT("weaponItemId"), WeaponItemId, Context, Diagnostics);
-			WeaponState.WeaponItemId = FName(*WeaponItemId);
+			WeaponState.WeaponItemId = ReadNameValue(WeaponItemId, Context, Diagnostics);
 			bWeaponValid &= ReadInt32(*WeaponObject, TEXT("loadedAmmunition"), WeaponState.LoadedAmmunition, Context, Diagnostics);
 			if (bWeaponValid)
 			{
@@ -5449,8 +5461,8 @@ namespace CampaignSavePrivate
 			FString AmmunitionItemId;
 			bool bMagazineValid = ReadRequiredString(*MagazineObject, TEXT("weaponItemId"), WeaponItemId, Context, Diagnostics);
 			bMagazineValid &= ReadRequiredString(*MagazineObject, TEXT("ammunitionItemId"), AmmunitionItemId, Context, Diagnostics);
-			Magazine.WeaponItemId = FName(*WeaponItemId);
-			Magazine.AmmunitionItemId = FName(*AmmunitionItemId);
+			Magazine.WeaponItemId = ReadNameValue(WeaponItemId, Context, Diagnostics);
+			Magazine.AmmunitionItemId = ReadNameValue(AmmunitionItemId, Context, Diagnostics);
 			bMagazineValid &= ReadInt32(*MagazineObject, TEXT("loadedAmmunition"), Magazine.LoadedAmmunition, Context, Diagnostics);
 			if (bMagazineValid)
 			{
@@ -5528,7 +5540,7 @@ namespace CampaignSavePrivate
 			bool bUnitValid = ReadGuidString(*UnitObject, TEXT("unitId"), Unit.UnitId, Context, Diagnostics);
 			bUnitValid &= ReadGuidString(*UnitObject, TEXT("personnelId"), Unit.PersonnelId, Context, Diagnostics);
 			bUnitValid &= ReadRequiredString(*UnitObject, TEXT("sourceRuleId"), SourceRuleId, Context, Diagnostics);
-			Unit.SourceRuleId = FName(*SourceRuleId);
+			Unit.SourceRuleId = ReadNameValue(SourceRuleId, Context, Diagnostics);
 			bUnitValid &= ReadRequiredString(*UnitObject, TEXT("displayName"), Unit.DisplayName, Context, Diagnostics);
 			bUnitValid &= ReadRequiredString(*UnitObject, TEXT("team"), Team, Context, Diagnostics);
 			if (!Team.IsEmpty() && !TryParseTacticalTeam(Team, Unit.Team))
@@ -5629,7 +5641,7 @@ namespace CampaignSavePrivate
 			FString Stance;
 			bool bMemoryValid = ReadGuidString(*MemoryObject, TEXT("unitId"), Memory.UnitId, Context, Diagnostics);
 			bMemoryValid &= ReadRequiredString(*MemoryObject, TEXT("sourceRuleId"), SourceRuleId, Context, Diagnostics);
-			Memory.SourceRuleId = FName(*SourceRuleId);
+			Memory.SourceRuleId = ReadNameValue(SourceRuleId, Context, Diagnostics);
 			bMemoryValid &= ReadRequiredString(*MemoryObject, TEXT("displayName"), Memory.DisplayName, Context, Diagnostics);
 			bMemoryValid &= ReadRequiredString(*MemoryObject, TEXT("stance"), Stance, Context, Diagnostics);
 			if (!Stance.IsEmpty() && !TryParseTacticalStance(Stance, Memory.Stance))
@@ -5703,7 +5715,7 @@ namespace CampaignSavePrivate
 			FString Status;
 			FString Type;
 			bool bObjectiveValid = ReadRequiredString(*ObjectiveObject, TEXT("objectiveId"), ObjectiveId, Context, Diagnostics);
-			Objective.ObjectiveId = FName(*ObjectiveId);
+			Objective.ObjectiveId = ReadNameValue(ObjectiveId, Context, Diagnostics);
 			bObjectiveValid &= ReadInt32(*ObjectiveObject, TEXT("x"), Objective.X, Context, Diagnostics);
 			bObjectiveValid &= ReadInt32(*ObjectiveObject, TEXT("y"), Objective.Y, Context, Diagnostics);
 			if (FormatVersion >= 17)
@@ -5809,7 +5821,7 @@ namespace CampaignSavePrivate
 			bBattleValid &= ReadGuidString(*BattleObject, TEXT("operationId"), Battle.OperationId, Context, Diagnostics);
 			bBattleValid &= ReadGuidString(*BattleObject, TEXT("siteId"), Battle.SiteId, Context, Diagnostics);
 			bBattleValid &= ReadRequiredString(*BattleObject, TEXT("missionRuleId"), MissionRuleId, Context, Diagnostics);
-			Battle.MissionRuleId = FName(*MissionRuleId);
+			Battle.MissionRuleId = ReadNameValue(MissionRuleId, Context, Diagnostics);
 			bBattleValid &= ReadIsoDate(*BattleObject, TEXT("createdUtc"), Battle.CreatedUtc, Context, Diagnostics);
 			bBattleValid &= ReadInt32(*BattleObject, TEXT("width"), Battle.Width, Context, Diagnostics);
 			bBattleValid &= ReadInt32(*BattleObject, TEXT("height"), Battle.Height, Context, Diagnostics);
@@ -5908,7 +5920,7 @@ namespace CampaignSavePrivate
 			FRegionalPressureState Pressure;
 			FString RegionId;
 			bool bPressureValid = ReadRequiredString(*PressureObject, TEXT("regionId"), RegionId, Context, Diagnostics);
-			Pressure.RegionId = FName(*RegionId);
+			Pressure.RegionId = ReadNameValue(RegionId, Context, Diagnostics);
 			bPressureValid &= ReadInt32(*PressureObject, TEXT("pressure"), Pressure.Pressure, Context, Diagnostics);
 			if (bPressureValid)
 			{
@@ -5957,7 +5969,7 @@ namespace CampaignSavePrivate
 			FRegionalMandateState Mandate;
 			FString RegionId;
 			bool bMandateValid = ReadRequiredString(*MandateObject, TEXT("regionId"), RegionId, Context, Diagnostics);
-			Mandate.RegionId = FName(*RegionId);
+			Mandate.RegionId = ReadNameValue(RegionId, Context, Diagnostics);
 			bMandateValid &= ReadInt32(*MandateObject, TEXT("support"), Mandate.Support, Context, Diagnostics);
 			bMandateValid &= ReadInt64String(*MandateObject, TEXT("baselineMonthlyFunding"), Mandate.BaselineMonthlyFunding, Context, Diagnostics);
 			bMandateValid &= ReadInt64String(*MandateObject, TEXT("currentMonthlyFunding"), Mandate.CurrentMonthlyFunding, Context, Diagnostics);
@@ -6023,7 +6035,7 @@ namespace CampaignSavePrivate
 			bool bMissionValid = ReadGuidString(*MissionObject, TEXT("missionId"), Mission.MissionId, Context, Diagnostics);
 			bMissionValid &= ReadGuidString(*MissionObject, TEXT("contactId"), Mission.ContactId, Context, Diagnostics);
 			bMissionValid &= ReadRequiredString(*MissionObject, TEXT("missionRuleId"), MissionRuleId, Context, Diagnostics);
-			Mission.MissionRuleId = FName(*MissionRuleId);
+			Mission.MissionRuleId = ReadNameValue(MissionRuleId, Context, Diagnostics);
 			if (FormatVersion >= 20)
 			{
 				bMissionValid &= ReadGuidString(*MissionObject, TEXT("targetBaseId"), Mission.TargetBaseId, Context, Diagnostics);
@@ -6126,7 +6138,7 @@ namespace CampaignSavePrivate
 			bOrderValid &= ReadGuidString(*OrderObject, TEXT("craftId"), Order.CraftId, Context, Diagnostics);
 			bOrderValid &= ReadRequiredString(*OrderObject, TEXT("displayName"), Order.DisplayName, Context, Diagnostics);
 			bOrderValid &= ReadRequiredString(*OrderObject, TEXT("craftRuleId"), CraftRuleId, Context, Diagnostics);
-			Order.CraftRuleId = FName(*CraftRuleId);
+			Order.CraftRuleId = ReadNameValue(CraftRuleId, Context, Diagnostics);
 			bOrderValid &= ReadGuidString(*OrderObject, TEXT("baseId"), Order.BaseId, Context, Diagnostics);
 			bOrderValid &= ReadInt64String(*OrderObject, TEXT("remainingTransitSeconds"), Order.RemainingTransitSeconds, Context, Diagnostics);
 			if (bOrderValid)
@@ -6948,7 +6960,7 @@ namespace CampaignSavePrivate
 			}
 			FString OutcomeReasonId;
 			bValid &= ReadRequiredString(Object, TEXT("outcomeReasonId"), OutcomeReasonId, TEXT("save.state"), Diagnostics, true);
-			State.OutcomeReasonId = OutcomeReasonId.IsEmpty() ? NAME_None : FName(*OutcomeReasonId);
+			State.OutcomeReasonId = OutcomeReasonId.IsEmpty() ? NAME_None : ReadNameValue(OutcomeReasonId, TEXT("save.state"), Diagnostics);
 		}
 		if (FormatVersion >= 20)
 		{

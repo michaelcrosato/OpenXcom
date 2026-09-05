@@ -1418,6 +1418,46 @@ bool FCampaignSaveScalarTypesTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FCampaignSaveNameBoundsTest,
+	"UEGT.Core.CampaignSave.NameBounds",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCampaignSaveNameBoundsTest::RunTest(const FString& Parameters)
+{
+	using namespace CampaignSaveTests;
+	const FCampaignSaveWriteResult Write = MakeSerializedSave();
+	if (!TestTrue(TEXT("Name-boundary fixture serializes"), Write.bSucceeded))
+	{
+		return false;
+	}
+	const FString Oversized = FString::ChrN(NAME_SIZE, TEXT('a'));
+	for (const TCHAR* Original : { TEXT("uegt.base"), TEXT("region.cascadia"),
+		TEXT("facility.fabrication-bay"), TEXT("research.directed-energy") })
+	{
+		for (const FString& Replacement : { Oversized, FString(Original) + TEXT("\\u0000hidden") })
+		{
+			const FString Json = Write.Json.Replace(
+				*FString::Printf(TEXT("\"%s\""), Original), *FString::Printf(TEXT("\"%s\""), *Replacement));
+			const FCampaignSaveReadResult Invalid = FCampaignSaveCodec::Deserialize(Json);
+			TestTrue(TEXT("Invalid name storage is diagnosed before checksum validation"),
+				!Invalid.bSucceeded && Invalid.HasDiagnostic(TEXT("invalid_field_value"))
+				&& !Invalid.HasDiagnostic(TEXT("save_checksum_mismatch")));
+		}
+	}
+	const FCampaignSaveReadResult InvalidOutcome = FCampaignSaveCodec::Deserialize(
+		Write.Json.Replace(TEXT("\"outcomeReasonId\":\"\""),
+			*FString::Printf(TEXT("\"outcomeReasonId\":\"%s\""), *Oversized)));
+	TestTrue(TEXT("Optional outcome names are also bounded"),
+		!InvalidOutcome.bSucceeded && InvalidOutcome.HasDiagnostic(TEXT("invalid_field_value")));
+	FCampaignSaveEnvelope LongBuild = Write.Envelope;
+	LongBuild.Header.BuildVersion = Oversized;
+	const FCampaignSaveWriteResult LongBuildWrite = FCampaignSaveCodec::Serialize(LongBuild);
+	TestTrue(TEXT("Name bounds preserve unrelated string fields and their checksums"),
+		LongBuildWrite.bSucceeded && FCampaignSaveCodec::Deserialize(LongBuildWrite.Json).bSucceeded);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCampaignSaveCompatibilityTest,
 	"UEGT.Core.CampaignSave.ContentCompatibility",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

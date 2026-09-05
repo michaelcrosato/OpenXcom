@@ -73,7 +73,7 @@ Campaign slots live under the runtime project's `Saved/SaveGames`. Each slot use
 
 Resaving retains the newest compatible prior candidate as the backup. If no candidate matches the new catalog, the newest valid candidate from another catalog is retained instead. A recovered temporary file is moved to the backup before its path is reused; a corrupt, stale, or incompatible primary cannot replace the selected recovery copy. Save timestamps never move behind campaign creation or the retained candidate, so a backward system-clock adjustment cannot make a successful save load older progress.
 
-Save readers enforce JSON scalar types before checksum validation. Signed 64-bit values use canonical decimal strings to retain full precision; ordinary integer fields use JSON numbers. Numbers and booleans cannot stand in for text or ID strings, and quoted numbers cannot stand in for integer fields.
+Save readers enforce JSON scalar types before checksum validation. Signed 64-bit values use canonical decimal strings to retain full precision; ordinary integer fields use JSON numbers. Numbers and booleans cannot stand in for text or ID strings, and quoted numbers cannot stand in for integer fields. Oversized identifiers and identifiers containing null characters return diagnostics before Unreal name construction.
 
 User packages are discovered under `Saved/Mods`. Save compatibility depends on the loaded package IDs and versions. See [content authoring](docs/CONTENT-AUTHORING.md) and the [Aurora Relay sample](Samples/Mods/AuroraRelay/README.md) for installation, reload, replacement, and validation rules.
 

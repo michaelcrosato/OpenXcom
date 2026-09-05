@@ -84,9 +84,10 @@ if (($SchemaVersion -isnot [int] -and $SchemaVersion -isnot [long] -and $SchemaV
 	throw "Localization catalog requires numeric schemaVersion 1."
 }
 $CatalogId = Get-CatalogField $Catalog "catalogId"
-if ($CatalogId -isnot [string] -or $CatalogId -cnotmatch '\A[a-z][a-z0-9.-]*\z')
+# The runtime stores catalogId as an FName (NAME_SIZE - 1 characters maximum).
+if ($CatalogId -isnot [string] -or $CatalogId.Length -gt 1023 -or $CatalogId -cnotmatch '\A[a-z][a-z0-9.-]*\z')
 {
-	throw "Localization catalogId must be a lowercase id."
+	throw "Localization catalogId must be a lowercase id of at most 1023 characters."
 }
 $SourceCulture = Get-CatalogField $Catalog "sourceCulture"
 if ($SourceCulture -isnot [string] -or (ConvertTo-CatalogCulture $SourceCulture) -cne "en")

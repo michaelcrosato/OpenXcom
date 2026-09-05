@@ -638,6 +638,38 @@ bool FContentJsonScalarTypesTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FContentJsonNameBoundsTest,
+	"UEGT.Core.Content.Json.NameBounds",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FContentJsonNameBoundsTest::RunTest(const FString& Parameters)
+{
+	using namespace ContentRulePipelineTests;
+	const FString Oversized = FString::ChrN(NAME_SIZE, TEXT('a'));
+	for (const TCHAR* Original : { TEXT("uegt.base"), TEXT("item.pulse-carbine"),
+		TEXT("facility.energy-lab"), TEXT("category.engineering"), TEXT("weapon") })
+	{
+		for (const FString& Replacement : { Oversized, FString(Original) + TEXT("\\u0000hidden") })
+		{
+			const FString Json = BasePackageJson.Replace(
+				*FString::Printf(TEXT("\"%s\""), Original), *FString::Printf(TEXT("\"%s\""), *Replacement));
+			const FContentPackageParseResult Invalid = FContentPackageJson::ParseString(Json, TEXT("name-bounds.json"));
+			TestTrue(TEXT("Oversized or null-containing names reject content without an engine assertion"),
+				!Invalid.bSucceeded && Invalid.HasDiagnostic(TEXT("invalid_field_value")));
+		}
+	}
+	const FString ManufacturingJson = BasePackageJson.Replace(TEXT("\"mass\": 7,"),
+		*FString::Printf(TEXT("\"mass\":7,\"manufactureInputs\":[{\"itemId\":\"%s\",\"quantity\":1}],"), *Oversized));
+	const FContentPackageParseResult Manufacturing = FContentPackageJson::ParseString(ManufacturingJson, TEXT("input-bounds.json"));
+	TestTrue(TEXT("Manufacturing input names are bounded before constructing an FName"),
+		!Manufacturing.bSucceeded && Manufacturing.HasDiagnostic(TEXT("invalid_field_value")));
+	const FContentPackageParseResult DisplayText = FContentPackageJson::ParseString(
+		BasePackageJson.Replace(TEXT("UEGT Base Rules"), *Oversized), TEXT("long-display-name.json"));
+	TestTrue(TEXT("Name bounds do not restrict unrelated package display text"), DisplayText.bSucceeded);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FContentJsonTacticalRulesTest,
 	"UEGT.Core.Content.Json.TacticalRules",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

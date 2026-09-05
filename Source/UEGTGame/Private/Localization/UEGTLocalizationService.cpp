@@ -166,9 +166,10 @@ FUEGTLocalizationLoadResult FUEGTLocalizationService::ParseCatalog(const FString
 
 	FString CatalogId;
 	if (!HasExactTypedField(*Root, TEXT("catalogId"), EJson::String)
-		|| !Root->TryGetStringField(TEXT("catalogId"), CatalogId) || !IsValidCatalogId(CatalogId))
+		|| !Root->TryGetStringField(TEXT("catalogId"), CatalogId)
+		|| CatalogId.Len() >= NAME_SIZE || !IsValidCatalogId(CatalogId))
 	{
-		AddDiagnostic(Result, TEXT("Localization catalogId must be a lowercase namespaced id."));
+		AddDiagnostic(Result, FString::Printf(TEXT("Localization catalogId must be a lowercase namespaced id of at most %d characters."), NAME_SIZE - 1));
 		return Result;
 	}
 	Result.Catalog.CatalogId = FName(*CatalogId);

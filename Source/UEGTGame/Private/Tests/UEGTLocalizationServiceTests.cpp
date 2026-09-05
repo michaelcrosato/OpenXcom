@@ -27,6 +27,9 @@ bool FUEGTLocalizationSchemaTest::RunTest(const FString& Parameters)
 		Valid.Catalog.Resolve(TEXT("test.label"), TEXT("fallback"), TEXT(" fr_CA ")), FString(TEXT("ACTIF")));
 	TestEqual(TEXT("Arbitrary words cannot select a culture through their first two letters"),
 		Valid.Catalog.Resolve(TEXT("test.label"), TEXT("fallback"), TEXT("frame")), FString(TEXT("ON")));
+	const FUEGTLocalizationLoadResult LongestCatalogId = FUEGTLocalizationService::ParseCatalog(
+		Json.Replace(TEXT("uegt.test"), *FString::ChrN(NAME_SIZE - 1, TEXT('a'))));
+	TestTrue(TEXT("Catalog ids can use the full engine name length"), LongestCatalogId.bSucceeded);
 
 	struct FInvalidCase
 	{
@@ -34,6 +37,7 @@ bool FUEGTLocalizationSchemaTest::RunTest(const FString& Parameters)
 		FString Json;
 	};
 	const FInvalidCase Cases[] = {
+		{ TEXT("Oversized catalog id"), Json.Replace(TEXT("uegt.test"), *FString::ChrN(NAME_SIZE, TEXT('a'))) },
 		{ TEXT("String schema"), Json.Replace(TEXT("\"schemaVersion\":1"), TEXT("\"schemaVersion\":\"1\"")) },
 		{ TEXT("Boolean schema"), Json.Replace(TEXT("\"schemaVersion\":1"), TEXT("\"schemaVersion\":true")) },
 		{ TEXT("Numeric text"), Json.Replace(TEXT("\"ON\""), TEXT("42")) },

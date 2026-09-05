@@ -61,6 +61,8 @@ Each JSON file has one package envelope:
 
 JSON types are enforced before conversion. Integer fields require unquoted whole numbers in the signed 32-bit range; strings and booleans are rejected even when they could convert to a number. Names, versions, and IDs require strings, including every element of an ID array. Boolean fields require `true` or `false` without quotes. Invalid types produce an `invalid_field_type` diagnostic and reject the package.
 
+Oversized identifiers and identifiers containing null characters reject the package with `invalid_field_value` diagnostics before reaching Unreal's name storage. Ordinary display text and prose retain their existing field-specific limits.
+
 Dependency and `loadAfter` cycles are errors. Otherwise ties are resolved lexically by `packageId`, so discovery order, folder names, and filesystem enumeration never affect the result.
 
 ## Rule families

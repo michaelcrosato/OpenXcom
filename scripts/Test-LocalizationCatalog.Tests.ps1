@@ -63,6 +63,8 @@ try
 		@{ Name = "Boolean schema"; Error = "schemaVersion"; Change = { param($C) $C.schemaVersion = $true } }
 		@{ Name = "Missing schema"; Error = "schemaVersion"; Change = { param($C) $C.PSObject.Properties.Remove("schemaVersion") } }
 		@{ Name = "Invalid catalog ID"; Error = "catalogId"; Change = { param($C) $C.catalogId = "Bad.ID" } }
+		@{ Name = "Oversized catalog ID"; Error = "catalogId"; Change = { param($C) $C.catalogId = "a" * 1024 } }
+		@{ Name = "Longest supported catalog ID"; Change = { param($C) $C.catalogId = "a" * 1023 } }
 		@{ Name = "Malformed source culture"; Error = "sourceCulture"; Change = { param($C) $C.sourceCulture = "english" } }
 		@{ Name = "Cultures must be an array"; Error = "cultures"; Change = { param($C) $C.cultures = "en,fr,de,es,ja" } }
 		@{ Name = "Duplicate culture"; Error = "cultures"; Change = { param($C) $C.cultures[4] = "fr" } }
