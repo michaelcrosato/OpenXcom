@@ -1256,6 +1256,15 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 	InvalidFinancialCampaign.RegionalPressure.Reset();
 	InvalidFinancialCampaign.RegionalMandates.Reset();
 	InvalidFinancialCampaign.MonthlyFunding = MIN_int64;
+	const FStrategicDashboardSnapshot NegativeFundingSnapshot =
+		FStrategicPresentationService::BuildDashboard(
+			InvalidFinancialCampaign, InvalidFinancialRules, Config);
+	TestTrue(TEXT("Dashboard disables time advancement for negative recurring funding"),
+		NegativeFundingSnapshot.bSucceeded
+		&& !NegativeFundingSnapshot.bCanAdvanceTime
+		&& NegativeFundingSnapshot.Diagnostics.Contains(TEXT("Recurring campaign funding cannot be negative.")));
+	InvalidFinancialCampaign.MonthlyFunding = 0;
+	InvalidFinancialCampaign.Funds = MIN_int64;
 	const FStrategicDashboardSnapshot InvalidFinancialSnapshot =
 		FStrategicPresentationService::BuildDashboard(
 			InvalidFinancialCampaign, InvalidFinancialRules, Config);
@@ -1268,6 +1277,7 @@ bool FStrategicPresentationDashboardTest::RunTest(const FString& Parameters)
 				return Diagnostic.Contains(TEXT("Monthly campaign finances"));
 			}));
 	InvalidFinancialCampaign.MonthlyFunding = 100;
+	InvalidFinancialCampaign.Funds = Campaign.Funds;
 	InvalidFinancialCampaign.SimulationRandom.DrawCount = MAX_int64;
 	const FStrategicDashboardSnapshot InvalidRandomSnapshot =
 		FStrategicPresentationService::BuildDashboard(
